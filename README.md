@@ -1,18 +1,124 @@
-follow this documentation
-https://developers.arcgis.com/experience-builder/guide/downloads/
-https://developers.arcgis.com/experience-builder/guide/whats-new/
+# 📦 ArcGIS Experience Builder 1.19
 
-What's new 1.19
-Builder updates
-ArcGIS Experience Builder 1.19 includes several new features and enhancements as listed below:
+> **Carpeta de extensiones personalizadas** para el desarrollo de widgets y themes.
 
-Accessibility—You can use the Enter key or the Space key to add a widget to the canvas from the Insert widget panel for full-screen pages. You can use the new Enable accessibility settings for each widget setting to add the Accessibility settings section to the Content tab of widget settings for every widget in the app. This section includes a setting for adding accessible widget labels that are readable by screen readers. For first order widgets, meaning widgets that are not nested inside any other widgets or layout containers in the page outline, you can turn on Enable in skip to to add a shortcut that skips directly to the widget in the keyboard tab order at run time. In theme settings, pages, containers, overlays, and the default and selected states of interactive elements now have linked settings for background color and text color to help you create apps with sufficient color contrast. When you change a background color, Experience Builder automatically picks a text color that contrasts with the background color. If you change a text color to a color without sufficient contrast (minimum 4.5:1), a warning appears prompting you to pick a different color. The Widget Controller widget supports accessibility features. Four more default templates are optimized for accessibility—Chronology, Frame, Preface, and Ribbon. The Search widget and List widget support announcing suggestion and search result changes.
-Actions—When you export data with the Export data action, a notification appears and tracks the export progress.
-Arcade—Fields used in the widget formatting profile are now automatically added to the used fields list.
-Builder—You can turn off both Live view and Lock layout directly from the Insert widget panel.
-General settings—You can use the new Page visibility restriction setting to limit who can view specific pages based on user type and group membership. Restricted pages do not appear in menus if users do not have the required roles or group membership. If a user attempts to access a restricted page, the page prompts them to switch accounts or go to a different page.
-Style settings—You can set the foreground color in the Background section of widget style settings. You can also set foreground colors for pages, windows, and containers such as List widget items, Card widgets, Accordion widgets, sections, and screen groups.
-Templates—Adds the Compass grid page template. The default templates, ArcGIS Online templates, and ArcGIS Living Atlas templates now appear in the templates gallery. Previously, you could only view your own templates in the templates gallery. The templates and experiences galleries include counts of templates and experiences based on your filters. You can browse experience and templates owned by users outside of your organization if your organization administrator enables it in security settings.
-Theme settings—This update provides a new system for customizing the app theme. There are six new pre-designed app themes, all of which you can customize to ensure that your app's visual identify is consistent with your organization's branding or with your personal preferences. In theme settings, you can define primary and secondary colors, functional colors that indicate information, success, warnings, and errors, and neutral colors. You can define the colors of surfaces, such as pages, Table widget cells, and windows, and the colors of interactive elements, such as drop-down buttons, toggle switches in the on and off states, and the keyboard focus indicator. Color previews show how text appears over three shades each for the primary, secondary, info, success, warning, and error colors. To help you adhere to accessibility standards, warnings appear if certain text and background color combinations do not meet a minimum levels of contrast (4.5:1). Additionally, there are new theme settings for typography, the border radius of app elements, the underline style for link text, and more. In typography settings, you can choose fonts for heading and body text and set a general font size. You can add additional fonts from Google Fonts.
-Website—The experience.arcgis.com website includes an ArcGIS Online menu in the header and a Resources window with links to Experience Builder help resources including documentation, ArcGIS Blog articles, Esri Academy training, and developer documentation.
-Windows—You can drag the corners of a window to resize it.
+---
+
+## 📚 Documentación Oficial
+
+| Recurso | Enlace |
+|---------|--------|
+| 📥 Descargas | [developers.arcgis.com/experience-builder/guide/downloads/](https://developers.arcgis.com/experience-builder/guide/downloads/) |
+| 🆕 Novedades | [developers.arcgis.com/experience-builder/guide/whats-new/](https://developers.arcgis.com/experience-builder/guide/whats-new/) |
+
+---
+
+## 🚀 Novedades en la Versión 1.19
+
+### ♿ Accesibilidad
+
+- **Navegación con teclado**: Usa `Enter` o `Espacio` para agregar widgets al canvas desde el panel de inserción.
+- **Configuración de accesibilidad por widget**: Nueva opción "Enable accessibility settings" que agrega etiquetas legibles por lectores de pantalla.
+- **Salto rápido a widgets**: Para widgets de primer nivel, activa "Enable in skip to" para añadir atajos de teclado.
+- **Contraste de colores automático**: Al cambiar el color de fondo, se selecciona automáticamente un color de texto con contraste adecuado (mínimo 4.5:1).
+- **Widgets actualizados**: Widget Controller ahora soporta características de accesibilidad.
+- **Plantillas optimizadas**: Chronology, Frame, Preface y Ribbon.
+- **Anuncios de cambios**: Los widgets Search y List anuncian cambios en sugerencias y resultados.
+
+---
+
+### 🎯 Acciones
+
+- **Exportación de datos**: Nueva notificación que muestra el progreso de exportación.
+
+---
+
+### 🧮 Arcade
+
+- **Campos automáticos**: Los campos usados en el perfil de formato del widget se agregan automáticamente a la lista de campos utilizados.
+
+---
+
+### 🛠️ Builder
+
+- **Panel de inserción mejorado**: Desactiva "Live view" y "Lock layout" directamente desde el panel.
+
+---
+
+### ⚙️ Configuración General
+
+- **Restricción de visibilidad de páginas**: Limita quién puede ver páginas específicas según:
+  - Tipo de usuario
+  - Membresía de grupo
+- Las páginas restringidas no aparecen en menús para usuarios sin permisos.
+
+---
+
+### 🎨 Configuración de Estilos
+
+- **Color de primer plano**: Disponible en la sección Background de los estilos de widget.
+- **Aplicable a**: Páginas, ventanas, items de List, Card, Accordion, secciones y grupos de pantalla.
+
+---
+
+### 📋 Plantillas
+
+| Novedad | Descripción |
+|---------|-------------|
+| 🆕 Compass Grid | Nueva plantilla de página |
+| 📂 Galería expandida | Ahora incluye plantillas de ArcGIS Online y ArcGIS Living Atlas |
+| 🔢 Contadores | Las galerías muestran cantidad de elementos según filtros |
+| 🌐 Compartir | Accede a plantillas de usuarios fuera de tu organización (si el administrador lo permite) |
+
+---
+
+### 🎭 Configuración de Temas
+
+#### Nuevas características:
+
+| Elemento | Opciones disponibles |
+|----------|---------------------|
+| **Temas prediseñados** | 6 nuevos temas personalizables |
+| **Colores** | Primarios, secundarios, funcionales (info, éxito, advertencia, error) y neutros |
+| **Superficies** | Páginas, celdas de tabla, ventanas |
+| **Elementos interactivos** | Botones dropdown, toggles (on/off), indicador de foco |
+| **Tipografía** | Fuentes para encabezados y texto, tamaño general, Google Fonts |
+| **Otros** | Radio de bordes, estilo de subrayado para enlaces |
+
+> ⚠️ **Advertencias de accesibilidad**: Se muestran alertas cuando las combinaciones de texto y fondo no cumplen el contraste mínimo (4.5:1).
+
+---
+
+### 🌐 Sitio Web
+
+- **Menú ArcGIS Online** en el header de experience.arcgis.com
+- **Ventana de Recursos** con enlaces a:
+  - 📖 Documentación
+  - 📝 Artículos del ArcGIS Blog
+  - 🎓 Entrenamiento en Esri Academy
+  - 👨‍💻 Documentación para desarrolladores
+
+---
+
+### 🪟 Ventanas
+
+- **Redimensionamiento**: Arrastra las esquinas de las ventanas para cambiar su tamaño.
+
+---
+
+## 📁 Estructura de esta Carpeta
+
+```
+your-extensions/
+├── themes/          # Temas personalizados
+├── widgets/         # Widgets personalizados
+└── README.md        # Este archivo
+```
+
+---
+
+## 🔗 Recursos Adicionales
+
+- [Guía de desarrollo de widgets](https://developers.arcgis.com/experience-builder/guide/extend-base-widget/)
+- [Crear temas personalizados](https://developers.arcgis.com/experience-builder/guide/theme-development/)
+- [API Reference](https://developers.arcgis.com/experience-builder/api-reference/)
