@@ -14,8 +14,9 @@ import Widget_Tree from './components/widgetTree'
 const Widget = (props: AllWidgetProps<any>) => {
   const [varJimuMapView, setJimuMapView] = useState<JimuMapView>() // To add the layer to the Map, a reference to the Map must be saved into the component state.
   const [groupedLayers, setGroupedLayers] = useState<CapasTematicas[]>([]) // arreglo donde se almacenara la tabla de contenido ordenada
-  const [servicios, setServicios] = useState(null)
+  const [servicios, setServicios] = useState<typeof import('../../../api/servicios') | null>(null)
   const [utilsModule, setUtilsModule] = useState<any>(null)
+  const [isCollapsed, setIsCollapsed] = useState<boolean>(false) // Estado para controlar si el widget está colapsado
 
   /**
    * En este metodo se referencia el mapa base
@@ -45,6 +46,9 @@ const Widget = (props: AllWidgetProps<any>) => {
       TraerDataTablaContenido(modulo)
     })
     import('../../../utils/module').then(modulo => { setUtilsModule(modulo) })
+    setTimeout(() => {
+      setIsCollapsed(!isCollapsed)
+    }, 5000);
   }, [])
 
   return (
@@ -53,8 +57,19 @@ const Widget = (props: AllWidgetProps<any>) => {
         <JimuMapViewComponent useMapWidgetId={props.useMapWidgetIds?.[0]} onActiveViewChange={activeViewChangeHandler} />
       )}
 
-      {
-        varJimuMapView && <Widget_Tree dataTablaContenido={groupedLayers} setDataTablaContenido={setGroupedLayers} varJimuMapView={varJimuMapView}/>
+      {        
+        varJimuMapView && <div className='colapsarWidget'>
+          <button 
+            className='btn-colapsar'
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            title={isCollapsed ? 'Expandir tabla de contenido' : 'Minimizar tabla de contenido'}
+          >
+            {isCollapsed ? '▼' : '▲'}
+          </button>
+          {!isCollapsed && (
+            <Widget_Tree dataTablaContenido={groupedLayers} setDataTablaContenido={setGroupedLayers} varJimuMapView={varJimuMapView}/>
+          )}
+        </div>
       }
 
     </div>
@@ -67,9 +82,7 @@ export default Widget
    * En este meto se realiza la consulta del jeison de la tabla de contenido
    */
 export const getDataTablaContenido = async (servicios: { urls: { tablaContenido: string } }) => {
-  const baseURL = process.env.REACT_APP_BASE_URL + process.env.REACT_APP_WILDFLY_PORT
-  const url = `${baseURL}${servicios.urls.tablaContenido}`
-  // const url = servicios.urls.tablaContenido
+  const url = servicios.urls.tablaContenido
   let responseTablaDeContenido: TablaDeContenidoInterface[] = []
   // let responseTablaDeContenido: any[] = [];
   try {

@@ -36,3 +36,30 @@
     justify-content: space-around;
     width: 100%;
 }
+
+/* Contenedor con scroll para el árbol de capas */
+.tree-scroll-container {
+    max-height: calc(100vh - 250px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 5px;
+}
+
+/* Estilo del scrollbar para navegadores webkit (Chrome, Safari, Edge) */
+.tree-scroll-container::-webkit-scrollbar {
+    width: 8px;
+}
+
+.tree-scroll-container::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.tree-scroll-container::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+}
+
+.tree-scroll-container::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}

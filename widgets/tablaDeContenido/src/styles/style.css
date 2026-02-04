@@ -69,3 +69,34 @@
   .react-tabs__tab-panel--selected{
     height: inherit !important;
   }
+
+  /* Estilos para el botón de colapsar */
+  .colapsarWidget {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .btn-colapsar {
+    background-color: #0079c1;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    margin-bottom: 10px;
+    transition: background-color 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .btn-colapsar:hover {
+    background-color: #005a8c;
+  }
+
+  .btn-colapsar:active {
+    background-color: #004266;
+  }

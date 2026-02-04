@@ -355,7 +355,7 @@ const Widget_Tree: React.FC<Widget_Tree_Props> = ({ dataTablaContenido, varJimuM
                 </TabList>
 
                 <TabPanel>
-                    <div className="tree-container" onClick={()=>setContextMenu(null)}>
+                    <div className="tree-container" onClick={()=>setContextMenu(null as any)}>
                         <div className="search-bar">
                             
                             <input
@@ -378,7 +378,7 @@ const Widget_Tree: React.FC<Widget_Tree_Props> = ({ dataTablaContenido, varJimuM
 
                             </div>
                         </div>
-                        <div >
+                        <div className='tree-scroll-container'>
                             { renderTree(dataTablaContenido)}
                         </div>
                     </div>
