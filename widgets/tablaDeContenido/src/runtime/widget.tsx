@@ -29,12 +29,16 @@ const Widget = (props: AllWidgetProps<any>) => {
   }
 
   const TraerDataTablaContenido = async (modulo: typeof import('../../../api/servicios')) => {
+    const tematicas = await getDataTablaContenido(modulo)
     setTimeout(async () => {
-      const tematicas = await getDataTablaContenido(modulo)
       if (utilsModule?.logger()) console.log(tematicas)
+      
       if (!tematicas) return
       setGroupedLayers(tematicas)
     }, 3000)
+    setTimeout(() => {
+      setIsCollapsed(!isCollapsed)
+    }, 5000);
   }
 
   /**
@@ -46,28 +50,28 @@ const Widget = (props: AllWidgetProps<any>) => {
       TraerDataTablaContenido(modulo)
     })
     import('../../../utils/module').then(modulo => { setUtilsModule(modulo) })
-    setTimeout(() => {
-      setIsCollapsed(!isCollapsed)
-    }, 5000);
+    
   }, [])
 
   return (
-    <div className="w-100 p-3 bg-primary text-white contenedorTablaContenido">
+    <div>
       {props.useMapWidgetIds && props.useMapWidgetIds.length === 1 && (
         <JimuMapViewComponent useMapWidgetId={props.useMapWidgetIds?.[0]} onActiveViewChange={activeViewChangeHandler} />
       )}
 
       {        
-        varJimuMapView && <div className='colapsarWidget'>
+        varJimuMapView && <div className={`colapsarWidget ${isCollapsed ? 'colapsarWidget--collapsed' : ''}`}>
           <button 
-            className='btn-colapsar'
+            className={`btn-colapsar ${isCollapsed ? 'btn-colapsar--floating' : ''}`}
             onClick={() => setIsCollapsed(!isCollapsed)}
             title={isCollapsed ? 'Expandir tabla de contenido' : 'Minimizar tabla de contenido'}
           >
-            {isCollapsed ? '▼' : '▲'}
+            {isCollapsed ? '☰' : '▲'}
           </button>
           {!isCollapsed && (
+            <div className="w-100 p-3 bg-primary text-white contenedorTablaContenido">
             <Widget_Tree dataTablaContenido={groupedLayers} setDataTablaContenido={setGroupedLayers} varJimuMapView={varJimuMapView}/>
+            </div>
           )}
         </div>
       }
