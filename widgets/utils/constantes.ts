@@ -20,7 +20,7 @@ const coloresMapaCoropletico = [
     { colorRgb: `rgb(22, 160, 133, ${opacity})`, value: [22, 160, 133, opacity] },
     { colorRgb: `rgb(46, 204, 113, ${opacity})`, value: [46, 204, 113, opacity] },
     { colorRgb: `rgb(243, 156, 18, ${opacity})`, value: [243, 156, 18, opacity] },
-    { colorRgb: `rgb(211, 84,   0, ${opacity})`,   value: [211, 84, 0, opacity] },
+    { colorRgb: `rgb(211, 84,   0, ${opacity})`, value: [211, 84, 0, opacity] },
     // { colorRgb: 'rgb(52, 152, 219, 0.1)', value: [52, 152, 219, 0.1] },
 ]
 

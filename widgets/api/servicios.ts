@@ -1,15 +1,75 @@
+/** 
+ * @date 2025-04-22
+ * @changes Adición URL acceso servicio de consulta proyecto firmas espectrales en objeto firmasEsp
+ * @author IGAC - DIP
+ * @dateUpdated 2025-06-25
+ * @changes Adición URL acceso servicio de consulta proyectos firmas espectrales con información real en objeto firmasEspReal
+ * @dateUpdated 2025-07-17
+ * @changes Actualización URL acceso servicio de consulta "https://pruebassig.igac.gov.co/server/rest/services/FE_Puntos_Muestreo/MapServer/0" => "https://pruebassig.igac.gov.co/server/rest/services/FE_Puntos_de_Muestreo/MapServer/0"
+ * @changes creación objeto API para generar token seguridad => api_host
+ * @changes creación objeto API para obtener lista proyectos con campos de salida Id_Proyecto, ProjectName => api_getProybyFields
+ * @dateUpdated 2025-07-18
+ * @changes creación objeto API para obtener lista campañas => api_getCampa_as
+ * @changes creación objeto API para obtener metadatos de la firma asociada al atributo phsig
+ * @dateUpdated 2025-07-21
+ * @changes creación objeto API para obtener firmas, según el identificador asociada al atributo ObjectId (object_id)
+ * @dateUpdated 2025-07-22
+ * @changes creación objeto API api_getFotoByIdFile, para obtener imagenes, según atributos Id_PhotoCover, Id_PhotoContext, Id_PhotoSky, IdSpectraGraph
+ * @changes creación objeto API api_getMetaDatoIdMetaByPhSig, para obtener identificador de metadatos de la firma asociada
+ * @changes creación objeto API api_getFileCompressByIdMeta, para obtener id del archivo comprimido
+ * @changes creación objeto API api_getCompressByIdFile, para obtener archivo zip comprimido  
+ * @dateUpdated 2025-07-23
+ * @changes creación objeto API api_getValDominioByIdVal, para obtener valor asociado del dominio
+ * @dateUpdated 2025-07-29
+ * @changes creación objeto API api_getProyectosByIdProy, para obtener información asociado al proyecto {nombre, descripción e institución}
+ * @changes creación objeto API api_getInstrumentosByNomInstrum, para obtener información asociado al instrumento {Id_Instrumento, InstrumentManufacturer, InstrumentModel, MetrologicNumber, SpectralRange}
+ * @dateUpdated 2025-07-30
+ * @changes creación objeto API api_getFileNameByIdFile, para obtener el nombre de archivo conocido su identificador
+ * @changes en asocio al objeto API api_getFileNameByIdFileFlds, para visualizar el campo nombreArchivo para descarga (filename_download)
+ * @dateUpdated 2025-08-04
+ * @changes Actualización objeto api_host 172.19.3.245 => dev-catalogofirmas.igac.gov.co
+ * @dateUpdated 2025-08-06
+ * @changes Adición URL acceso servicio de consulta tipos de cobertura (tipo_cobertura), objeto firmasEspTCober
+ **/
 // const servicioMadre = 'https: //pruebassig.igac.gov.co/server/rest/services/Indicadores/MapServer'
 const mapServerNal = 'https://pruebassig.igac.gov.co/server/rest/services/Indicadores_nacionales_municipales/MapServer'
 const mapServerDepartal = 'https://pruebassig.igac.gov.co/server/rest/services/Indicadores_departamentos/MapServer'
 const MapServerMunicipal = 'https://pruebassig.igac.gov.co/server/rest/services/Indicadores_municipios/MapServer'
 
 const urls = {
-tablaContenido: 'https://sigquindio.gov.co:8443/ADMINSERV/AdminGeoApplication/AdminGeoWebServices/getTablaContenidoJsTree/public',
+    // tablaContenido: 'https://sigquindio.gov.co:8443/ADMINSERV/AdminGeoApplication/AdminGeoWebServices/getTablaContenidoJsTree/public',
   // tablaContenido: 'http://172.17.3.205:8080/ADMINSERV/AdminGeoApplication/AdminGeoWebServices/getTablaContenidoJsTree/public',
   // tablaContenido: 'https://sae.igac.gov.co:8443/ADMINSERV/AdminGeoApplication/AdminGeoWebServices/getTablaContenidoJsTree/public', // REFORMA AGRARIA
-  // tablaContenido: 'https://snra.igac.gov.co/ADMINSERV/AdminGeoApplication/AdminGeoWebServices/getTablaContenidoJsTree/public', // REFORMA AGRARIA
+  // tablaContenido: 'localhost:8080/ADMINSERV/AdminGeoApplication/AdminGeoWebServices/getTablaContenidoJsTree/public', // REFORMA AGRARIA
+  // tablaContenido: 'http://localhost:8080/ADMINSERV/AdminGeoApplication/AdminGeoWebServices/getTablaContenidoJsTree/public', // REFORMA AGRARIA
+// tablaContenido: 'https://sigquindio.gov.co:8443/ADMINSERV/AdminGeoApplication/AdminGeoWebServices/getTablaContenidoJsTree/public',
+  // tablaContenido: 'http://172.17.3.205:8080/ADMINSERV/AdminGeoApplication/AdminGeoWebServices/getTablaContenidoJsTree/public',
+  // tablaContenido: 'https://sae.igac.gov.co:8443/ADMINSERV/AdminGeoApplication/AdminGeoWebServices/getTablaContenidoJsTree/public', // REFORMA AGRARIA
+  // tablaContenido: 'localhost:8080/ADMINSERV/AdminGeoApplication/AdminGeoWebServices/getTablaContenidoJsTree/public', // REFORMA AGRARIA
+  // tablaContenido: 'http://localhost:8080/ADMINSERV/AdminGeoApplication/AdminGeoWebServices/getTablaContenidoJsTree/public', // REFORMA AGRARIA
+  tablaContenido: 'https://snra.igac.gov.co/ADMINSERV/AdminGeoApplication/AdminGeoWebServices/getTablaContenidoJsTree/public', // REFORMA AGRARIA
+  // tablaContenido: '/ADMINSERV/AdminGeoApplication/AdminGeoWebServices/getTablaContenidoJsTree/public', // REFORMA AGRARIA docker
   // tablaContenido: 'https://sae.igac.gov.co:8444/ADMINSERV/AdminGeoApplication/AdminGeoWebServices/getTablaContenidoJsTree/public', // FIRMAS ESPECTRALES
-
+  firmasEsp:"https://pruebassig.igac.gov.co/server/rest/services/FE_Edicion/MapServer/0",
+ /*  firmasEspDptos: mapServerNal+"/1",
+  firmasEspMpios: mapServerNal+"/0", */
+  firmasEspReal:"https://pruebassig.igac.gov.co/server/rest/services/FE_Puntos_de_Muestreo/MapServer/0",
+  firmasEspTCober:"https://pruebassig.igac.gov.co/server/rest/services/Vista_Puntos_Cobertura/MapServer/0",
+  api_host: "https://dev-catalogofirmas.igac.gov.co",
+  api_getToken: "/auth/login",
+  api_getProybyFields: "/items/Proyectos"+"?fields=Id_Proyecto,ProjectName",
+  api_getCampa_as: "/items/Campanas"+"?fields=*",
+  api_getMetaDatoByPhSig: "/items/Metadatos_Firmas"+"?filter[FileIdentifier][_eq]=",
+  api_getMetaDatoIdMetaByPhSig: "/items/Metadatos_Firmas"+"?fields=Id_Metadato&filter[FileIdentifier][_eq]=",
+  api_getFirmasByObjectId: "/items/Firmas_Espectrales"+"?filter[ObjectId][_eq]=",
+  api_getFotoByIdFile: "/assets/",
+  api_getFileCompressByIdMeta: "/items/Metadatos_Firmas_files"+"?filter[Metadatos_Firmas_Id_Metadato][_eq]=",
+  api_getCompressByIdFile: "/assets/",
+  api_getValDominioByIdVal: "/items/Valores_Dominio"+"?fields=Descripcion_Valor&filter[Id_Valor_Dominio][_eq]=",
+  api_getProyectosByIdProy: "/items/Proyectos"+"?fields=Id_Proyecto,ProjectName,ProjectDescription,ProjectInstitution"+"&filter[Id_Proyecto][_eq]=",
+  api_getInstrumentosByNomInstrum: "/items/Instrumentos"+"?filter[InstrumentName][_eq]=",
+  api_getFileNameByIdFile: "/files/",
+  api_getFileNameByIdFileFlds: "?fields=filename_download",
   Municipios: `${MapServerMunicipal}/0`,
   Departamentos: `${MapServerMunicipal}/1`,
 
@@ -51,8 +111,7 @@ tablaContenido: 'https://sigquindio.gov.co:8443/ADMINSERV/AdminGeoApplication/Ad
     v_predios_actualizados_depto: `${mapServerDepartal}/15`,
     v_municipios_actualizados_depto: `${mapServerDepartal}/16`,
     v_predios_zrc_mun: `${MapServerMunicipal}/15`,
-    v_indice_gini_ids_depto: `${mapServerDepartal}/9`,
-
+    v_indice_gini_ids_depto: `${mapServerDepartal}/9`
 
   },
   /* indicadoresNaci: { // nacionales Indicadores_nacionales_municipales
@@ -133,5 +192,5 @@ tablaContenido: 'https://sigquindio.gov.co:8443/ADMINSERV/AdminGeoApplication/Ad
 }
 
 export {
-  urls
+    urls
 }

@@ -625,12 +625,12 @@ const dibujarPoligono = async (
         color = coloresMapaCoropletico[1].value
       } else if (rangos[2][0] <= fieldToFixRange && fieldToFixRange <= rangos[2][1]) {
         color = coloresMapaCoropletico[2].value
-      // } else if (rangos[3][0] < fieldToFixRange && fieldToFixRange <= rangos[3][1]) {
-      } else if (fieldToFixRange >= rangos[3][0]) {
+      } else if (rangos[3][0] < fieldToFixRange && fieldToFixRange <= rangos[3][1]) {
+      // } else if (fieldToFixRange >= rangos[3][0]) {
         color = coloresMapaCoropletico[3].value
-      } /* else {
+      } else {
         color = coloresMapaCoropletico[4].value
-      } */
+      }
       const graphic = new Graphic({
         geometry: polygon,
         symbol: new SimpleFillSymbol({
