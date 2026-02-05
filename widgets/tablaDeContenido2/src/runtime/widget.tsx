@@ -1,5 +1,5 @@
-import { React, type AllWidgetProps } from 'jimu-core'
-import { useState, useEffect } from 'react'
+import { type AllWidgetProps } from 'jimu-core'
+import React, { useState, useEffect } from 'react'
 import { JimuMapViewComponent, type JimuMapView } from 'jimu-arcgis' // The map object can be accessed using the JimuMapViewComponent
 import '../styles/style.css'
 import { type CapasTematicas, type ItemResponseTablaContenido, type TablaDeContenidoInterface, type datosBasicosInterface, type interfaceCapasNietos } from '../types/interfaces'
@@ -201,17 +201,18 @@ const ordenarDataTablaContenido = (responseTablaDeContenido: any[] | TablaDeCont
  * @param datosBasicos
  * @returns
  */
-const agregarTematicaNietaNueva = (capasNietos, ItemResponseTablaContenido: ItemResponseTablaContenido, datosBasicos: datosBasicosInterface) => {
+const agregarTematicaNietaNueva = (capasNietos: interfaceCapasNietos, ItemResponseTablaContenido: ItemResponseTablaContenido, datosBasicos: datosBasicosInterface) => {
   //Define una nueva capa basada en ItemResponseTablaContenido.
   const nuevaCapa = {
     IDCAPA: ItemResponseTablaContenido.IDCAPA,
-    IDTEMATICA: ItemResponseTablaContenido.IDTEMATICA
+    IDTEMATICA: ItemResponseTablaContenido.IDTEMATICA,
+    capasNietas: []
   }
 
   //Define una nueva temática nieta basada en datosBasicos y agrega capasBisnietos.
   const nuevaTematicaNieta = {
     ...datosBasicos,
-    capasBisnietos: ItemResponseTablaContenido.URL ? [ItemResponseTablaContenido] : ['']
+    capasBisnietos: ItemResponseTablaContenido.URL ? [ItemResponseTablaContenido] : []
   }
 
   return {

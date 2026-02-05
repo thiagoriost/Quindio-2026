@@ -1,6 +1,6 @@
 {
-    "name": "tablaDeContenido",
-    "label": "Tabla de contenido",
+    "name": "tablaDeContenido2",
+    "label": "Tabla de contenido 2",
     "type": "widget",
     "version": "1.14.0",
     "dependency": ["jimu-arcgis"],

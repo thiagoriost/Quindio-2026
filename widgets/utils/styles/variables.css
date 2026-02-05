@@ -1,0 +1,133 @@
+/**
+ * Archivo de Variables CSS Maestro
+ * ================================
+ * Centraliza todos los colores y variables de diseño para los widgets.
+ * Para cambiar un color en todos los componentes, modifícalo aquí.
+ * 
+ * Uso: Importar este archivo al inicio de cada archivo CSS del widget:
+ * @import '../../../utils/styles/variables.css';
+ * 
+ * O importarlo en el componente React:
+ * import '../../../utils/styles/variables.css';
+
+ // Al inicio del archivo CSS
+@import '../../../utils/styles/variables.css';
+
+// Usar las variables
+.mi-componente {
+    background-color: var(--color-primary);
+    color: var(--text-color-white);
+    padding: var(--spacing-md);
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow-light);
+}
+ */
+
+:root {
+  /* ========================================
+     COLORES PRIMARIOS
+     ======================================== */
+  --color-primary: #8aa260;
+  --color-primary-hover: #54623a;
+  --color-primary-active: #004266;
+  --color-primary-light: #e6f4fb;
+
+  /* ========================================
+     COLORES SECUNDARIOS
+     ======================================== */
+  --color-secondary: #ff7d29;
+  --color-secondary-hover: #e66a1a;
+  --color-secondary-light: #ffeea9;
+
+  /* ========================================
+     COLORES DE FONDO
+     ======================================== */
+  --bg-color-white: #ffffff;
+  --bg-color-light: #f8f9fa;
+  --bg-color-gray: #f1f1f1;
+  --bg-color-dark: #333333;
+
+  /* ========================================
+     COLORES DE TEXTO
+     ======================================== */
+  --text-color-primary: #333333;
+  --text-color-secondary: #666666;
+  --text-color-light: #999999;
+  --text-color-white: #ffffff;
+  --text-color-black: #000000;
+
+  /* ========================================
+     COLORES DE BORDES
+     ======================================== */
+  --border-color-light: #ddd;
+  --border-color-medium: #ccc;
+  --border-color-dark: #888;
+
+  /* ========================================
+     COLORES DE ESTADO
+     ======================================== */
+  --color-success: #28a745;
+  --color-success-hover: #218838;
+  --color-warning: #ffc107;
+  --color-warning-hover: #e0a800;
+  --color-danger: #dc3545;
+  --color-danger-hover: #c82333;
+  --color-info: #17a2b8;
+  --color-info-hover: #138496;
+
+  /* ========================================
+     SOMBRAS
+     ======================================== */
+  --shadow-light: 0 0 10px rgba(0, 0, 0, 0.1);
+  --shadow-medium: 0 4px 12px rgba(0, 0, 0, 0.3);
+  --shadow-heavy: 0 6px 16px rgba(0, 0, 0, 0.4);
+
+  /* ========================================
+     SCROLLBAR
+     ======================================== */
+  --scrollbar-track: #f1f1f1;
+  --scrollbar-thumb: #888;
+  --scrollbar-thumb-hover: #555;
+
+  /* ========================================
+     ESPACIADOS
+     ======================================== */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 10px;
+  --spacing-lg: 16px;
+  --spacing-xl: 20px;
+
+  /* ========================================
+     BORDES REDONDEADOS
+     ======================================== */
+  --border-radius-sm: 4px;
+  --border-radius-md: 5px;
+  --border-radius-lg: 8px;
+  --border-radius-circle: 50%;
+
+  /* ========================================
+     TRANSICIONES
+     ======================================== */
+  --transition-fast: 0.2s ease;
+  --transition-normal: 0.3s ease;
+  --transition-slow: 0.5s ease;
+
+  /* ========================================
+     TIPOGRAFÍA
+     ======================================== */
+  --font-size-sm: 12px;
+  --font-size-md: 14px;
+  --font-size-lg: 16px;
+  --font-size-xl: 20px;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-bold: 700;
+
+  /* ========================================
+     Z-INDEX
+     ======================================== */
+  --z-index-dropdown: 100;
+  --z-index-modal: 1000;
+  --z-index-tooltip: 1050;
+}

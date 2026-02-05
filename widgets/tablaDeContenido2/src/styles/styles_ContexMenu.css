@@ -1,0 +1,23 @@
+/* Importar variables centralizadas */
+@import '../../../utils/styles/variables.css';
+
+.container_contextmenu{
+    position: absolute;
+    background-color: var(--bg-color-white);
+    box-shadow: var(--shadow-light);
+    z-index: var(--z-index-modal);
+    padding: var(--spacing-md);
+    border-radius: var(--border-radius-md);
+    color: var(--text-color-black);
+}
+
+p{
+    margin-bottom: 0px !important;
+}
+
+.row_contextmenu{
+    display: flex;
+    /* flex-wrap: wrap; */
+    flex-direction: column !important;
+    align-items: end !important;
+}
