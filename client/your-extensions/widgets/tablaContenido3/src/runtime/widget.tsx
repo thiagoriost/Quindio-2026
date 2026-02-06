@@ -43,7 +43,7 @@ const Widget = (props: AllWidgetProps<any>) => {
    * realiza la consulta de la data tabla de contenido la primera vez que se renderiza el componente
    */
   useEffect(() => {
-    console.log(33333)
+    console.log(444)
     import('../../../api/servicios').then(modulo => {
       setServicios(modulo)
       TraerDataTablaContenido(modulo)
