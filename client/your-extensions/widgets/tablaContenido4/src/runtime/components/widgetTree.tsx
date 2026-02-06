@@ -3,12 +3,12 @@ import { RightOutlined } from 'jimu-icons/outlined/directional/right'
 import { WrongOutlined } from 'jimu-icons/outlined/suggested/wrong'
 import { DownOutlined } from 'jimu-icons/outlined/directional/down'
 import { ClearOutlined } from 'jimu-icons/outlined/editor/clear'
-import { Tab, Tabs, TabList, TabPanel } from 'react-tabs'
-import FeatureLayer from "esri/layers/FeatureLayer"
+import { /* Tab, TabList,  Tabs, TabPanel */} from 'react-tabs'
+import FeatureLayer from "@arcgis/core/layers/FeatureLayer"
 import { ContexMenu } from './ContexMenu'
 import type { JimuMapView } from 'jimu-arcgis'
 import { Button } from 'jimu-ui'
-import DragAndDrop from './DragAndDrop'
+// import DragAndDrop from './DragAndDrop'
 import type { InterfaceContextMenu, InterfaceFeaturesLayersDeployed, ItemResponseTablaContenido, TreeNode } from '../../types/interfaces'
 import 'rc-slider/assets/index.css'; import 'react-tabs/style/react-tabs.css'
 import '../../styles/style.css'
@@ -25,65 +25,170 @@ import '../../styles/styles_widgetTree.css'
 const buildTree = (flatData: ItemResponseTablaContenido[]): TreeNode[] => {
     if (!flatData || flatData.length === 0) return []
 
-    // Mapa para acceso rápido por IDTEMATICA (solo para temáticas sin URL)
+    // Mapa para acceso rápido por IDTEMATICA
     const tematicaMap = new Map<number, TreeNode>()
     // Array para almacenar capas (elementos con URL)
     const capas: TreeNode[] = []
-    // Array para nodos raíz
-    const rootNodes: TreeNode[] = []
 
-    // Primera pasada: separar temáticas y capas
+    // Helper para normalizar IDs a número
+    const toNumber = (val: any): number => {
+        if (val === null || val === undefined) return 0
+        const num = Number(val)
+        return isNaN(num) ? 0 : num
+    }
+
+    // Helper para verificar si tiene URL válida
+    const hasValidUrl = (item: ItemResponseTablaContenido): boolean => {
+        return !!(item.URL && item.URL.trim() !== '')
+    }
+
+    // Primera pasada: separar temáticas (sin URL) y capas (con URL)
     flatData.forEach(item => {
-        if (item.URL) {
-            // Es una capa con URL - guardar para procesar después
-            capas.push({ ...item, children: [] })
+        const idTematica = toNumber(item.IDTEMATICA)
+        const idTematicaPadre = toNumber(item.IDTEMATICAPADRE)
+
+        if (hasValidUrl(item)) {
+            // Es una capa con URL
+            capas.push({
+                ...item,
+                IDTEMATICA: idTematica,
+                IDTEMATICAPADRE: idTematicaPadre,
+                children: []
+            })
         } else {
             // Es una temática (sin URL) - crear nodo si no existe
-            if (!tematicaMap.has(item.IDTEMATICA)) {
-                const node: TreeNode = { ...item, children: [] }
-                tematicaMap.set(item.IDTEMATICA, node)
+            if (!tematicaMap.has(idTematica)) {
+                const node: TreeNode = {
+                    ...item,
+                    IDTEMATICA: idTematica,
+                    IDTEMATICAPADRE: idTematicaPadre,
+                    children: []
+                }
+                tematicaMap.set(idTematica, node)
             }
         }
     })
 
+    // Si no hay temáticas explícitas, crearlas a partir de los IDTEMATICAPADRE únicos de las capas
+    if (tematicaMap.size === 0 && capas.length > 0) {
+        // Encontrar todos los IDTEMATICAPADRE únicos que necesitan ser temáticas
+        const idsNecesarios = new Set<number>()
+        capas.forEach(capa => {
+            const idPadre = toNumber(capa.IDTEMATICAPADRE)
+            if (idPadre !== 0) {
+                idsNecesarios.add(idPadre)
+            }
+        })
+
+        // Crear temáticas para cada ID necesario
+        idsNecesarios.forEach(id => {
+            // Buscar una capa que tenga información sobre esta temática
+            const capaReferencia = capas.find(c => toNumber(c.IDTEMATICAPADRE) === id)
+            if (capaReferencia) {
+                // También buscar el padre de esta temática
+                const otraCapa = flatData.find(item => toNumber(item.IDTEMATICA) === id)
+                const idPadreTemtica = otraCapa ? toNumber(otraCapa.IDTEMATICAPADRE) : 0
+
+                const tematica: TreeNode = {
+                    ...capaReferencia,
+                    IDTEMATICA: id,
+                    IDTEMATICAPADRE: idPadreTemtica,
+                    URL: '',
+                    IDCAPA: 0,
+                    TITULOCAPA: '',
+                    NOMBRETEMATICA: otraCapa?.NOMBRETEMATICA || capaReferencia.NOMBRETEMATICA,
+                    children: []
+                }
+                tematicaMap.set(id, tematica)
+
+                // Si este padre tiene su propio padre, agregarlo también
+                if (idPadreTemtica !== 0 && !idsNecesarios.has(idPadreTemtica)) {
+                    idsNecesarios.add(idPadreTemtica)
+                }
+            }
+        })
+    }
+
     // Segunda pasada: establecer jerarquía entre temáticas
-    tematicaMap.forEach((node) => {
-        if (node.IDTEMATICAPADRE === 0) {
+    const rootNodes: TreeNode[] = []
+    const processedAsChild = new Set<number>()
+
+    // Ordenar temáticas por nivel (padres primero)
+    const sortedTematicas = Array.from(tematicaMap.values()).sort((a, b) => {
+        const levelA = toNumber(a.IDTEMATICAPADRE) === 0 ? 0 : 1
+        const levelB = toNumber(b.IDTEMATICAPADRE) === 0 ? 0 : 1
+        return levelA - levelB
+    })
+
+    sortedTematicas.forEach(node => {
+        const idPadre = toNumber(node.IDTEMATICAPADRE)
+        const idTematica = toNumber(node.IDTEMATICA)
+
+        if (idPadre === 0) {
             // Es nodo raíz
-            rootNodes.push(node)
-        } else {
-            // Buscar padre y agregar como hijo
-            const parentNode = tematicaMap.get(node.IDTEMATICAPADRE)
-            if (parentNode) {
-                parentNode.children.push(node)
-            } else {
-                // Si no encuentra padre, agregar como raíz
+            if (!rootNodes.some(r => toNumber(r.IDTEMATICA) === idTematica)) {
                 rootNodes.push(node)
+            }
+        } else {
+            // Buscar padre en el mapa
+            const parentNode = tematicaMap.get(idPadre)
+            if (parentNode) {
+                // Verificar que no exista ya como hijo
+                const alreadyChild = parentNode.children.some(
+                    child => toNumber(child.IDTEMATICA) === idTematica && !hasValidUrl(child)
+                )
+                if (!alreadyChild) {
+                    parentNode.children.push(node)
+                    processedAsChild.add(idTematica)
+                }
+            } else {
+                // Crear padre si no existe
+                const parentInfo = flatData.find(item => toNumber(item.IDTEMATICA) === idPadre)
+                if (parentInfo) {
+                    const newParent: TreeNode = {
+                        ...parentInfo,
+                        IDTEMATICA: idPadre,
+                        IDTEMATICAPADRE: toNumber(parentInfo.IDTEMATICAPADRE),
+                        URL: '',
+                        children: [node]
+                    }
+                    tematicaMap.set(idPadre, newParent)
+                    processedAsChild.add(idTematica)
+
+                    if (toNumber(parentInfo.IDTEMATICAPADRE) === 0) {
+                        rootNodes.push(newParent)
+                    }
+                } else {
+                    // No se encontró padre, agregar como raíz
+                    if (!rootNodes.some(r => toNumber(r.IDTEMATICA) === idTematica)) {
+                        rootNodes.push(node)
+                    }
+                }
             }
         }
     })
 
     // Tercera pasada: agregar capas a sus temáticas correspondientes
     capas.forEach(capa => {
-        // Buscar la temática padre por IDTEMATICAPADRE
-        const parentTematica = tematicaMap.get(capa.IDTEMATICAPADRE)
+        const idPadre = toNumber(capa.IDTEMATICAPADRE)
+        const idCapa = toNumber(capa.IDCAPA)
+        let parentTematica = tematicaMap.get(idPadre)
 
         if (parentTematica) {
-            // Verificar que no exista ya esta capa (evitar duplicados)
-            const exists = parentTematica.children.find(
-                child => child.IDCAPA === capa.IDCAPA && child.URL === capa.URL
+            // Verificar que no exista ya esta capa
+            const exists = parentTematica.children.some(
+                child => toNumber(child.IDCAPA) === idCapa && child.URL === capa.URL
             )
             if (!exists) {
                 parentTematica.children.push(capa)
             }
-        } else if (capa.IDTEMATICAPADRE === 0) {
+        } else if (idPadre === 0) {
             // Es una capa sin temática padre (raíz directa)
-            // Agrupar bajo su NOMBRETEMATICA si hay varias con mismo IDTEMATICA
+            const idTematica = toNumber(capa.IDTEMATICA)
             let grupoCapa = rootNodes.find(
-                n => n.IDTEMATICA === capa.IDTEMATICA && !n.URL
+                n => toNumber(n.IDTEMATICA) === idTematica && !hasValidUrl(n)
             )
             if (!grupoCapa) {
-                // Crear nodo agrupador
                 grupoCapa = {
                     ...capa,
                     URL: '',
@@ -92,43 +197,45 @@ const buildTree = (flatData: ItemResponseTablaContenido[]): TreeNode[] => {
                     children: []
                 }
                 rootNodes.push(grupoCapa)
-                tematicaMap.set(capa.IDTEMATICA, grupoCapa)
+                tematicaMap.set(idTematica, grupoCapa)
             }
             grupoCapa.children.push(capa)
         } else {
-            // IDTEMATICAPADRE no es 0 pero no se encontró la temática padre
-            // Puede ser que la temática padre sea también una capa con URL
-            // Buscar o crear la temática según IDTEMATICAPADRE
-            let parentNode = tematicaMap.get(capa.IDTEMATICAPADRE)
-            if (!parentNode) {
-                // Buscar en los datos originales la info de esa temática
-                const parentInfo = flatData.find(
-                    item => item.IDTEMATICA === capa.IDTEMATICAPADRE
-                )
-                if (parentInfo) {
-                    parentNode = { ...parentInfo, URL: '', children: [] }
-                    tematicaMap.set(capa.IDTEMATICAPADRE, parentNode)
+            // Crear temática padre si no existe
+            const parentInfo = flatData.find(item => toNumber(item.IDTEMATICA) === idPadre)
+            if (parentInfo) {
+                parentTematica = {
+                    ...parentInfo,
+                    IDTEMATICA: idPadre,
+                    IDTEMATICAPADRE: toNumber(parentInfo.IDTEMATICAPADRE),
+                    URL: '',
+                    children: [capa]
+                }
+                tematicaMap.set(idPadre, parentTematica)
 
-                    // Determinar dónde colocar este nodo padre
-                    if (parentInfo.IDTEMATICAPADRE === 0) {
-                        rootNodes.push(parentNode)
+                const idAbuelo = toNumber(parentInfo.IDTEMATICAPADRE)
+                if (idAbuelo === 0) {
+                    if (!rootNodes.some(r => toNumber(r.IDTEMATICA) === idPadre)) {
+                        rootNodes.push(parentTematica)
+                    }
+                } else {
+                    const grandParent = tematicaMap.get(idAbuelo)
+                    if (grandParent) {
+                        const alreadyChild = grandParent.children.some(
+                            child => toNumber(child.IDTEMATICA) === idPadre && !hasValidUrl(child)
+                        )
+                        if (!alreadyChild) {
+                            grandParent.children.push(parentTematica)
+                        }
                     } else {
-                        const grandParent = tematicaMap.get(parentInfo.IDTEMATICAPADRE)
-                        if (grandParent) {
-                            grandParent.children.push(parentNode)
-                        } else {
-                            rootNodes.push(parentNode)
+                        if (!rootNodes.some(r => toNumber(r.IDTEMATICA) === idPadre)) {
+                            rootNodes.push(parentTematica)
                         }
                     }
                 }
-            }
-            if (parentNode) {
-                const exists = parentNode.children.find(
-                    child => child.IDCAPA === capa.IDCAPA && child.URL === capa.URL
-                )
-                if (!exists) {
-                    parentNode.children.push(capa)
-                }
+            } else {
+                // Si no hay información del padre, agregar capa como raíz
+                rootNodes.push(capa)
             }
         }
     })
@@ -148,14 +255,14 @@ interface Widget_Tree_Props {
  * @param param0 segun interfac Widget_Tree_Props
  * @returns Widget_Tree
  */
-const Widget_Tree: React.FC<Widget_Tree_Props> = ({ dataTablaContenido, varJimuMapView, setDataTablaContenido }) => {
+const WidgetTree: React.FC<Widget_Tree_Props> = ({ dataTablaContenido, varJimuMapView, setDataTablaContenido }) => {
     const [expandedItems, setExpandedItems] = useState({}) // almacena los nodos que son expandibles
     const [checkedItems, setCheckedItems] = useState({}) // almacena los nodos que tienen la opcion de check y son checkeados
     const [searchQuery, setSearchQuery] = useState<string>('') // se utiliza para capturar la entrada del campo buscar capa
     const [capasSelectd, setCapasSelectd] = useState<ItemResponseTablaContenido[]>([]) // almacena las capas seleccionadas, se emplea para ser renderizadas en el tab "Orden Capas"
     const [contextMenu, setContextMenu] = useState<InterfaceContextMenu>(null) // controla el despliegue y data a mostrar en el contextMenu
     const [featuresLayersDeployed, setFeaturesLayersDeployed] = useState<InterfaceFeaturesLayersDeployed[]>([]) // almacena los features y su metadata pintados en el mapa
-    const [banderaRefreshCapas, setBanderaRefreshCapas] = useState<boolean>(false) // bandera empleada para actualizar en el mapa el orden de las capas
+    // const [banderaRefreshCapas, setBanderaRefreshCapas] = useState<boolean>(false) // bandera empleada para actualizar en el mapa el orden de las capas
     const [utilsModule, setUtilsModule] = useState<any>(null)
 
 
@@ -327,6 +434,23 @@ const Widget_Tree: React.FC<Widget_Tree_Props> = ({ dataTablaContenido, varJimuM
         // Construir árbol jerárquico a partir de data plana
         const treeData = buildTree(dataTablaContenido)
 
+        // Log para depuración - ver estructura del árbol generado
+        if (utilsModule?.logger()) {
+            console.log("=== buildTree resultado ===")
+            console.log("Nodos raíz:", treeData.length)
+            const logTree = (nodes: TreeNode[], nivel = 0) => {
+                nodes.forEach(n => {
+                    const indent = "  ".repeat(nivel)
+                    const tipo = n.URL ? "(CAPA)" : "(TEMATICA)"
+                    console.log(`${indent}${tipo} ID:${n.IDTEMATICA} Padre:${n.IDTEMATICAPADRE} - ${n.NOMBRETEMATICA || n.TITULOCAPA} [hijos: ${n.children?.length || 0}]`)
+                    if (n.children && n.children.length > 0) {
+                        logTree(n.children, nivel + 1)
+                    }
+                })
+            }
+            logTree(treeData)
+        }
+
         // Aplicar filtro de búsqueda
         const filteredTree = filterTreeData(treeData)
 
@@ -402,14 +526,14 @@ const Widget_Tree: React.FC<Widget_Tree_Props> = ({ dataTablaContenido, varJimuM
      * Se encarga de reordenar las capas dibujadas en el mapa segun lo modificado en el tab Orden Capas
      * @param param0
      */
-    const reorderLayers = ({view}) => {
+    /* const reorderLayers = ({view}) => {
         let toChangeFeaturesLayersDeployed = featuresLayersDeployed
         const layersMap = view.map.allLayers.toArray()
         const ordenCapas=[]
         layersMap.forEach((layerMap: { id: string; }, item: number) => {
             let existeEnFeaturesLayersDeployed = false
             toChangeFeaturesLayersDeployed.forEach(FeaLayerDep => {
-                if (layerMap.id == FeaLayerDep.layer.id) {
+                if (layerMap.id === FeaLayerDep.layer.id) {
                     existeEnFeaturesLayersDeployed = true
                 }
             })
@@ -424,7 +548,7 @@ const Widget_Tree: React.FC<Widget_Tree_Props> = ({ dataTablaContenido, varJimuM
         layersMap.forEach((lyrMp: any, item: number) => {
             let existePosicion = false
             ordenCapas.forEach(ordeCapa => {
-                if (item == ordeCapa.position) {
+                if (item === ordeCapa.position) {
                     nuevoOrden.push(ordeCapa.layerMap)
                     existePosicion = true
                 }
@@ -438,19 +562,7 @@ const Widget_Tree: React.FC<Widget_Tree_Props> = ({ dataTablaContenido, varJimuM
         // Forzar la actualización de la vista del mapa
         // view.refresh();  // Esta línea fuerza la actualización de la vista del mapa
         view.zoom = view.zoom -0.00000001
-    }
-
-    const showState = () => {
-        console.log({
-            expandedItems,
-            checkedItems,
-            searchQuery,
-            capasSelectd,
-            contextMenu,
-            featuresLayersDeployed,
-            banderaRefreshCapas
-        })
-    }
+    } */
 
     /**
      * Recorre la tabla de contenido en buscas de capas a dibujar por el parametro VISIBLE = true y las dibuja
@@ -469,14 +581,15 @@ const Widget_Tree: React.FC<Widget_Tree_Props> = ({ dataTablaContenido, varJimuM
     /**
      * Detecta cambio en banderaRefreshCapas y ejecuta la logia reorderLayers siempre y cuando exista la referencia del mapa
      */
-    useEffect(() => {
+    /* useEffect(() => {
 
         if (varJimuMapView) {
             reorderLayers(varJimuMapView)
         }
 
 
-    }, [banderaRefreshCapas])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [banderaRefreshCapas]) */
 
     useEffect(() => {
         import('../../../../utils/module').then(modulo => { setUtilsModule(modulo) })
@@ -485,15 +598,16 @@ const Widget_Tree: React.FC<Widget_Tree_Props> = ({ dataTablaContenido, varJimuM
     return (
         <div style={{height:'inherit'}}>
              {/* <button type="button" onClick={showState}>GetState</button> */}
-            <Tabs>
-                <TabList>
+            {/* <Tabs> */}
+            <div>
+                {/* <TabList>
                     <Tab>Indicadores</Tab>
                     {
                         capasSelectd.length>0 && <Tab>Orden de Capas</Tab>
                     }
-                </TabList>
+                </TabList> */}
 
-                <TabPanel>
+                {/* <TabPanel> */}
                     <div className="tree-container" onClick={()=>{ setContextMenu(null) }}>
                         <div className="search-bar">
 
@@ -521,22 +635,23 @@ const Widget_Tree: React.FC<Widget_Tree_Props> = ({ dataTablaContenido, varJimuM
                             { renderTree(dataTablaContenido)}
                         </div>
                     </div>
-                </TabPanel>
-                {
+                {/* </TabPanel> */}
+                {/* {
                     capasSelectd.length>0 &&
                         <TabPanel>
                             <div className="checked-layers tab-order-capas">
                                 <DragAndDrop items={featuresLayersDeployed} setItems={setFeaturesLayersDeployed} setBanderaRefreshCapas={setBanderaRefreshCapas}/>
                             </div>
                         </TabPanel>
-                }
-            </Tabs>
+                } */}
+            {/* </Tabs> */}
+            </div>
             <ContexMenu contextMenu={contextMenu} setContextMenu={setContextMenu} varJimuMapView={varJimuMapView}/>
 
         </div>
     )
 }
-export default Widget_Tree
+export default WidgetTree
 
 /**
  * Busca las capas que tienen la propiedad @VISIBLE para ser visualizadas en el Tab "Orden Capas"
