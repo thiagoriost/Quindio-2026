@@ -1,0 +1,43 @@
+.app-root-emotion-cache-ltr-1o6kwtr.alert-panel{
+    width: auto !important;
+}
+
+.app-root-emotion-cache-ltr-eoh5jl.alert-panel{
+    width: auto !important;
+}
+.app-root-emotion-cache-ltr-jrlfdq.alert-panel{
+    width: auto !important;
+}
+
+.legend {
+    font-family: Arial, sans-serif;
+    border: 1px solid #ccc;
+    padding: 10px;
+    text-align: center;
+    /* width: 200px; */
+  }
+  .legend h3 {
+    margin: 0 0 10px;
+    font-size: 14px;
+  }
+  .legend ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  .legend li {
+    display: flex;
+    align-items: center;
+    margin-bottom: 5px;
+  }
+  .legend span {
+    border-top-right-radius: 30px;
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    margin-right: 10px;
+  }
+
+  .jimu-loading {
+    position: fixed !important;
+  }

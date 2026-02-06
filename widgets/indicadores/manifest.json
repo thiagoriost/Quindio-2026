@@ -1,0 +1,21 @@
+{
+    "name": "indicadores",
+    "label": "Indicadores",
+    "type": "widget",
+    "version": "1.14.0",
+    "dependency": ["jimu-arcgis"],
+    "exbVersion": "1.14.0",
+    "author": "rigoriosh@gmail.com",
+    "description": "widget base para la creación de indicadores",
+    "copyright": "",
+    "license": "",
+    "properties": {},
+    "translatedLocales": [
+        "en",
+        "es"
+    ],
+    "defaultSize": {
+        "width": 800,
+        "height": 1500
+    }
+}

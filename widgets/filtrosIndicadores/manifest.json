@@ -1,0 +1,21 @@
+{
+    "name": "filtrosIndicadores",
+    "label": "Filtros Indicadores",
+    "type": "widget",
+    "version": "1.14.0",
+    "dependency": ["jimu-arcgis"],
+    "exbVersion": "1.14.0",
+    "author": "rigoriosh@gmail.com",
+    "description": "A hello world filtrosIndicadores widget",
+    "copyright": "",
+    "license": "",
+    "properties": {},
+    "translatedLocales": [
+        "en",
+        "es"
+    ],
+    "defaultSize": {
+        "width": 800,
+        "height": 500
+    }
+}

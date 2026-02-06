@@ -1,0 +1,94 @@
+/*  
+/*
+  @dateUpdated 2025-10-06
+  @changes  Adición atributo background-image
+  @changes  Adición atributo background-size  
+  @changes  Adición atributo background-repeat: no-repeat;
+  @changes  Adición atributo background-position-x: 15px;  
+  @changes  Adición atributo background-position-y: 160px;
+*/
+
+.loading-overlay {
+
+  position: fixed;
+
+  top: 0;
+
+  left: 0;
+
+  width: 100vw;
+
+  height: 100vh;
+
+  background: rgba(124, 124, 124, 0.459); /* Fondo oscuro semitransparente */
+
+  z-index: 9999; /* Siempre por encima de otros elementos */
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+ 
+  /* 👇 Imagen de carga centrada */
+
+  background-image: url('/apps/10/resources/images/icon_picker_in_setting/loading_three.gif');
+
+  background-repeat: no-repeat;
+
+  background-size: cover;
+
+  /*background-position: center;*/
+
+  background-position-x:  60px;
+  
+  background-position-y: 160px;
+
+  background-size: 150px 150px; /* Controla el tamaño del gif */
+
+}
+ 
+/* Spinner opcional (puedes dejarlo o eliminarlo si solo usas el GIF) */
+
+.loading-spinner {
+
+  border: 8px solid green; /* Fondo del spinner */
+
+  border-top: 8px solid green; /* Color del spinner */
+
+  border-radius: 50%;
+
+  width: 50px;
+
+  height: 50px;
+
+ /*  animation: spin 1s linear infinite; */
+
+}
+ 
+/* Animación del spinner */
+
+@keyframes spin {
+
+  0% {
+
+    transform: rotate(0deg);
+
+  }
+
+  100% {
+
+    transform: rotate(360deg);
+
+  }
+
+}
+
+/*
+* Clase visualizador cargando nativo
+* @dateUpdated 2025-10-07
+* @remarks Ocultamiento icono nativo
+*/
+.jimu-primary-loading{
+  display: none;
+}

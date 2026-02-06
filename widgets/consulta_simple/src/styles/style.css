@@ -1,0 +1,34 @@
+
+.btns{
+    display: flex;
+    justify-content: space-around;
+}
+
+/*
+    @dateUpdated 2024-06-20
+    @changes Estilos incluidos desde el widget consulta avanzada
+    @dateUpdated 2024-06-21
+    @changes Incluir clase app-root-emotion-cache-ltr-jrlfdq asociado al componente Modal
+    @changes Incluir clase app-root-emotion-cache-ltr-umewc2 asociado al componente Modal
+*/
+.fila{
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-around;
+}
+
+.app-root-emotion-cache-ltr-1o6kwtr.alert-panel{
+    width: auto !important;
+}
+
+.app-root-emotion-cache-ltr-eoh5jl.alert-panel{
+    width: auto !important;
+}
+
+.app-root-emotion-cache-ltr-jrlfdq.alert-panel{
+    width: auto !important;
+}
+
+.app-root-emotion-cache-ltr-umewc2.alert-panel{
+    width: auto !important;
+}

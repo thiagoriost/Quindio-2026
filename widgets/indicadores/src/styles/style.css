@@ -1,0 +1,50 @@
+
+.fila{
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-around;
+}
+
+.data-card {
+    background: #1a1a1a;
+    border: 1px solid #3a3a3a;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 0 15px rgba(0, 255, 255, 0.2);
+    max-width: 400px;
+    width: 100%;
+    text-align: center;
+  }
+  .data-card h1 {
+    font-size: 24px;
+    margin-bottom: 20px;
+    color: #0ff;
+  }
+  .data-card p {
+    margin: 10px 0;
+    font-size: 16px;
+  }
+  .data-card .label-value {
+    display: flex;
+    justify-content: space-between;
+  }
+  .data-card .label-value span {
+    color: #0ff;
+  }
+  .data-card .label {
+    color: #0ff;
+  }
+  .data-card .value {
+    color: #ff0;
+  }
+  @media (max-width: 400px) {
+    .data-card {
+      padding: 10px;
+    }
+    .data-card h1 {
+      font-size: 20px;
+    }
+    .data-card p {
+      font-size: 14px;
+    }
+  }
