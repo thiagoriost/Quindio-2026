@@ -1,0 +1,21 @@
+{
+    "name": "tablaDeContenido2",
+    "label": "Tabla de contenido 2",
+    "type": "widget",
+    "version": "1.14.0",
+    "dependency": ["jimu-arcgis"],
+    "exbVersion": "1.14.0",
+    "author": "https://github.com/rigoriosh",
+    "description": "Tabla de contenido del visor",
+    "copyright": "",
+    "license": "",
+    "properties": {},
+    "translatedLocales": [
+        "en",
+        "es"
+    ],
+    "defaultSize": {
+        "width": 350,
+        "height": 600
+    }
+}

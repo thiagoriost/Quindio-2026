@@ -1,3 +1,4 @@
 # Ignorar carpetas principales
-client/
+client/*
+!client/your-extensions/
 server/

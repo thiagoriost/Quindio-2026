@@ -1,0 +1,68 @@
+/* Importar variables centralizadas */
+@import '../../../utils/styles/variables.css';
+
+.tree-container{
+    /* max-height: 332px; */
+    height: 100%;
+    overflow-y: auto;
+    padding: var(--spacing-md);
+    /* background-color: #FEFFD2; */
+    color: var(--text-color-black);
+}
+
+.search-bar{
+    /* margin-bottom: 10px; */
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+}
+
+.mr-10{
+    margin-right: var(--spacing-md);
+}
+
+.input-search{
+    width: 100% !important;
+    padding: 5px;
+    border-radius: var(--border-radius-sm);
+    border: 1px solid var(--border-color-medium);
+}
+
+.tab-order-capas{
+    padding: var(--spacing-xl);
+    background-color: var(--bg-color-light);
+    color: var(--color-secondary);
+}
+
+.btnsSearch{
+    display: flex;
+    justify-content: space-around;
+    width: 100%;
+}
+
+/* Contenedor con scroll para el árbol de capas */
+.tree-scroll-container {
+    max-height: calc(100vh - 250px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 5px;
+}
+
+/* Estilo del scrollbar para navegadores webkit (Chrome, Safari, Edge) */
+.tree-scroll-container::-webkit-scrollbar {
+    width: 8px;
+}
+
+.tree-scroll-container::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+    border-radius: var(--border-radius-sm);
+}
+
+.tree-scroll-container::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+    border-radius: var(--border-radius-sm);
+}
+
+.tree-scroll-container::-webkit-scrollbar-thumb:hover {
+    background: var(--scrollbar-thumb-hover);
+}

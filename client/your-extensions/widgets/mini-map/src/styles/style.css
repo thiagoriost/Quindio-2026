@@ -1,0 +1,11 @@
+.widget-minimap {
+    position: relative;
+    width: 100% !important;
+    height: 100% !important;
+    /* border: 1px solid #ccc; */
+  }
+
+  .containerOverview{
+    width: 100% !important;
+    height: 100% !important;
+  }

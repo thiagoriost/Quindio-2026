@@ -1,0 +1,26 @@
+.widget-styles {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+  }
+  
+  button, select {
+    padding: 10px;
+    background-color: #0079c1;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+  
+  button:disabled {
+    background-color: grey;
+  }
+
+  .fila{
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-around;
+}

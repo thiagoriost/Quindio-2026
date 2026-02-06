@@ -1,0 +1,127 @@
+/* Importar variables centralizadas */
+@import '../../../utils/styles/variables.css';
+
+.contenedorTablaContenido{
+  overflow-y: scroll;
+  height: inherit;
+}
+
+.btns{
+    display: flex;
+    justify-content: space-around;
+}
+
+.app-root-emotion-cache-ltr-mgnm3r .widget-content{
+    overflow-y: auto !important;
+}
+
+.tree-container {
+    border: 1px solid var(--border-color-light);
+    border-radius: var(--border-radius-lg);
+    background-color: var(--bg-color-white);
+    box-shadow: var(--shadow-light);
+  }
+  
+  .tree-container div {
+    padding: 3px;
+  }
+  
+  /* .tree-container div:hover {
+    background-color: #FFEEA9;
+    color: #FF7D29;
+  } */
+  
+  .search-bar input {
+    width: calc(100% - 30px);
+    padding: 5px 10px;
+    border-radius: var(--border-radius-sm);
+    border: 1px solid var(--border-color-medium);
+  }
+  
+  .checked-layers {
+    background-color: var(--bg-color-white);
+    border: 1px solid var(--border-color-light);
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow-light);
+    padding: var(--spacing-xl);
+  }
+  
+  .checked-layers ul {
+    list-style-type: none;
+    padding: 0;
+  }
+  
+  .checked-layers li {
+    padding: 5px 0;
+  }
+
+  .rowCheck{
+    display: flex;
+    align-items: center;
+  }
+
+  .pointer{
+    cursor: pointer;
+  }
+
+  .react-tabs {
+    height: inherit !important;
+  }
+  .react-tabs__tab-panel--selected{
+    height: inherit !important;
+  }
+
+  /* Estilos para el botón de colapsar */
+  .colapsarWidget {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .btn-colapsar {
+    background-color: var(--color-primary);
+    color: var(--text-color-white);
+    border: none;
+    padding: var(--spacing-sm) var(--spacing-lg);
+    border-radius: var(--border-radius-sm);
+    cursor: pointer;
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-medium);
+    margin-bottom: var(--spacing-md);
+    transition: background-color var(--transition-normal);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-sm);
+  }
+
+  .btn-colapsar:hover {
+    background-color: var(--color-primary-hover);
+  }
+
+  .btn-colapsar:active {
+    background-color: var(--color-primary-active);
+  }
+
+  /* Estilos cuando el widget está colapsado (floating button) */
+  .colapsarWidget--collapsed {
+    position: fixed;
+    top: 60px;
+    right: var(--spacing-md);
+    z-index: var(--z-index-modal);
+  }
+
+  .btn-colapsar--floating {
+    width: 50px;
+    height: 50px;
+    border-radius: var(--border-radius-circle);
+    padding: 0;
+    font-size: var(--font-size-xl);
+    box-shadow: var(--shadow-medium);
+    margin-bottom: 0;
+    transition: all var(--transition-normal);
+  }
+
+  .btn-colapsar--floating:hover {
+    transform: scale(1.1);
+    box-shadow: var(--shadow-heavy);
+  }

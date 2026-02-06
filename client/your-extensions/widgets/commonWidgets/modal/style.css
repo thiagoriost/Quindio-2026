@@ -1,0 +1,13 @@
+.fila{
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-around;
+}
+
+.app-root-emotion-cache-ltr-1o6kwtr.alert-panel{
+    width: auto !important;
+}
+
+.app-root-emotion-cache-ltr-eoh5jl.alert-panel{
+    width: auto !important;
+}

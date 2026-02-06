@@ -1,0 +1,12 @@
+{
+  "name": "ConsultaCatastral",
+  "label": "Consulta Catastral",
+  "type": "widget",
+  "version": "1.0.0",
+  "exbVersion": "1.19.0",
+  "author": "CNTI",
+  "description": "Consulta predial por municipio y zona",
+  "dependency": ["jimu-arcgis"],
+
+  "useDataSources": true
+}

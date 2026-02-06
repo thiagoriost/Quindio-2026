@@ -1,0 +1,36 @@
+const groupAndSumData = (data) => {
+    // Helper function to group data by a key and sum values
+    const groupBy = (key) => {
+      const grouped = data.reduce((acc, item) => {
+        const groupKey = item.attributes[key]
+        acc[groupKey] = (acc[groupKey] || 0) + item.attributes.cantidad_predios
+        return acc
+      }, {})
+
+      return {
+        status: 'fulfilled',
+        value: {
+          displayFieldName: '',
+          fieldAliases: {
+            [key]: key,
+            suma: 'suma'
+          },
+          fields: [
+            { name: key, type: typeof key === 'string' ? 'esriFieldTypeString' : 'esriFieldTypeSmallInteger', alias: key, length: 100 },
+            { name: 'suma', type: 'esriFieldTypeDouble', alias: 'suma' }
+          ],
+          features: Object.entries(grouped).map(([groupKey, suma]) => ({
+            anys: {
+              [key]: typeof groupKey === 'string' ? groupKey : Number(groupKey),
+              suma
+            }
+          }))
+        }
+      }
+    }
+
+    // Generate results for each key
+    return ['anio', 'modo_entrega', 'genero_beneficiario'].map((key) =>
+      groupBy(key as keyof any)
+    )
+  }
