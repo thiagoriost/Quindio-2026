@@ -1,4 +1,4 @@
-/** 
+/**
  * @date 2025-04-22
  * @changes Adición URL acceso servicio de consulta proyecto firmas espectrales en objeto firmasEsp
  * @author IGAC - DIP
@@ -17,7 +17,7 @@
  * @changes creación objeto API api_getFotoByIdFile, para obtener imagenes, según atributos Id_PhotoCover, Id_PhotoContext, Id_PhotoSky, IdSpectraGraph
  * @changes creación objeto API api_getMetaDatoIdMetaByPhSig, para obtener identificador de metadatos de la firma asociada
  * @changes creación objeto API api_getFileCompressByIdMeta, para obtener id del archivo comprimido
- * @changes creación objeto API api_getCompressByIdFile, para obtener archivo zip comprimido  
+ * @changes creación objeto API api_getCompressByIdFile, para obtener archivo zip comprimido
  * @dateUpdated 2025-07-23
  * @changes creación objeto API api_getValDominioByIdVal, para obtener valor asociado del dominio
  * @dateUpdated 2025-07-29
@@ -37,7 +37,7 @@ const mapServerDepartal = 'https://pruebassig.igac.gov.co/server/rest/services/I
 const MapServerMunicipal = 'https://pruebassig.igac.gov.co/server/rest/services/Indicadores_municipios/MapServer'
 
 const urls = {
-    tablaContenido: 'https://sigquindio.gov.co:8443/ADMINSERV/AdminGeoApplication/AdminGeoWebServices/getTablaContenidoJsTree/public',
+    // tablaContenido: 'https://sigquindio.gov.co:8443/ADMINSERV/AdminGeoApplication/AdminGeoWebServices/getTablaContenidoJsTree/public',
   // tablaContenido: 'http://172.17.3.205:8080/ADMINSERV/AdminGeoApplication/AdminGeoWebServices/getTablaContenidoJsTree/public',
   // tablaContenido: 'https://sae.igac.gov.co:8443/ADMINSERV/AdminGeoApplication/AdminGeoWebServices/getTablaContenidoJsTree/public', // REFORMA AGRARIA
   // tablaContenido: 'localhost:8080/ADMINSERV/AdminGeoApplication/AdminGeoWebServices/getTablaContenidoJsTree/public', // REFORMA AGRARIA
@@ -47,7 +47,7 @@ const urls = {
   // tablaContenido: 'https://sae.igac.gov.co:8443/ADMINSERV/AdminGeoApplication/AdminGeoWebServices/getTablaContenidoJsTree/public', // REFORMA AGRARIA
   // tablaContenido: 'localhost:8080/ADMINSERV/AdminGeoApplication/AdminGeoWebServices/getTablaContenidoJsTree/public', // REFORMA AGRARIA
   // tablaContenido: 'http://localhost:8080/ADMINSERV/AdminGeoApplication/AdminGeoWebServices/getTablaContenidoJsTree/public', // REFORMA AGRARIA
-  // tablaContenido: 'https://snra.igac.gov.co/ADMINSERV/AdminGeoApplication/AdminGeoWebServices/getTablaContenidoJsTree/public', // REFORMA AGRARIA
+  tablaContenido: 'https://snra.igac.gov.co/ADMINSERV/AdminGeoApplication/AdminGeoWebServices/getTablaContenidoJsTree/public', // REFORMA AGRARIA
   // tablaContenido: '/ADMINSERV/AdminGeoApplication/AdminGeoWebServices/getTablaContenidoJsTree/public', // REFORMA AGRARIA docker
   // tablaContenido: 'https://sae.igac.gov.co:8444/ADMINSERV/AdminGeoApplication/AdminGeoWebServices/getTablaContenidoJsTree/public', // FIRMAS ESPECTRALES
   firmasEsp:"https://pruebassig.igac.gov.co/server/rest/services/FE_Edicion/MapServer/0",

@@ -1,8 +1,8 @@
-import { type AllWidgetProps } from 'jimu-core'
+import type { AllWidgetProps } from 'jimu-core'
 import React, { useState, useEffect } from 'react'
 import { JimuMapViewComponent, type JimuMapView } from 'jimu-arcgis' // The map object can be accessed using the JimuMapViewComponent
 import '../styles/style.css'
-import { type CapasTematicas, type ItemResponseTablaContenido, type TablaDeContenidoInterface, type datosBasicosInterface, type interfaceCapasNietos } from '../types/interfaces'
+import type { CapasTematicas, ItemResponseTablaContenido, TablaDeContenidoInterface, datosBasicosInterface, interfaceCapasNietos } from '../types/interfaces'
 import Widget_Tree from './components/widgetTree'
 
 /**
@@ -32,25 +32,26 @@ const Widget = (props: AllWidgetProps<any>) => {
     const tematicas = await getDataTablaContenido(modulo)
     setTimeout(async () => {
       if (utilsModule?.logger()) console.log(tematicas)
-      
+
       if (!tematicas) return
       setGroupedLayers(tematicas)
     }, 3000)
     setTimeout(() => {
       setIsCollapsed(!isCollapsed)
-    }, 5000);
+    }, 5000)
   }
 
   /**
    * realiza la consulta de la data tabla de contenido la primera vez que se renderiza el componente
    */
   useEffect(() => {
+    console.log(222222)
     import('../../../api/servicios').then(modulo => {
       setServicios(modulo)
       TraerDataTablaContenido(modulo)
     })
     import('../../../utils/module').then(modulo => { setUtilsModule(modulo) })
-    
+
   }, [])
 
   return (
@@ -59,11 +60,11 @@ const Widget = (props: AllWidgetProps<any>) => {
         <JimuMapViewComponent useMapWidgetId={props.useMapWidgetIds?.[0]} onActiveViewChange={activeViewChangeHandler} />
       )}
 
-      {        
+      {
         varJimuMapView && <div className={`colapsarWidget ${isCollapsed ? 'colapsarWidget--collapsed' : ''}`}>
-          <button 
+          <button
             className={`btn-colapsar ${isCollapsed ? 'btn-colapsar--floating' : ''}`}
-            onClick={() => setIsCollapsed(!isCollapsed)}
+            onClick={() => { setIsCollapsed(!isCollapsed) }}
             title={isCollapsed ? 'Expandir tabla de contenido' : 'Minimizar tabla de contenido'}
           >
             {isCollapsed ? '☰' : '▲'}
