@@ -319,7 +319,7 @@ const WidgetTree: React.FC<Widget_Tree_Props> = ({ dataTablaContenido, varJimuMa
      * @param param0
      * @returns
      */
-    const Nodo = ({ capa, level = 0 }: { capa: TreeNode, level?: number }) => {
+    const Nodo = ({ capa, level = 0, isLast = false }: { capa: TreeNode, level?: number, isLast?: boolean }) => {
         // Crear key único para expandir: usar combinación de IDTEMATICA e IDCAPA
         const nodeKey = capa.URL ? `${capa.IDTEMATICA}_${capa.IDCAPA}` : `tematica_${capa.IDTEMATICA}`
         const isExpanded = expandedItems[nodeKey]
@@ -337,36 +337,56 @@ const WidgetTree: React.FC<Widget_Tree_Props> = ({ dataTablaContenido, varJimuMa
         const displayName = isCheckable ? (capa.TITULOCAPA || capa.NOMBRETEMATICA) : capa.NOMBRETEMATICA
 
         const renderChildren = () => (
-            <>
+            <div className="tree-children">
                 {capa.children && capa.children.map((child, index) => (
                     <Nodo
                         key={child.URL ? `${child.IDTEMATICA}_${child.IDCAPA}_${index}` : `tematica_${child.IDTEMATICA}_${index}`}
                         capa={child}
                         level={level + 1}
+                        isLast={index === capa.children.length - 1}
                     />
                 ))}
-            </>
+            </div>
         )
 
         return (
-            <div style={{ marginLeft: level * 20 + 'px' }} onContextMenu={(e) => { handleRightClick(e, capa) }} >
-                <div className='rowCheck'>
-                    <span onClick={() => { setExpandedItems(prevState => ({ ...prevState, [nodeKey]: !prevState[nodeKey]})) }}
-                        style={{ cursor: 'pointer' }}>
-                        {hasChildren ? (isExpanded ? <DownOutlined /> : <RightOutlined />) : null}
+            <div
+                className={`tree-node ${level > 0 ? 'tree-node-child' : ''} ${isLast ? 'tree-node-last' : ''}`}
+                onContextMenu={(e) => { handleRightClick(e, capa) }}
+            >
+                <div className={`tree-node-content ${isCheckable ? 'tree-node-layer' : 'tree-node-folder'} ${checkedItems[checkId] ? 'tree-node-checked' : ''}`}>
+                    {/* Línea de conexión vertical */}
+                    {level > 0 && <span className="tree-line-horizontal"></span>}
+
+                    {/* Icono de expandir/colapsar */}
+                    <span
+                        /* className={`tree-toggle ${hasChildren ? 'tree-toggle-clickable' : 'tree-toggle-spacer'}`} */
+                        onClick={() => { if (hasChildren) setExpandedItems(prevState => ({ ...prevState, [nodeKey]: !prevState[nodeKey]})) }}
+                    >
+                        {hasChildren ? (
+                            isExpanded ? <DownOutlined className="tree-icon" /> : <RightOutlined className="tree-icon" />
+                        ) : (
+                            <span className="tree-icon-dot"></span>
+                        )}
                     </span>
-                    {
-                        isCheckable && (
-                            <input
-                                type="checkbox"
-                                checked={!!checkedItems[checkId]}
-                                onChange={(e) => { handleCheck(capa, e) }}
-                                style={{marginRight:'10px'}}
-                            />
-                        )
-                    }
-                    {displayName}
+
+                    {/* Checkbox para capas */}
+                    {isCheckable && (
+                        <input
+                            type="checkbox"
+                            className="tree-checkbox"
+                            checked={!!checkedItems[checkId]}
+                            onChange={(e) => { handleCheck(capa, e) }}
+                        />
+                    )}
+
+                    {/* Nombre del nodo */}
+                    <span className="tree-node-label" title={displayName}>
+                        {displayName}
+                    </span>
                 </div>
+
+                {/* Hijos con animación */}
                 {isExpanded && hasChildren && renderChildren()}
             </div>
         )
@@ -454,12 +474,17 @@ const WidgetTree: React.FC<Widget_Tree_Props> = ({ dataTablaContenido, varJimuMa
         // Aplicar filtro de búsqueda
         const filteredTree = filterTreeData(treeData)
 
-        return filteredTree.map((node: TreeNode, index: number) => (
-            <Nodo
-                key={node.URL ? `${node.IDTEMATICA}_${node.IDCAPA}_${index}` : `tematica_${node.IDTEMATICA}_${index}`}
-                capa={node}
-            />
-        ))
+        return (
+            <div className="tree-root">
+                {filteredTree.map((node: TreeNode, index: number) => (
+                    <Nodo
+                        key={node.URL ? `${node.IDTEMATICA}_${node.IDCAPA}_${index}` : `tematica_${node.IDTEMATICA}_${index}`}
+                        capa={node}
+                        isLast={index === filteredTree.length - 1}
+                    />
+                ))}
+            </div>
+        )
     }
 
     /**
@@ -597,17 +622,9 @@ const WidgetTree: React.FC<Widget_Tree_Props> = ({ dataTablaContenido, varJimuMa
 
     return (
         <div style={{height:'inherit'}}>
-             {/* <button type="button" onClick={showState}>GetState</button> */}
-            {/* <Tabs> */}
-            <div>
-                {/* <TabList>
-                    <Tab>Indicadores</Tab>
-                    {
-                        capasSelectd.length>0 && <Tab>Orden de Capas</Tab>
-                    }
-                </TabList> */}
 
-                {/* <TabPanel> */}
+            <div>
+
                     <div className="tree-container" onClick={()=>{ setContextMenu(null) }}>
                         <div className="search-bar">
 
@@ -635,16 +652,7 @@ const WidgetTree: React.FC<Widget_Tree_Props> = ({ dataTablaContenido, varJimuMa
                             { renderTree(dataTablaContenido)}
                         </div>
                     </div>
-                {/* </TabPanel> */}
-                {/* {
-                    capasSelectd.length>0 &&
-                        <TabPanel>
-                            <div className="checked-layers tab-order-capas">
-                                <DragAndDrop items={featuresLayersDeployed} setItems={setFeaturesLayersDeployed} setBanderaRefreshCapas={setBanderaRefreshCapas}/>
-                            </div>
-                        </TabPanel>
-                } */}
-            {/* </Tabs> */}
+
             </div>
             <ContexMenu contextMenu={contextMenu} setContextMenu={setContextMenu} varJimuMapView={varJimuMapView}/>
 
