@@ -130,4 +130,9 @@
   --z-index-dropdown: 100;
   --z-index-modal: 1000;
   --z-index-tooltip: 1050;
+
+  /* ========================================
+     tree-node-checked:hover
+     ======================================== */
+   --tree-node-checked-hover: rgba(138, 162, 96, 0.15);
 }

@@ -53,7 +53,7 @@ const Widget = (props: AllWidgetProps<any>) => {
   }, [])
 
   return (
-    <div className="w-100 p-3 contenedorTablaContenido"
+    <div className="w-100  contenedorTablaContenido"
     style={{backgroundColor:'var(--sys-color-primary)'}}>
       {props.useMapWidgetIds && props.useMapWidgetIds.length === 1 && (
         <JimuMapViewComponent useMapWidgetId={props.useMapWidgetIds?.[0]} onActiveViewChange={activeViewChangeHandler} />

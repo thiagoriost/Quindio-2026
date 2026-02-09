@@ -1,38 +1,218 @@
-.tree-container{
-    /* max-height: 332px; */
+/* Importar variables CSS */
+@import '../../../utils/styles/variables.css';
+
+.tree-container {
     height: 100%;
     overflow-y: auto;
-    padding: 10px;
-    /* background-color: #FEFFD2; */
-    color: black;
+    padding: var(--spacing-md);
+    color: var(--text-color-primary);
+    font-size: var(--font-size-sm);
 }
 
-.search-bar{
-    /* margin-bottom: 10px; */
+.search-bar {
     display: flex;
     align-items: center;
     flex-direction: column;
+    margin-bottom: var(--spacing-lg);
+    gap: var(--spacing-sm);
 }
 
-.mr-10{
-    margin-right: 10px;
+.mr-10 {
+    margin-right: var(--spacing-md);
 }
 
-.input-search{
+.input-search {
     width: 100% !important;
-    padding: 5px;
-    border-radius: 4px;
-    border: 1px solid #ccc
+    padding: var(--spacing-sm) var(--spacing-lg);
+    border-radius: var(--border-radius-lg);
+    border: 1px solid var(--border-color-light);
+    font-size: var(--font-size-sm);
+    /* transition: border-color var(--transition-fast), box-shadow var(--transition-fast); */
 }
 
-.tab-order-capas{
-    padding: 20px;
-    background-color: #f8f9fa;
-    color: #FF7D29
+.input-search:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px rgba(138, 162, 96, 0.2);
 }
 
-.btnsSearch{
+.tab-order-capas {
+    padding: var(--spacing-xl);
+    background-color: var(--bg-color-light);
+    color: var(--color-secondary);
+}
+
+.btnsSearch {
     display: flex;
-    justify-content: space-around;
+    justify-content: flex-end;
     width: 100%;
+    gap: var(--spacing-sm);
+}
+
+/* ===== ESTILOS DEL ÁRBOL ===== */
+
+.tree-root {
+    padding-left: var(--spacing-xs);
+}
+
+.tree-node {
+    position: relative;
+}
+
+.tree-node-child {
+    margin-left: var(--spacing-lg);
+    padding-left: var(--spacing-lg);
+    border-left: 1px solid var(--border-color-light);
+}
+
+.tree-node-last {
+    border-left-color: transparent;
+}
+
+.tree-node-last::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: var(--spacing-lg);
+    border-left: 1px solid var(--border-color-light);
+}
+
+.tree-node-content {
+    display: flex;
+    align-items: center;
+    padding: var(--spacing-xs) var(--spacing-sm) var(--spacing-xs) var(--spacing-xs);
+    margin: 1px 0;
+    border-radius: var(--border-radius-sm);
+    cursor: default;
+    transition: background-color var(--transition-fast);
+    position: relative;
+}
+
+.tree-node-content:hover {
+    background-color: var(--bg-color-gray);
+}
+
+.tree-node-folder .tree-node-label {
+    font-weight: var(--font-weight-medium);
+    color: var(--text-color-primary);
+}
+
+.tree-node-layer .tree-node-label {
+    color: var(--text-color-secondary);
+}
+
+.tree-node-checked {
+    background-color: var(--color-primary-light);
+}
+
+.tree-node-checked:hover {
+    background-color: var(--tree-node-checked-hover);
+}
+
+/* Línea horizontal de conexión */
+.tree-line-horizontal {
+    position: absolute;
+    left: calc(-1 * var(--spacing-lg));
+    top: 50%;
+    width: var(--spacing-md);
+    height: 1px;
+    background-color: var(--border-color-light);
+}
+
+/* Toggle expandir/colapsar */
+.tree-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    margin-right: var(--spacing-xs);
+    flex-shrink: 0;
+}
+
+.tree-toggle-clickable {
+    cursor: pointer;
+    border-radius: var(--border-radius-sm);
+    transition: background-color var(--transition-fast);
+}
+
+.tree-toggle-clickable:hover {
+    background-color: var(--bg-color-gray);
+}
+
+.tree-toggle-spacer {
+    cursor: default;
+}
+
+.tree-icon {
+    font-size: 10px;
+    color: var(--text-color-secondary);
+    transition: transform var(--transition-fast);
+}
+
+.tree-icon-dot {
+    width: var(--spacing-xs);
+    height: var(--spacing-xs);
+    border-radius: var(--border-radius-circle);
+    background-color: var(--border-color-medium);
+}
+
+/* Checkbox */
+.tree-checkbox {
+    width: 14px;
+    height: 14px;
+    margin-right: var(--spacing-sm);
+    cursor: pointer;
+    accent-color: var(--color-primary);
+    flex-shrink: 0;
+}
+
+/* Label del nodo */
+.tree-node-label {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    line-height: 1.4;
+    user-select: none;
+}
+
+/* Contenedor de hijos */
+.tree-children {
+    overflow: hidden;
+}
+
+/* Animación de expansión */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.tree-children > .tree-node {
+    animation: fadeIn var(--transition-fast);
+}
+
+/* Estilos para scroll personalizado */
+.tree-container::-webkit-scrollbar {
+    width: 6px;
+}
+
+.tree-container::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+}
+
+.tree-container::-webkit-scrollbar-thumb {
+    background-color: var(--scrollbar-thumb);
+    border-radius: var(--border-radius-sm);
+}
+
+.tree-container::-webkit-scrollbar-thumb:hover {
+    background-color: var(--scrollbar-thumb-hover);
 }
