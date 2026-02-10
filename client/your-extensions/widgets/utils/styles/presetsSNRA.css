@@ -5,13 +5,13 @@
  * Para cambiar un color en todos los componentes, modifícalo aquí.
  * 
  * Uso: Importar este archivo al inicio de cada archivo CSS del widget:
- * @import '../../../utils/styles/variables.css';
+ * @import '../../../utils/styles/presetsSNRA.css';
  * 
  * O importarlo en el componente React:
- * import '../../../utils/styles/variables.css';
+ * import '../../../utils/styles/presetsSNRA.css';
 
  // Al inicio del archivo CSS
-@import '../../../utils/styles/variables.css';
+@import '../../../utils/styles/presetsSNRA.css';
 
 // Usar las variables
 .mi-componente {
@@ -135,4 +135,12 @@
      tree-node-checked:hover
      ======================================== */
    --tree-node-checked-hover: rgba(138, 162, 96, 0.15);
+
+  /* ========================================
+     OVERLAYS Y OPACIDADES
+     ======================================== */
+  --overlay-light: rgba(0, 0, 0, 0.05);
+  --overlay-medium: rgba(0, 0, 0, 0.08);
+  --overlay-dark: rgba(0, 0, 0, 0.1);
+  --color-primary-transparent: rgba(138, 162, 96, 0.25);
 }
