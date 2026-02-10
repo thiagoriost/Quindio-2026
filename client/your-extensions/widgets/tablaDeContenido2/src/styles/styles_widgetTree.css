@@ -1,5 +1,5 @@
 /* Importar variables centralizadas */
-@import '../../../utils/styles/variables.css';
+@import '../../../utils/styles/presetsSNRA.css';
 
 .tree-container{
     /* max-height: 332px; */

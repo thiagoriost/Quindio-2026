@@ -1,5 +1,5 @@
 /* Importar variables CSS */
-@import '../../../utils/styles/variables.css';
+@import '../../../utils/styles/presetsSNRA.css';
 
 .tree-container {
     height: 100%;

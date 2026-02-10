@@ -3,12 +3,12 @@ import { RightOutlined } from 'jimu-icons/outlined/directional/right'
 import { WrongOutlined } from 'jimu-icons/outlined/suggested/wrong'
 import { DownOutlined } from 'jimu-icons/outlined/directional/down'
 import { ClearOutlined } from 'jimu-icons/outlined/editor/clear'
-import { /* Tab, TabList,  Tabs, TabPanel */} from 'react-tabs'
+import { Tab, TabList,Tabs, TabPanel} from 'react-tabs'
 import FeatureLayer from "@arcgis/core/layers/FeatureLayer"
 import { ContexMenu } from './ContexMenu'
 import type { JimuMapView } from 'jimu-arcgis'
 import { Button } from 'jimu-ui'
-// import DragAndDrop from './DragAndDrop'
+import DragAndDrop from './DragAndDrop'
 import type { InterfaceContextMenu, InterfaceFeaturesLayersDeployed, ItemResponseTablaContenido, TreeNode } from '../../types/interfaces'
 import 'rc-slider/assets/index.css'; import 'react-tabs/style/react-tabs.css'
 import '../../styles/style.css'
@@ -262,7 +262,7 @@ const WidgetTree: React.FC<Widget_Tree_Props> = ({ dataTablaContenido, varJimuMa
     const [capasSelectd, setCapasSelectd] = useState<ItemResponseTablaContenido[]>([]) // almacena las capas seleccionadas, se emplea para ser renderizadas en el tab "Orden Capas"
     const [contextMenu, setContextMenu] = useState<InterfaceContextMenu>(null) // controla el despliegue y data a mostrar en el contextMenu
     const [featuresLayersDeployed, setFeaturesLayersDeployed] = useState<InterfaceFeaturesLayersDeployed[]>([]) // almacena los features y su metadata pintados en el mapa
-    // const [banderaRefreshCapas, setBanderaRefreshCapas] = useState<boolean>(false) // bandera empleada para actualizar en el mapa el orden de las capas
+    const [banderaRefreshCapas, setBanderaRefreshCapas] = useState<boolean>(false) // bandera empleada para actualizar en el mapa el orden de las capas
     const [utilsModule, setUtilsModule] = useState<any>(null)
 
 
@@ -551,7 +551,7 @@ const WidgetTree: React.FC<Widget_Tree_Props> = ({ dataTablaContenido, varJimuMa
      * Se encarga de reordenar las capas dibujadas en el mapa segun lo modificado en el tab Orden Capas
      * @param param0
      */
-    /* const reorderLayers = ({view}) => {
+    const reorderLayers = ({view}) => {
         let toChangeFeaturesLayersDeployed = featuresLayersDeployed
         const layersMap = view.map.allLayers.toArray()
         const ordenCapas=[]
@@ -587,7 +587,7 @@ const WidgetTree: React.FC<Widget_Tree_Props> = ({ dataTablaContenido, varJimuMa
         // Forzar la actualización de la vista del mapa
         // view.refresh();  // Esta línea fuerza la actualización de la vista del mapa
         view.zoom = view.zoom -0.00000001
-    } */
+    }
 
     /**
      * Recorre la tabla de contenido en buscas de capas a dibujar por el parametro VISIBLE = true y las dibuja
@@ -606,7 +606,7 @@ const WidgetTree: React.FC<Widget_Tree_Props> = ({ dataTablaContenido, varJimuMa
     /**
      * Detecta cambio en banderaRefreshCapas y ejecuta la logia reorderLayers siempre y cuando exista la referencia del mapa
      */
-    /* useEffect(() => {
+    useEffect(() => {
 
         if (varJimuMapView) {
             reorderLayers(varJimuMapView)
@@ -614,7 +614,7 @@ const WidgetTree: React.FC<Widget_Tree_Props> = ({ dataTablaContenido, varJimuMa
 
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [banderaRefreshCapas]) */
+    }, [banderaRefreshCapas])
 
     useEffect(() => {
         import('../../../../utils/module').then(modulo => { setUtilsModule(modulo) })
@@ -622,9 +622,16 @@ const WidgetTree: React.FC<Widget_Tree_Props> = ({ dataTablaContenido, varJimuMa
 
     return (
         <div style={{height:'inherit'}}>
+             {/* <button type="button" onClick={showState}>GetState</button> */}
+            <Tabs>
+                <TabList>
+                    <Tab>Lista de Indicadores</Tab>
+                    {
+                        capasSelectd.length>0 && <Tab>Orden de Indicadores</Tab>
+                    }
+                </TabList>
 
-            <div>
-
+                <TabPanel>
                     <div className="tree-container" onClick={()=>{ setContextMenu(null) }}>
                         <div className="search-bar">
 
@@ -652,8 +659,16 @@ const WidgetTree: React.FC<Widget_Tree_Props> = ({ dataTablaContenido, varJimuMa
                             { renderTree(dataTablaContenido)}
                         </div>
                     </div>
-
-            </div>
+                </TabPanel>
+                {
+                    capasSelectd.length>0 &&
+                        <TabPanel>
+                            <div className="checked-layers tab-order-capas">
+                                <DragAndDrop items={featuresLayersDeployed} setItems={setFeaturesLayersDeployed} setBanderaRefreshCapas={setBanderaRefreshCapas}/>
+                            </div>
+                        </TabPanel>
+                }
+            </Tabs>
             <ContexMenu contextMenu={contextMenu} setContextMenu={setContextMenu} varJimuMapView={varJimuMapView}/>
 
         </div>
