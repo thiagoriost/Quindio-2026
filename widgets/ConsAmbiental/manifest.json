@@ -1,0 +1,19 @@
+{
+  "name": "ConsAmbiental",
+  "label": "Consulta Ambiental",
+  "type": "widget",
+  "version": "1.19.0",
+  "exbVersion": "1.19.0",
+  "author": "IGAC - DIP",
+  "description": "Widget para realizar consulta ambiental, derivado del contenedor Consultas",
+  "copyright": "2026",
+  "license": "http://www.apache.org/licenses/LICENSE-2.0",
+  "properties": {},
+  "translatedLocales": [
+    "en"
+  ],
+  "defaultSize": {
+    "width": 800,
+    "height": 500
+  }
+}
