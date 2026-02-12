@@ -1,5 +1,19 @@
+/**
+ * @fileoverview Interfaces y tipos para el widget de Tabla de Contenido.
+ * Define las estructuras de datos para la tabla de contenido, árbol,
+ * context menu y capas desplegadas.
+ * 
+ * @module tablaContenido4/types/interfaces
+ */
+
 import Layer from "@arcgis/core/layers/Layer";
 
+/**
+ * Interfaz base para los datos de la tabla de contenido del servicio.
+ * Representa un registro plano que puede ser una temática (sin URL) o una capa (con URL).
+ * 
+ * @interface TablaDeContenidoInterface
+ */
 export interface TablaDeContenidoInterface {
     [key: string]: any; // Para manejar cualquier otra propiedad dinámica
     ATRIBUTO?: string;
@@ -19,6 +33,10 @@ export interface TablaDeContenidoInterface {
     VISIBLE?: boolean;
 }
 
+/**
+ * Enum con las descripciones de servicios disponibles.
+ * @enum {string}
+ */
 export enum Descripcionservicio {
     Ambiental = "Ambiental",
     CartografíaBásica = "Cartografía Básica",
@@ -37,11 +55,20 @@ export enum Descripcionservicio {
     'Ambiental Ajustado' = "Ambiental Ajustado"
 }
 
+/**
+ * Enum para el estado de los elementos (Activo/Inactivo).
+ * @enum {string}
+ */
 export enum Estado {
     A = "A",
     I = "I",
 }
 
+/**
+ * Interfaz para capas nietas con sus temáticas.
+ * @interface interfaceCapasNietos
+ * @deprecated Usar TreeNode con children en su lugar
+ */
 export interface interfaceCapasNietos {
     capas: interfCapa[];
     tematicasNietas: {
@@ -53,18 +80,34 @@ export interface interfaceCapasNietos {
 
     }[];
 }
+
+/**
+ * Interfaz básica para una capa.
+ * @interface interfCapa
+ */
 export interface interfCapa {
     IDCAPA: number;
     IDTEMATICA: number;
     capasNietas: any[];
 }
 
+/**
+ * Interfaz con datos básicos de una temática.
+ * @interface datosBasicosInterface
+ */
 export interface datosBasicosInterface {
     IDTEMATICAPADRE: number;
     IDTEMATICA: number;
     NOMBRETEMATICA: string;
     TITULOCAPA?: string;
 }
+
+/**
+ * Interfaz normalizada para los datos de la tabla de contenido.
+ * Usada internamente después de normalizar los datos del servicio.
+ * 
+ * @interface ItemResponseTablaContenido
+ */
 export interface ItemResponseTablaContenido {
     ATRIBUTO: string;
     DESCRIPCIONSERVICIO: Descripcionservicio;
@@ -83,6 +126,11 @@ export interface ItemResponseTablaContenido {
     capasNietas?: ItemResponseTablaContenido[]
 }
 
+/**
+ * Interfaz para temáticas con sus capas hijas.
+ * @interface Tematicas
+ * @deprecated Usar TreeNode con children
+ */
 export interface Tematicas {
     IDTEMATICAPADRE: number;
     IDTEMATICA: number;
@@ -91,6 +139,12 @@ export interface Tematicas {
     capasHijas?: Tematicas[];
     capasNietas?: CapasTematicas[];
 }
+
+/**
+ * Interfaz para capas dentro de temáticas.
+ * @interface CapasTematicas
+ * @deprecated Usar TreeNode con children
+ */
 export interface CapasTematicas {
     ATRIBUTO?: string;
     capasBisnietos?: CapasTematicas[];

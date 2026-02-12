@@ -1,12 +1,12 @@
 {
-    "name": "filtrosIndicadores",
-    "label": "Filtros Indicadores",
+    "name": "consulta-avanzada2",
+    "label": "Consulta Avanzada2",
     "type": "widget",
     "version": "1.14.0",
     "dependency": ["jimu-arcgis"],
     "exbVersion": "1.14.0",
     "author": "rigoriosh@gmail.com",
-    "description": "A hello world filtrosIndicadores widget",
+    "description": "Realiza una consulta con especificaiones avanzadas sobre las tematicas de la tabla de contenido",
     "copyright": "",
     "license": "",
     "properties": {},
@@ -16,6 +16,6 @@
     ],
     "defaultSize": {
         "width": 800,
-        "height": 500
+        "height": 1500
     }
 }

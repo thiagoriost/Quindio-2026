@@ -1,4 +1,4 @@
-import React from 'react'
+import { React } from 'jimu-core'
 import TablaResultados from './TablaResultados/TablaResultados'
 import InputSelect from './InputSelect/InputSelect'
 import InputTextArea from './InputTextArea/InputTextArea'

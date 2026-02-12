@@ -1,26 +1,48 @@
+/**
+ * @fileoverview Widget principal de Tabla de Contenido.
+ * Se encarga de consultar la data del servicio y renderizar el árbol de capas.
+ *
+ * @module tablaContenido4/widget
+ * @requires jimu-core
+ * @requires jimu-arcgis
+ */
+
 import { React, type AllWidgetProps } from "jimu-core"
 import { useState, useEffect } from "react"
-import { JimuMapViewComponent, type JimuMapView } from 'jimu-arcgis' // The map object can be accessed using the JimuMapViewComponent
+import { JimuMapViewComponent, type JimuMapView } from 'jimu-arcgis'
 import '../styles/style.css'
 import type { ItemResponseTablaContenido, TablaDeContenidoInterface } from "../types/interfaces"
 import Widget_Tree from "./components/widgetTree"
 
 /**
- * Widget que se encarga de consultar la data de la tabla de contenido y renderizar el arbol de capas
- * @author Rigoberto Rios rigoriosh@gmail.com
- * @param props
- * @returns Widget
+ * Widget principal que gestiona la Tabla de Contenido.
+ * Consulta los datos del servicio y los pasa al componente Widget_Tree
+ * para construir la estructura jerárquica del árbol.
+ *
+ * @component
+ * @param {AllWidgetProps<any>} props - Propiedades del widget de Experience Builder
+ * @returns {JSX.Element} Widget con el mapa y la tabla de contenido
+ *
+ * @author Rigoberto Rios - rigoriosh@gmail.com
+ * @since 2024
  */
 const Widget = (props: AllWidgetProps<any>) => {
 
-  const [varJimuMapView, setJimuMapView] = useState<JimuMapView>() // To add the layer to the Map, a reference to the Map must be saved into the component state.
-  const [dataTablaContenido, setDataTablaContenido] = useState<ItemResponseTablaContenido[]>([]) // arreglo donde se almacenara la tabla de contenido (datos planos)
+  /** @type {JimuMapView|undefined} Referencia al mapa de Jimu */
+  const [varJimuMapView, setJimuMapView] = useState<JimuMapView>()
+
+  /** @type {ItemResponseTablaContenido[]} Datos planos de la tabla de contenido (sin jerarquía) */
+  const [dataTablaContenido, setDataTablaContenido] = useState<ItemResponseTablaContenido[]>([])
+
+  /** @type {any} Módulo de utilidades cargado dinámicamente */
   const [utilsModule, setUtilsModule] = useState<any>(null)
 
-
   /**
-   * En este metodo se referencia el mapa base
-   * @param jmv
+   * Manejador del cambio de vista activa del mapa.
+   * Guarda la referencia al mapa en el estado del componente.
+   *
+   * @param {JimuMapView} jmv - Vista del mapa de Jimu
+   * @returns {void}
    */
   const activeViewChangeHandler = (jmv: JimuMapView) => {
     if (jmv) {
@@ -28,6 +50,13 @@ const Widget = (props: AllWidgetProps<any>) => {
     }
   }
 
+  /**
+   * Inicia la consulta de datos de la tabla de contenido con un delay.
+   * Espera 3 segundos antes de consultar para asegurar que el módulo de servicios esté listo.
+   *
+   * @param {Object} modulo - Módulo de servicios con las URLs de los endpoints
+   * @returns {void}
+   */
   const TraerDataTablaContenido = (modulo: any) => {
 
     setTimeout(async () => {
@@ -42,7 +71,7 @@ const Widget = (props: AllWidgetProps<any>) => {
    * realiza la consulta de la data tabla de contenido la primera vez que se renderiza el componente
    */
   useEffect(() => {
-    console.log(444)
+    if (utilsModule?.logger()) console.log(" Tabla de contenido - useEffect inicial => ", {props})
     import('../../../api/servicios').then(modulo => {
       TraerDataTablaContenido(modulo)
     })
@@ -70,10 +99,23 @@ const Widget = (props: AllWidgetProps<any>) => {
 export default Widget
 
 /**
- * Consulta la data de la tabla de contenido desde el servicio
- * Retorna los datos planos para que buildTree en widgetTree construya el árbol jerárquico
- * @param servicios Módulo con las URLs de los servicios
- * @returns Array plano de ItemResponseTablaContenido
+ * Consulta los datos de la tabla de contenido desde el servicio REST.
+ * Retorna datos planos (sin jerarquía) que luego son transformados
+ * por la función `buildTree` en widgetTree.tsx para construir el árbol.
+ *
+ * @async
+ * @param {Object} servicios - Módulo con las URLs de los servicios
+ * @param {Object} servicios.urls - Objeto con las URLs
+ * @param {string} servicios.urls.tablaContenido - URL del endpoint de tabla de contenido
+ * @returns {Promise<ItemResponseTablaContenido[]|undefined>} Array plano de datos o undefined si hay error
+ *
+ * @example
+ * const data = await getDataTablaContenido(serviciosModule)
+ * // data contiene registros con IDTEMATICA, IDTEMATICAPADRE, URL, etc.
+ * // Los que tienen URL son capas, los que no tienen URL son temáticas/carpetas
+ *
+ * @author IGAC - DIP
+ * @since 2024
  */
 export const getDataTablaContenido = async (servicios: { urls: { tablaContenido: string; }; }): Promise<ItemResponseTablaContenido[] | undefined> => {
   const url = servicios.urls.tablaContenido

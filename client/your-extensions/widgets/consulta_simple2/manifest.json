@@ -1,6 +1,6 @@
 {
-    "name": "consulta_simple",
-    "label": "Consulta Simple",
+    "name": "consulta_simple2",
+    "label": "Consulta Simple 2",
     "type": "widget",
     "version": "1.14.0",
     "dependency": ["jimu-arcgis"],

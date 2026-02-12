@@ -1,3 +1,13 @@
+/**
+ * @fileoverview Componente principal del árbol de capas.
+ * Transforma datos planos en estructura jerárquica y renderiza el árbol interactivo.
+ *
+ * @module tablaContenido4/components/widgetTree
+ * @requires react
+ * @requires jimu-arcgis
+ * @requires @arcgis/core/layers/FeatureLayer
+ */
+
 import React, { useState, useEffect, type Dispatch, type SetStateAction } from 'react'
 import { RightOutlined } from 'jimu-icons/outlined/directional/right'
 import { WrongOutlined } from 'jimu-icons/outlined/suggested/wrong'
@@ -15,14 +25,39 @@ import '../../styles/style.css'
 import '../../styles/styles_widgetTree.css'
 
 /**
- * Construye un árbol jerárquico a partir de un array plano de datos
- * usando IDTEMATICA e IDTEMATICAPADRE como campos clave
- * Los elementos con URL son capas (nivel más bajo, chequeables)
- * Los elementos sin URL son temáticas (carpetas/agrupadores)
- * @param flatData Array plano de datos de la tabla de contenido
- * @returns Array de nodos raíz del árbol
+ * Construye un árbol jerárquico a partir de un array plano de datos.
+ * Esta es la función principal que transforma la data del servicio en estructura de árbol.
+ *
+ * **Lógica de construcción del árbol:**
+ * 1. Separa elementos en TEMÁTICAS (sin URL) y CAPAS (con URL)
+ * 2. Las temáticas se organizan jerárquicamente usando IDTEMATICA e IDTEMATICAPADRE
+ * 3. Las capas se agrupan por IDTEMATICA:
+ *    - Si hay múltiples capas con el mismo IDTEMATICA, se crea un nivel intermedio (grupo)
+ *    - Si hay una sola capa, se agrega directamente
+ * 4. Elementos con IDTEMATICAPADRE = 0 son nodos raíz
+ *
+ * @param {ItemResponseTablaContenido[]} flatData - Array plano de datos del servicio
+ * @returns {TreeNode[]} Array de nodos raíz con estructura jerárquica (children)
+ *
+ * @example
+ * // Entrada (datos planos con múltiples capas del mismo IDTEMATICA):
+ * [{IDTEMATICA: 1, IDTEMATICAPADRE: 0, URL: '', NOMBRETEMATICA: 'Ambiental'},
+ *  {IDTEMATICA: 2, IDTEMATICAPADRE: 1, URL: 'http://rios', TITULOCAPA: 'Rios', NOMBRETEMATICA: 'Hidrografía'},
+ *  {IDTEMATICA: 2, IDTEMATICAPADRE: 1, URL: 'http://lagos', TITULOCAPA: 'Lagos', NOMBRETEMATICA: 'Hidrografía'}]
+ *
+ * // Salida (jerárquica con grupo intermedio):
+ * [{IDTEMATICA: 1, NOMBRETEMATICA: 'Ambiental', children: [
+ *    {IDTEMATICA: 2, NOMBRETEMATICA: 'Hidrografía', URL: '', children: [
+ *      {IDTEMATICA: 2, TITULOCAPA: 'Rios', URL: 'http://rios', children: []},
+ *      {IDTEMATICA: 2, TITULOCAPA: 'Lagos', URL: 'http://lagos', children: []}
+ *    ]}
+ * ]}]
+ *
+ * @author IGAC - DIP
+ * @since 2024
  */
-const buildTree = (flatData: ItemResponseTablaContenido[]): TreeNode[] => {
+const buildTree = (flatData: ItemResponseTablaContenido[], utilsModule): TreeNode[] => {
+    console.log({flatData})
     if (!flatData || flatData.length === 0) return []
 
     // Mapa para acceso rápido por IDTEMATICA
@@ -30,14 +65,23 @@ const buildTree = (flatData: ItemResponseTablaContenido[]): TreeNode[] => {
     // Array para almacenar capas (elementos con URL)
     const capas: TreeNode[] = []
 
-    // Helper para normalizar IDs a número
+
+    /**
+     * Normaliza un valor a número.
+     * @param {any} val - Valor a normalizar
+     * @returns {number} Número normalizado o 0 si no es válido
+     */
     const toNumber = (val: any): number => {
         if (val === null || val === undefined) return 0
         const num = Number(val)
         return isNaN(num) ? 0 : num
     }
 
-    // Helper para verificar si tiene URL válida
+    /**
+     * Verifica si un elemento tiene URL válida (es una capa).
+     * @param {ItemResponseTablaContenido} item - Elemento a verificar
+     * @returns {boolean} true si tiene URL válida
+     */
     const hasValidUrl = (item: ItemResponseTablaContenido): boolean => {
         return !!(item.URL && item.URL.trim() !== '')
     }
@@ -168,29 +212,75 @@ const buildTree = (flatData: ItemResponseTablaContenido[]): TreeNode[] => {
         }
     })
 
-    // Tercera pasada: agregar capas a sus temáticas correspondientes
+    // Tercera pasada: agrupar capas por IDTEMATICA
+    // Si hay múltiples capas con el mismo IDTEMATICA, crear un nivel intermedio
+    const capasPorTematica = new Map<number, TreeNode[]>()
+
     capas.forEach(capa => {
-        const idPadre = toNumber(capa.IDTEMATICAPADRE)
-        const idCapa = toNumber(capa.IDCAPA)
+        const idTematica = toNumber(capa.IDTEMATICA)
+        if (!capasPorTematica.has(idTematica)) {
+            capasPorTematica.set(idTematica, [])
+        }
+        capasPorTematica.get(idTematica).push(capa)
+    })
+
+    // Cuarta pasada: agregar capas/grupos a sus temáticas correspondientes
+    capasPorTematica.forEach((capasDelGrupo, idTematica) => {
+        // Obtener el IDTEMATICAPADRE del primer elemento del grupo
+        const idPadre = toNumber(capasDelGrupo[0].IDTEMATICAPADRE)
         let parentTematica = tematicaMap.get(idPadre)
 
-        if (parentTematica) {
-            // Verificar que no exista ya esta capa
-            const exists = parentTematica.children.some(
-                child => toNumber(child.IDCAPA) === idCapa && child.URL === capa.URL
-            )
-            if (!exists) {
-                parentTematica.children.push(capa)
+        /**
+         * Función auxiliar para agregar capas o grupo de capas a un nodo padre.
+         * Si hay más de una capa con el mismo IDTEMATICA, crea un nivel intermedio.
+         * @param parent Nodo padre donde agregar las capas
+         * @param capasAAgregar Array de capas a agregar
+         */
+        const agregarCapasANodo = (parent: TreeNode, capasAAgregar: TreeNode[]) => {
+            if (capasAAgregar.length === 1) {
+                // Solo una capa, agregarla directamente
+                const capa = capasAAgregar[0]
+                const exists = parent.children.some(
+                    child => toNumber(child.IDCAPA) === toNumber(capa.IDCAPA) && child.URL === capa.URL
+                )
+                if (!exists) {
+                    parent.children.push(capa)
+                }
+            } else {
+                // Múltiples capas con el mismo IDTEMATICA - crear grupo intermedio
+                const primeraCapa = capasAAgregar[0]
+                const grupoIntermedio: TreeNode = {
+                    ...primeraCapa,
+                    IDTEMATICA: idTematica,
+                    IDTEMATICAPADRE: idPadre,
+                    URL: '', // Sin URL porque es un grupo, no una capa seleccionable
+                    IDCAPA: 0,
+                    TITULOCAPA: '',
+                    NOMBRETEMATICA: primeraCapa.NOMBRETEMATICA || `Grupo ${idTematica}`,
+                    children: capasAAgregar.map(c => ({ ...c })) // Clonar las capas como hijos
+                }
+
+                // Verificar que no exista ya este grupo
+                const existsGrupo = parent.children.some(
+                    child => toNumber(child.IDTEMATICA) === idTematica && !hasValidUrl(child) && child.IDCAPA === 0
+                )
+                if (!existsGrupo) {
+                    parent.children.push(grupoIntermedio)
+                }
             }
+        }
+
+        if (parentTematica) {
+            agregarCapasANodo(parentTematica, capasDelGrupo)
         } else if (idPadre === 0) {
             // Es una capa sin temática padre (raíz directa)
-            const idTematica = toNumber(capa.IDTEMATICA)
             let grupoCapa = rootNodes.find(
                 n => toNumber(n.IDTEMATICA) === idTematica && !hasValidUrl(n)
             )
             if (!grupoCapa) {
+                const primeraCapa = capasDelGrupo[0]
                 grupoCapa = {
-                    ...capa,
+                    ...primeraCapa,
                     URL: '',
                     IDCAPA: 0,
                     TITULOCAPA: '',
@@ -199,7 +289,20 @@ const buildTree = (flatData: ItemResponseTablaContenido[]): TreeNode[] => {
                 rootNodes.push(grupoCapa)
                 tematicaMap.set(idTematica, grupoCapa)
             }
-            grupoCapa.children.push(capa)
+
+            if (capasDelGrupo.length === 1) {
+                grupoCapa.children.push(capasDelGrupo[0])
+            } else {
+                // Agregar todas las capas como hijos individuales del grupo
+                capasDelGrupo.forEach(capa => {
+                    const exists = grupoCapa.children.some(
+                        child => toNumber(child.IDCAPA) === toNumber(capa.IDCAPA) && child.URL === capa.URL
+                    )
+                    if (!exists) {
+                        grupoCapa.children.push(capa)
+                    }
+                })
+            }
         } else {
             // Crear temática padre si no existe
             const parentInfo = flatData.find(item => toNumber(item.IDTEMATICA) === idPadre)
@@ -209,9 +312,11 @@ const buildTree = (flatData: ItemResponseTablaContenido[]): TreeNode[] => {
                     IDTEMATICA: idPadre,
                     IDTEMATICAPADRE: toNumber(parentInfo.IDTEMATICAPADRE),
                     URL: '',
-                    children: [capa]
+                    children: []
                 }
                 tematicaMap.set(idPadre, parentTematica)
+
+                agregarCapasANodo(parentTematica, capasDelGrupo)
 
                 const idAbuelo = toNumber(parentInfo.IDTEMATICAPADRE)
                 if (idAbuelo === 0) {
@@ -234,19 +339,42 @@ const buildTree = (flatData: ItemResponseTablaContenido[]): TreeNode[] => {
                     }
                 }
             } else {
-                // Si no hay información del padre, agregar capa como raíz
-                rootNodes.push(capa)
+                // Si no hay información del padre, agregar capas como raíz
+                if (capasDelGrupo.length === 1) {
+                    rootNodes.push(capasDelGrupo[0])
+                } else {
+                    // Crear grupo para las capas huérfanas
+                    const primeraCapa = capasDelGrupo[0]
+                    const grupoHuerfano: TreeNode = {
+                        ...primeraCapa,
+                        IDTEMATICA: idTematica,
+                        IDTEMATICAPADRE: 0,
+                        URL: '',
+                        IDCAPA: 0,
+                        TITULOCAPA: '',
+                        NOMBRETEMATICA: primeraCapa.NOMBRETEMATICA || `Grupo ${idTematica}`,
+                        children: capasDelGrupo
+                    }
+                    rootNodes.push(grupoHuerfano)
+                }
             }
         }
     })
-
+    if (utilsModule?.logger()) console.log({tematicaMap, capas})
     return rootNodes
 }
 
+/**
+ * Props del componente WidgetTree.
+ * @interface Widget_Tree_Props
+ */
 interface Widget_Tree_Props {
-    dataTablaContenido: ItemResponseTablaContenido[]; // data plana del servicio
-    varJimuMapView: JimuMapView; // referencia al mapa
-    setDataTablaContenido: Dispatch<SetStateAction<ItemResponseTablaContenido[]>> //  por el momento cuando se ajusta el VISIBLE de cada capa
+    /** Data plana del servicio (sin jerarquía) */
+    dataTablaContenido: ItemResponseTablaContenido[];
+    /** Referencia al mapa de Jimu */
+    varJimuMapView: JimuMapView;
+    /** Setter para actualizar la data (ej: cambiar VISIBLE) */
+    setDataTablaContenido: Dispatch<SetStateAction<ItemResponseTablaContenido[]>>;
 }
 
 /**
@@ -452,7 +580,7 @@ const WidgetTree: React.FC<Widget_Tree_Props> = ({ dataTablaContenido, varJimuMa
         if (!dataTablaContenido || dataTablaContenido.length < 1) return null
 
         // Construir árbol jerárquico a partir de data plana
-        const treeData = buildTree(dataTablaContenido)
+        const treeData = buildTree(dataTablaContenido, utilsModule)
 
         // Log para depuración - ver estructura del árbol generado
         if (utilsModule?.logger()) {
@@ -593,7 +721,7 @@ const WidgetTree: React.FC<Widget_Tree_Props> = ({ dataTablaContenido, varJimuMa
      * Recorre la tabla de contenido en buscas de capas a dibujar por el parametro VISIBLE = true y las dibuja
      */
     useEffect(() => {
-        console.log({dataTablaContenido})
+        if (utilsModule?.logger()) console.log({dataTablaContenido})
         if (dataTablaContenido.length > 0) {
             const {capasVisibles} = recorreTodasLasCapasTablaContenido(dataTablaContenido)
             setCapasSelectd( capasVisibles )
@@ -625,7 +753,7 @@ const WidgetTree: React.FC<Widget_Tree_Props> = ({ dataTablaContenido, varJimuMa
              {/* <button type="button" onClick={showState}>GetState</button> */}
             <Tabs>
                 <TabList>
-                    <Tab>Lista de Indicadores</Tab>
+                    <Tab>Lista de Indicadores RRH</Tab>
                     {
                         capasSelectd.length>0 && <Tab>Orden de Indicadores</Tab>
                     }
@@ -677,10 +805,15 @@ const WidgetTree: React.FC<Widget_Tree_Props> = ({ dataTablaContenido, varJimuMa
 export default WidgetTree
 
 /**
- * Busca las capas que tienen la propiedad @VISIBLE para ser visualizadas en el Tab "Orden Capas"
- * Trabaja con la estructura plana de datos del servicio
- * @param dataTablaContenido Array plano de datos
- * @param apagarCapas Si es true, apaga todas las capas visibles
+ * Busca las capas visibles en la tabla de contenido.
+ * Utilizado para inicializar capas con VISIBLE=true y para limpiar todas las capas.
+ *
+ * @param {ItemResponseTablaContenido[]} dataTablaContenido - Array plano de datos
+ * @param {boolean} [apagarCapas=false] - Si es true, apaga todas las capas visibles
+ * @returns {Object} Objeto con capasVisibles, clonedDataTablaContenido y apagarCapas
+ *
+ * @author IGAC - DIP
+ * @since 2024
  */
 const recorreTodasLasCapasTablaContenido = (dataTablaContenido: ItemResponseTablaContenido[], apagarCapas: boolean = false) => {
     const capasVisibles: ItemResponseTablaContenido[] = []

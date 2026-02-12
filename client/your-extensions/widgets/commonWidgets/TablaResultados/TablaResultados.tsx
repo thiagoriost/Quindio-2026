@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from 'react'
+import { React } from 'jimu-core'
 import { Button } from 'jimu-ui'
-import { DataGrid } from 'react-data-grid'
+import DataGrid from 'react-data-grid'
 import { loadModules } from 'esri-loader'
 import 'react-data-grid/lib/styles.css'
+const { useEffect, useState } = React
 
 /**
  * Componente TablaResultados

@@ -1,8 +1,9 @@
 import { React, type AllWidgetProps } from 'jimu-core'
 import { JimuMapViewComponent, type JimuMapView } from 'jimu-arcgis' // The map object can be accessed using the JimuMapViewComponent
 import { Button } from 'jimu-ui' // import components
-import { useEffect, useState } from 'react'
 import 'react-data-grid/lib/styles.css'
+
+const { useEffect, useState } = React
 
 import { Polygon } from '@arcgis/core/geometry'
 import { type InterfaceResponseConsulta, type interfaceFeature } from '../types/interfaceResponseConsultaSimple'

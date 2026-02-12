@@ -1,6 +1,6 @@
 {
-    "name": "indicadores",
-    "label": "Indicadores",
+    "name": "indicadores2",
+    "label": "Indicadores2",
     "type": "widget",
     "version": "1.14.0",
     "dependency": ["jimu-arcgis"],
