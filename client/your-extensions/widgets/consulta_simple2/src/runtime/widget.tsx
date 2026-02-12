@@ -1,6 +1,5 @@
 import { React, type AllWidgetProps } from 'jimu-core'
-import { JimuMapViewComponent, type JimuMapView } from 'jimu-arcgis' // The map object can be accessed using the JimuMapViewComponent
-import { useEffect, useRef } from 'react'
+import { JimuMapViewComponent, type JimuMapView } from 'jimu-arcgis'
 
 //Importación componentes personalizados
 //Componente DrawMap - 2024-06-24
@@ -16,10 +15,9 @@ import DialogsCS from './components/dialogsCS'
 import '../styles/style.css'
 
 //Importación interfaces
-import { type InterfaceResponseConsultaSimple, type InterfaceMensajeModal, typeMSM } from '../types/interfaceResponseConsultaSimple'
+import { type InterfaceResponseConsultaSimple, type InterfaceMensajeModal, typeMSM } from '../types/interfaceResponseConsultaSimple' // The map object can be accessed using the JimuMapViewComponent
 
-//Definición objetos
-const { useState } = React
+const { useEffect, useRef, useState } = React
 
 const Widget = (props: AllWidgetProps<any>) => {
   //Para componente FiltersCS
@@ -38,6 +36,7 @@ const Widget = (props: AllWidgetProps<any>) => {
   const [selAttr, setselAttr] = useState(undefined)
   const [urlCapa, setUrlCapa] = useState('')
   const [widgetModules, setWidgetModules] = useState(null)
+
 
   //2024-06-13 - DataGrid
   const [rows, setRows] = useState([])
@@ -107,7 +106,7 @@ const Widget = (props: AllWidgetProps<any>) => {
 
   useEffect(() => {
     setCond(undefined)// esto para que aun cuado no se cambie el valor del value, al oprimir el btn consultar, ejecute la lógica
-    return () => {}
+
   }, [controlForms])
   useEffect(() => {
     if (utilsModule?.logger()) console.log('Control asociado al Alert =>', alertDial)
@@ -127,6 +126,7 @@ const Widget = (props: AllWidgetProps<any>) => {
   }
 
   useEffect(() => {
+    console.log("consulta Simple")
     import('../../../commonWidgets/widgetsModule').then(modulo => { setWidgetModules(modulo) })
     import('../../../utils/module').then(modulo => { setUtilsModule(modulo) })
   }, [])
@@ -147,6 +147,7 @@ const Widget = (props: AllWidgetProps<any>) => {
         }
         {/*Si el estado dado en la constante es verdadero (true), invoca método tablaResultCons(), el cual renderiza el componente DataGrid. De lo contrario, invoca método filtrosCons(), el cual renderiza el componente con los filtros del widget */ }
         {controlForms && <TablaResultCS
+          props={props}
           rows={rows}
           columns={columns}
           view={view}
@@ -162,6 +163,7 @@ const Widget = (props: AllWidgetProps<any>) => {
           ></TablaResultCS>
         }
         {!controlForms && <FiltersCS
+          props={props}
           temas={temas}
           selTema={selTema}
           setselTema={setselTema}

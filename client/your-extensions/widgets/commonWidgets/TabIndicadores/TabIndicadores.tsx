@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+import { React } from "jimu-core";
+const { useEffect, useState } = React;
 import { Button } from "jimu-ui";
 import { appActions } from "jimu-core";
 import "./style.css";

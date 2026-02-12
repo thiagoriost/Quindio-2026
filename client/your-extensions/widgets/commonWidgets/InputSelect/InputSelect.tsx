@@ -1,4 +1,4 @@
-import React from 'react'
+import { React } from 'jimu-core'
 import { Label, Select } from 'jimu-ui' // import components
 import './style.css'
 

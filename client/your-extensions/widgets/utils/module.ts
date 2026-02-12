@@ -1,3 +1,14 @@
+/**
+ * @fileoverview Módulo de utilidades para operaciones geoespaciales con ArcGIS.
+ * Proporciona funciones para renderizado de capas, consultas, dibujo de polígonos
+ * y gestión de mapas coropléticos.
+ *
+ * @module utils/module
+ * @requires esri-loader
+ * @requires jimu-arcgis
+ * @requires @arcgis/core/geometry/Polygon
+ */
+
 import { loadModules } from 'esri-loader'
 import { exportToCSV } from './exportToCSV'
 // import FeatureLayer from '@arcgis/core/layers/FeatureLayer'
@@ -5,11 +16,23 @@ import { type JimuMapView, loadArcGISJSAPIModules } from 'jimu-arcgis'
 import Polygon from '@arcgis/core/geometry/Polygon'
 import { coloresMapaCoropletico } from './constantes'
 
-
+/** @type {number} Contador para identificar consultas en logs */
 let consecutivoConsultas = 0
 
+/**
+ * Exporta datos a un archivo CSV.
+ * @param {Array} rows - Filas de datos a exportar
+ * @param {string} fileName - Nombre del archivo CSV de salida
+ * @returns {void}
+ */
 const moduleExportToCSV = (rows, fileName) => { exportToCSV(rows, fileName) }
 
+/**
+ * Carga los módulos de ESRI necesarios para operaciones geoespaciales.
+ * @async
+ * @returns {Promise<Object>} Objeto con los módulos cargados: FeatureLayer, SimpleFillSymbol, Polygon, Graphic, GraphicsLayer, SimpleMarkerSymbol, SimpleLineSymbol
+ * @throws {Error} Si hay un error al cargar los módulos
+ */
 const loadEsriModules = async () => {
   try {
     const [FeatureLayer, SimpleFillSymbol, Polygon, Graphic, GraphicsLayer, SimpleMarkerSymbol, SimpleLineSymbol] = await loadModules([
@@ -24,7 +47,14 @@ const loadEsriModules = async () => {
   }
 }
 
-// Función para calcular el Extent del polígono
+/**
+ * Calcula el extent (límites geográficos) de una geometría.
+ * @param {Object} geometry - Geometría del feature (point, polygon o polyline)
+ * @param {Object} LayerSelectedDeployed - Capa desplegada con información de fullExtent y geometryType
+ * @param {Object} LayerSelectedDeployed.fullExtent - Extent completo de la capa
+ * @param {string} LayerSelectedDeployed.geometryType - Tipo de geometría de la capa
+ * @returns {Object|null} Objeto con xmin, ymin, xmax, ymax y spatialReference, o null si no es soportado
+ */
 const calculateExtent = (geometry, LayerSelectedDeployed) => {
   const { fullExtent, geometryType } = LayerSelectedDeployed
 
@@ -65,6 +95,16 @@ const calculateExtent = (geometry, LayerSelectedDeployed) => {
   }
 }
 
+/**
+ * Crea un símbolo de ESRI según el tipo de geometría.
+ * @param {Object} modules - Módulos de ESRI cargados
+ * @param {Function} modules.SimpleFillSymbol - Constructor de símbolos de relleno
+ * @param {Function} modules.SimpleLineSymbol - Constructor de símbolos de línea
+ * @param {Function} modules.SimpleMarkerSymbol - Constructor de símbolos de marcador
+ * @param {string} geometryType - Tipo de geometría: 'polygon', 'polyline' o 'point'
+ * @returns {Object} Símbolo configurado para el tipo de geometría
+ * @throws {Error} Si el tipo de geometría no es soportado
+ */
 const createSymbol = ({ SimpleFillSymbol, SimpleLineSymbol, SimpleMarkerSymbol }, geometryType) => {
   switch (geometryType) {
     case 'polygon':
@@ -85,7 +125,16 @@ const createSymbol = ({ SimpleFillSymbol, SimpleLineSymbol, SimpleMarkerSymbol }
   }
 }
 
-// Crear la geometría según el tipo
+/**
+ * Crea una geometría de ESRI según el tipo especificado.
+ * @param {Object} modules - Módulos de ESRI cargados
+ * @param {Function} modules.Point - Constructor de puntos
+ * @param {string} geometryType - Tipo de geometría: 'polygon', 'polyline' o 'point'
+ * @param {Object} geometryData - Datos de la geometría (rings, paths o coordenadas x,y)
+ * @param {Object} spatialReference - Referencia espacial para la geometría
+ * @returns {Object} Geometría creada
+ * @throws {Error} Si el tipo de geometría no es soportado
+ */
 const createGeometry = ({ Point }, geometryType, geometryData, spatialReference) => {
   switch (geometryType) {
     case 'polygon':
@@ -140,58 +189,58 @@ const realizarConsulta = async ({
   outStatistics ='',
   groupByFieldsForStatistics=''
 }) => {
-  const controller = new AbortController();    
-  if (logger())  console.info(`REALIZANDO CONSULTA..... realizarConsulta()`,
+  const controller = new AbortController()
+  if (logger()) { console.info(`REALIZANDO CONSULTA..... realizarConsulta()`,
     {
       id: consecutivoConsultas,
-      Parametros_Consulta:{ OutFields, url, returnGeometry, where, outStatistics, groupByFieldsForStatistics, },      
+      Parametros_Consulta:{ OutFields, url, returnGeometry, where, outStatistics, groupByFieldsForStatistics, },
     }
-  )
+  ) }
   try {
     // Construcción de parámetros base
     const baseParams = new URLSearchParams({
       where: where,
       returnGeometry: returnGeometry.toString(),
       f: 'pjson'
-    });
+    })
 
     // Agregar parámetros específicos según el tipo de consulta
     if (outStatistics && outStatistics.length > 0) {
-      baseParams.append('groupByFieldsForStatistics', groupByFieldsForStatistics);
-      baseParams.append('outStatistics', outStatistics);
+      baseParams.append('groupByFieldsForStatistics', groupByFieldsForStatistics)
+      baseParams.append('outStatistics', outStatistics)
     } else if (OutFields) {
-      baseParams.append('outFields', OutFields);
+      baseParams.append('outFields', OutFields)
       // baseParams.append('geometryType', 'esriGeometryEnvelope');
     } else {
-      throw new Error('Debe proporcionar OutFields o outStatistics');
+      throw new Error('Debe proporcionar OutFields o outStatistics')
     }
 
     // Construir URL final
-    const finalUrl = `${url}/query?${baseParams.toString()}`;
-    
+    const finalUrl = `${url}/query?${baseParams.toString()}`
+
     // Realizar la petición
     const response = await fetch(finalUrl, {
       method: 'GET',
       signal: controller.signal,
       redirect: 'follow'
-    });
+    })
 
     if (!response.ok) {
-      throw new Error(`Error en la petición: ${response.status}`);
+      throw new Error(`Error en la petición: ${response.status}`)
     }
-    const toResponse = await response.json();
+    const toResponse = await response.json()
 
-    if (logger())    console.info(`Respuesta Consulta ...... realizarConsulta()`,
+    if (logger()) { console.info(`Respuesta Consulta ...... realizarConsulta()`,
       {
         id: consecutivoConsultas,
         Repuesta_Consulta:toResponse
       }
-    )
+    ) }
     consecutivoConsultas++
-    return toResponse;
+    return toResponse
   } catch (error) {
-    if (logger()) console.error('Error en realizarConsulta:', error);
-    throw error; // Re-lanzar el error para manejo superior
+    if (logger()) console.error('Error en realizarConsulta:', error)
+    throw error // Re-lanzar el error para manejo superior
   }
 }
 
@@ -371,6 +420,13 @@ const pintarFeatureLayer = async (
   return {minValue, maxValue, interval}
 } */
 
+/**
+ * Calcula los valores de quintiles para un conjunto de features.
+ * Utilizado para determinar los rangos de color en mapas coropléticos.
+ * @param {Array} features - Array de features con atributos
+ * @param {string} fieldValueToSetRangeCoropletico - Nombre del campo para calcular los quintiles
+ * @returns {Object} Objeto con la propiedad 'rangos' conteniendo un array de 5 rangos [min, max]
+ */
 const calculoValoresQuintiles = (features, fieldValueToSetRangeCoropletico) => {
   const values = [] // guarda los acumulados totales del valor de indicador para el campo fieldValueToSetRangeCoropletico, para cada feature
   const filtro = features.filter(e => e.attributes?.dataIndicadores)// filtra los features que tienen data alfanumerica
@@ -494,17 +550,27 @@ const calculoValoresQuintiles = (features, fieldValueToSetRangeCoropletico) => {
   return { rangos }
 }
 
+/**
+ * Consulta los atributos de una capa de features.
+ * @async
+ * @param {Object} params - Parámetros de la consulta
+ * @param {string} params.url - URL del servicio de la capa
+ * @param {string} params.definitionExpression - Expresión WHERE para filtrar features
+ * @param {boolean} params.returnGeometry - Si debe retornar la geometría
+ * @param {string|Array} params.outFields - Campos a retornar
+ * @returns {Promise<Object>} Resultado de la consulta con los features
+ */
 const queryAttributesLayer = async ({ url, definitionExpression, returnGeometry, outFields }) => {
   const [FeatureLayer] = await loadModules(['esri/layers/FeatureLayer'], {
     url: 'https://js.arcgis.com/4.29/'
   })
 
-  if (logger())console.info(`REALIZANDO CONSULTA..... queryAttributesLayer()`,
+  if (logger()) { console.info(`REALIZANDO CONSULTA..... queryAttributesLayer()`,
     {
       id: consecutivoConsultas,
-      Parametros_Consulta:{ url, definitionExpression, returnGeometry, outFields},     
+      Parametros_Consulta:{ url, definitionExpression, returnGeometry, outFields},
     }
-  )
+  ) }
 
   const layer = new FeatureLayer({ url })
   // Crear y ejecutar la consulta
@@ -515,17 +581,24 @@ const queryAttributesLayer = async ({ url, definitionExpression, returnGeometry,
   // query.outFields = ['OBJECTID', 'OBJECTID_1', 'DEPARTAMEN', 'MUNICIPIO', 'PCC', 'VEREDA']
 
   const dataResponse = await layer.queryFeatures(query)
-  // if (logger()) 
-  if (logger())console.info(`Respuesta Consulta ...... queryAttributesLayer()`,
+  // if (logger())
+  if (logger()) { console.info(`Respuesta Consulta ...... queryAttributesLayer()`,
       {
-        id: consecutivoConsultas,        
+        id: consecutivoConsultas,
         Repuesta_Consulta:dataResponse
       }
-    )
+    ) }
   consecutivoConsultas++
   return dataResponse
 }
 
+/**
+ * Ajusta y ordena datos de features para renderizado en componentes UI.
+ * @param {Object} data - Objeto con propiedad 'features' conteniendo los datos
+ * @param {string} valueField - Campo a usar como valor (vacío para usar el feature completo)
+ * @param {string} labelField - Campo a usar como etiqueta para ordenamiento
+ * @returns {Array} Array ordenado con objetos que incluyen 'value' y 'label'
+ */
 const ajustarDataToRender = (data: any, valueField, labelField) => {
   const dataAjsutada = []
   data.features.forEach(e => dataAjsutada.push({
@@ -598,13 +671,13 @@ const dibujarPoligono = async (
       if (!rings || !attributes) {
         if (logger()) console.log({ rings, attributes })
       }
-      if (attributes.dataIndicadores) {// esto aplica cuando es el coropletico municipal nacional
+      if (attributes.dataIndicadores) { // esto aplica cuando es el coropletico municipal nacional
         let calculaTotalFieldValue = 0
         attributes.dataIndicadores.forEach(e => {
           const value = e.attributes ? e.attributes[fieldValueToSetRangeCoropletico] : e[fieldValueToSetRangeCoropletico]
           calculaTotalFieldValue += value
         })
-        
+
         attributes[fieldValueToSetRangeCoropletico] = calculaTotalFieldValue
       } //else {
       fieldToFixRange = attributes[fieldValueToSetRangeCoropletico]
@@ -705,6 +778,23 @@ const dibujarPoligono = async (
   }) */
 }
 
+/**
+ * Verifica si el logging está habilitado a través de localStorage.
+ *
+ * Para activar los logs, ejecutar en la consola del navegador:
+ * ```javascript
+ * localStorage.setItem('logger', JSON.stringify({ logger: true }))
+ * ```
+ *
+ * Para desactivar los logs:
+ * ```javascript
+ * localStorage.setItem('logger', JSON.stringify({ logger: false }))
+ * // o simplemente:
+ * localStorage.removeItem('logger')
+ * ```
+ *
+ * @returns {boolean|undefined} true si logging está habilitado, false/undefined si no
+ */
 const logger = () => JSON.parse(localStorage.getItem('logger'))?.logger
 
 /**
@@ -712,11 +802,25 @@ const logger = () => JSON.parse(localStorage.getItem('logger'))?.logger
  * @param jimuMapView
  * @param features
  */
+/**
+ * Remueve capas/features del mapa.
+ * @param {JimuMapView} jimuMapView - Vista del mapa de Jimu
+ * @param {Array<__esri.Layer>} features - Array de capas/features a remover
+ * @returns {void}
+ */
 const removeLayer = (jimuMapView, features: __esri.Layer[]) => {
   features.forEach(f => jimuMapView.view.map.remove(f))
   jimuMapView.view.zoom = jimuMapView.view.zoom - 0.00000001
 }
 
+/**
+ * Navega a un extent específico con animación y ajusta el zoom.
+ * @param {Object} params - Parámetros de navegación
+ * @param {JimuMapView} params.jimuMapView - Vista del mapa de Jimu
+ * @param {Object} params.extent - Extent al que navegar
+ * @param {number} [params.duration=10000] - Duración de la animación en milisegundos
+ * @returns {void}
+ */
 const goToOneExtentAndZoom = ({ jimuMapView, extent, duration = 10000 }) => {
   // jimuMapView.view.goTo(extent, { duration}, zoom)
   jimuMapView.view.goTo(extent, { duration })
@@ -792,6 +896,12 @@ const dibujarPoligonoToResaltar = async ({ rings, wkid, attributes, jimuMapView,
   }, 1500) // Intervalo de 1.5 segundo
 }
 
+/**
+ * Genera un color RGBA aleatorio con opacidad fija de 0.5.
+ * @returns {Object} Objeto con propiedades:
+ *   - rgba: string en formato 'rgba(r, g, b, a)'
+ *   - valueRGBA: array [r, g, b, a] con valores numéricos
+ */
 const getRandomRGBA = () => {
   // Generar valores aleatorios para rojo, verde y azul
   const r = Math.floor(Math.random() * 256) // Valores entre 0 y 255
@@ -806,6 +916,12 @@ const getRandomRGBA = () => {
   return {rgba:`rgba(${r}, ${g}, ${b}, ${a})`, valueRGBA: [r,g,b,a]}
 }
 
+/**
+ * Filtra elementos duplicados de un array basándose en un campo específico.
+ * @param {Array} data - Array de objetos a filtrar
+ * @param {string} campo - Nombre del campo para identificar duplicados
+ * @returns {Array} Array sin elementos duplicados según el campo especificado
+ */
 const discriminarRepetidos = (data, campo) => {
   const filteredData: any = []
   const codMunicipiosSet = new Set()

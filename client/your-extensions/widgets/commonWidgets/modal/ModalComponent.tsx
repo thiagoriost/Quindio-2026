@@ -1,9 +1,8 @@
-
-import { React} from "jimu-core";
+import { React } from "jimu-core";
+const { useEffect, useState } = React;
 import { Button, Icon, Modal, ModalBody, ModalFooter, ModalHeader, Alert } from 'jimu-ui'; // import components
 import { interfaceMensajeModal } from "./interfaces";
 import './style.css'
-import { useEffect, useState } from "react";
 
 
 interface Modal_Props {

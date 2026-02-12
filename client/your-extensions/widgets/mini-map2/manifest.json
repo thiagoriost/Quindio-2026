@@ -1,12 +1,12 @@
 {
-    "name": "consulta-avanzada",
-    "label": "Consulta Avanzada",
-    "type": "widget",
+    "name": "mini-map2",
+    "label":"Mapa de localización2",
+    "type": "OverView",
     "version": "1.14.0",
     "dependency": ["jimu-arcgis"],
     "exbVersion": "1.14.0",
     "author": "rigoriosh@gmail.com",
-    "description": "Realiza una consulta con especificaiones avanzadas sobre las tematicas de la tabla de contenido",
+    "description": "A hello world starter OverView",
     "copyright": "",
     "license": "",
     "properties": {},
@@ -16,6 +16,6 @@
     ],
     "defaultSize": {
         "width": 800,
-        "height": 1500
+        "height": 500
     }
 }

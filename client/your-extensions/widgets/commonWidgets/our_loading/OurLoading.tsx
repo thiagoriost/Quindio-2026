@@ -1,5 +1,5 @@
 import { Loading } from 'jimu-ui'
-import React from 'react'
+import { React } from 'jimu-core'
 import './style.css'
 
 const OurLoading = () => {

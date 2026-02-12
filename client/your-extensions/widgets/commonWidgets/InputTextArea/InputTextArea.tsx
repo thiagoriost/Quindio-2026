@@ -1,5 +1,5 @@
 import { Label, TextArea } from 'jimu-ui'
-import React from 'react'
+import { React } from 'jimu-core'
 
 const InputTextArea = ({ value, onChange, label }) => {
   return (
