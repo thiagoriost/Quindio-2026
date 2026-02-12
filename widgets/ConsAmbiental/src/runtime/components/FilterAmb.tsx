@@ -5,6 +5,8 @@
  * @author IGAC - DIP
  * @dateUpdated 2026-02-11
  * @changes Importar componente DatePicker
+ * @dateUpdated 2026-02-12
+ * @changes Importar Endpoints servicios
  **/
 
 import React, { useEffect } from 'react';
@@ -13,6 +15,9 @@ import { Button, Input, Label, Radio, Select, TextInput, FloatingPanel } from 'j
 import { DatePicker } from 'jimu-ui/basic/date-picker';
 
 import { appActions } from 'jimu-core';
+
+//Endpoint servicios
+import { urls } from '../../../../API/servicios';
 
 /**
  * Componente para definición de filtros asociados al widget
@@ -77,6 +82,8 @@ import { appActions } from 'jimu-core';
  * @changes inclusión param setBtnLimpiaDisState
  * @changes inclusión param btnSrchDis
  * @changes inclusión param setBtnSrchDisState
+ * @dateUpdated 2026-02-12
+ * @changes Ocultamieno campo Temática
  * @remarks Listado de propiedades enviadas desde el componente maestro
  * @remarks Pruebas con componente FloatingPanel desde jimu-ui
  * @remarks Fuente consulta Claude AI => https://claude.ai/chat/8298f344-84ec-44b9-b0bc-cb8328f56e40
@@ -90,6 +97,7 @@ const FilterAmb = function ({visible, setVisibleState, areaLst, setAreaLstState,
      * @date 2026-02-12
      * @author IGAC - DIP
      * @remarks Invocado a través del hook useEffect asociado al objeto areaLst
+     * @remarks Parametrización objeto JSON (OJO, pasar al archivo de parametrización)
      */
     const getAreaJSON = function (){
         //Objetos locales
@@ -103,15 +111,52 @@ const FilterAmb = function ({visible, setVisibleState, areaLst, setAreaLstState,
             "idArea": 2,
             "area": "Cuenca del Río La Vieja"
         }]
-        console.log("Array prueba =>",areaObj);
+        //console.log("Array prueba =>",areaObj);
+        //Seteo en el state
         setAreaLstState (areaObj);
+    }
+
+    /**
+     * Método getCategorJSON => Obtener registros campo Categoria
+     * @date 2026-02-12
+     * @author IGAC - DIP
+     * @remarks Parametrización objeto JSON (OJO, pasar al archivo de parametrización)
+     */
+    const getCategorJSON = function () {
+        //Objetos locales
+        var categorObj: Object = {};
+        categorObj =   [
+        {
+            "idCategor": 1,
+            "categor": "Estaciones"
+        },
+        {
+            "idCategor": 2,
+            "categor": "Puntos de calidad"
+        },
+        {
+            "idCategor": 3,
+            "categor": "Tramites ambientales"
+        },
+        {
+            "idCategor": 4,
+            "categor": "Tramites ambientales predios"
+        },
+        {
+            "idCategor": 5,
+            "categor": "Predios de reforestación"
+        }];
+        console.log("Categorias tst =>",categorObj);
+        //Seteo en el state
+        setCategorLstState (categorObj);
     }
 
     /**
      * Método para evaluar la fecha inicial sea menor o igual a la fecha final
      * @date 2026-02-12
      * @author IGAC - DIP
-     * @param fecha 
+     * @param fecha
+     * @remarks FUENTE consulta: Claude AI => https://claude.ai/chat/a65c215c-6a44-4b8e-9125-98cdb2b41020 
      */
 
     const handleFechaIniChange = function (fecha: Date){
@@ -127,14 +172,253 @@ const FilterAmb = function ({visible, setVisibleState, areaLst, setAreaLstState,
      * @author IGAC - DIP
      * @param fecha 
      */
-    const handleFechaFinChange = function (fecha: Date){
+    /* const handleFechaFinChange = function (fecha: Date){
         if (fecha >= txtFecIniVal){
             setTxtFecFinValState (fecha);
         }
         else{
             setTxtFecFinValState (txtFecIniVal);
         }
+    } */
+
+    /**
+     * Evento handleSelAreaChange => Evento que modifica campo Área, al seleccionar un item del control
+     * @date 2026-02-12
+     * @author IGAC - DIP
+     * @param {Event} evt
+     */
+    const handleSelAreaChange = function(evt){
+        //Objetos Locales
+        console.log ("Valor Área selecc =>", evt.target.value);
+        console.log ("Text Área selecc =>", evt.nativeEvent.target.textContent);
+        //Habilitar campo Categoria (disabled en false)
+        setSelCategorDisState (false);
+        //Limpiar campo categoria
+        categorLst.length = 0;
+        setCategorLstState(undefined);
+        //Poblar campo Categoria
+        getCategorJSON ();
     }
+
+    /**
+     * Evento que modifica campo Categoría, al seleccionar un item del control
+     * @date 2026-02-12
+     * @author IGAC - DIP
+     * @param {Event} evt 
+     */
+    const handleSelCategorChange = async function(evt){
+        //Objetos Locales
+        var categorTxtVal:string  =     evt.nativeEvent.target.textContent;
+        switch (categorTxtVal){
+            case 'Predios de reforestación':{
+                //Habilitación campo Municipio (disabled en false)
+                setSelMpioAmbDisState (false);
+                //Verificación URL consumo
+                //console.log ("URL consumo municipios =>",urls.Municipios);
+                getJSONMpio ();
+                break;
+            }
+            case 'Tramites ambientales':{
+
+                break;
+            }
+            default: {
+                //deshabilitación campo Municipio (disabled en true)
+                setSelMpioAmbDisState (true);
+            }
+        }
+    }
+
+    /**
+     * Método para construcción de la cláusula WHERE asociado al servicio de firmas espectrales.
+     * @date 2025-04-16
+     * @author IGAC - DIP
+     * @param OutFields = '*'
+     * @param url
+     * @param returnGeometry = false
+     * @param where = '1=1'
+     * @param inputGeometry
+     * @param geometryType
+     * @param insr
+     * @param spatialRel
+     * @param outSR
+	 * @remarks Tomado del proyecto SIEC (Firmas espectrales)
+	 */
+    const getWhere = async function(
+        OutFields='*',
+        url,
+        returnGeometry=false,
+        where='',
+        outStatistics ='',
+        groupByFieldsForStatistics='',
+        inputGeometry='',
+        geometryType='',
+        insr='',
+        spatialRel='',
+        outSR='' 
+    ) {
+        //console.log("Ingreso...");
+        var finalUrl: string;
+        const controller= new AbortController();    
+        try {
+            // Construcción de parámetros base
+            const baseParams = new URLSearchParams({
+            where: where,
+            returnGeometry: returnGeometry.toString(),
+            f: 'pjson'
+            });
+            
+            // Adición parámetros adicionales según el tipo de consulta
+            if (inputGeometry && inputGeometry.length > 0){
+                baseParams.append('geometry', inputGeometry.toString());
+            }
+            if (geometryType && geometryType.length > 0){
+                baseParams.append('geometryType', geometryType.toString());
+            }
+            if (insr && insr.length > 0){
+                baseParams.append('inSR', insr.toString());
+            }
+            if (spatialRel && spatialRel.length > 0){
+                baseParams.append('spatialRel', spatialRel.toString());
+            }
+            if (outSR && outSR.length > 0)
+            {
+                baseParams.append('outSR',outSR.toString()); 
+            }
+            
+            // Agregar parámetros específicos según el tipo de consulta
+            if (outStatistics && outStatistics.length > 0) {
+                baseParams.append('groupByFieldsForStatistics', groupByFieldsForStatistics);
+                baseParams.append('outStatistics', outStatistics);
+            }
+            else if (OutFields) {
+                baseParams.append('outFields', OutFields);
+            }          
+            else {
+                throw new Error('Debe proporcionar OutFields o outStatistics o inputGeometry o Input Spatial Reference o Spatial Relationship');
+            }
+            // Construir URL final
+            finalUrl = `${url}/query?${baseParams.toString()}`;
+            //console.log("=>",finalUrl);
+            return finalUrl.toString();
+        }
+        catch (error)
+        {
+            console.error('Error en realizarConsulta:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * getJSONMpio => Método para obtener lista de municipios, conocido el identificador del departamento, dado en control Departamento
+     * @date 2026-02-12
+     * @author IGAC - DIP
+     * @param {number} idDpto (opc)    
+     * @remarks Tomado del proyecto SIEC (Firmas espectrales)
+     */
+    const getJSONMpio = async function (idDpto = "")
+    {
+        //Objetos locales
+        var critSeleccDpto, urlDivipolaMpios: string = "";
+        //Cargue id del control Departamento
+        //console.log ("ID Dpto asociado =>",idDpto);
+
+        //Cargue listado municipios con departamento asociado a su identificador
+        //console.log ("URL consumo municipios con params =>",await (getWhere ('IDMUNICIPIO, NOMBRE', urls.Municipios, false, '1=1', '', '', '', '', '', '', '')));
+        if (idDpto.length === 0)      
+        {
+            critSeleccDpto  = "1=1";
+        }
+        else{
+            critSeleccDpto  = "coddepto="+idDpto.toString();
+        }
+        urlDivipolaMpios = await getWhere('IDMUNICIPIO, NOMBRE', urls.Municipios, false, critSeleccDpto, '', '', '', '', '', '', '');
+        console.log ("URL consumo Mpios Map Server =>",urlDivipolaMpios);
+
+        //Activar estado cargando lista de municipíos
+	    //setIsLoadState(true);
+        //Invocación al servicio en try .. catch
+	    try{
+        await fetch(urlDivipolaMpios, {
+          method:"GET"
+        })
+        .then ((mpiosServer) => {
+          var jsonErr: any = {};
+          if (!mpiosServer.ok)
+          {           
+            jsonErr = {
+              "error": mpiosServer.status,
+              "errorMsg": mpiosServer.statusText
+            }
+            return jsonErr;
+          }
+          //Validador consumo por error del server (cód http <> 200 )
+          else if (typeof (mpiosServer["error"]) !== 'undefined'){
+            jsonErr = {
+              "errorCode": mpiosServer["error"].code,
+              "errorMsg": mpiosServer["error"].message
+            }
+            console.error("Error Obteniendo lista departamentos del server =>" ,jsonErr["errorMsg"])+" "+"("+"código http =>"+jsonErr["errorCode"]+")";
+            throw jsonErr["errorMsg"]+" "+"("+"código http =>"+" "+jsonErr["errorCode"]+")";
+          }
+          const jsonMpios = mpiosServer.json();
+          return jsonMpios;
+        })
+        .then ((mpiosDataLst) => {
+          //Objeto local
+          var jsonMpios: any = {};
+          //Validador consumo por error del server (cód http <> 200 )
+          if (typeof (mpiosDataLst["error"]) !== 'undefined'){
+            jsonMpios = {
+              "errorCode": mpiosDataLst["error"].code,
+              "errorMsg": mpiosDataLst["error"].message,
+              "errorMsgDet": mpiosDataLst["error"].details[0]
+            }
+            console.error("Error obteniendo data del server =>" ,jsonMpios["errorMsg"])+" "+"("+"código http =>"+jsonMpios["errorCode"]+")";
+            throw jsonMpios["errorMsg"]+" "+"("+"código http =>"+" "+jsonMpios["errorCode"]+")";
+          }
+          //Desactivar modo cargando
+          //setIsLoadState(false);
+          //console.log("Mpios Lst para combo =>",mpiosDataLst.features);
+          
+          //Mapeo de los atributos desde el objeto consumido del servidor
+          const lstMpio =   mpiosDataLst.features.map ((mpioItem) => (
+            {
+                idMpio:  String (mpioItem.attributes.IDMUNICIPIO),
+                nomMpio:  (mpioItem.attributes.NOMBRE)
+            }
+          ))
+
+          console.log("Mpios List =>", sortMpios (lstMpio));
+          //Al state 
+          setMpioAmbLstState (sortMpios (lstMpio));
+        })
+      }
+      catch (error)
+      {
+        console.log("Error obteniendo municipios del server =>", error);
+        throw error;
+      }
+    }
+
+    /**
+     * sortMpios => Método para ordenamiento de municipios
+     * @date 2026-02-12
+     * @author IGAC - DIP
+     * @param {object} obj 
+     * @param {string} order 
+     * @returns {object}
+     * @reamrks campo nombre municipio NOMBRE
+     * @remarks FUENTE consulta: Claude AI => https://claude.ai/chat/aa4f51f7-1b86-43ff-9524-8a646e5566bd
+     * @remarks Tomado del proyecto SIEC (Firmas espectrales)
+     * @remarks Colocar centralizado en utilidades (definir con Equipo trabajo)
+     * @remarks Por ajustar en proyecto
+     */
+    const sortMpios = function (obj, order = 'asc'){
+        //Objetos locales
+        const sortedObj = [...obj].sort ((a, b) => order === 'asc' ? a.nomMpio.localeCompare (b.nomMpio): b.nomMpio.localeCompare (a.nomMpio));
+        return sortedObj; 
+      }
 
     //Sección Hooks
     /**
@@ -161,6 +445,7 @@ const FilterAmb = function ({visible, setVisibleState, areaLst, setAreaLstState,
                 <Select 
                     placeholder="Seleccione"
                     value={selAreaVal}
+                    onChange={handleSelAreaChange}
                 >
                 {
                     areaLst.map ((areaItem) => 
@@ -169,7 +454,7 @@ const FilterAmb = function ({visible, setVisibleState, areaLst, setAreaLstState,
                 }
                 </Select>
             </div>
-            <div className="mb-1">
+            <div className="mb-1" style={{'display': 'none'}}>
                 <Label size="default">Tem&aacute;tica</Label>
                 <Select 
                     placeholder="Seleccione"
@@ -183,7 +468,14 @@ const FilterAmb = function ({visible, setVisibleState, areaLst, setAreaLstState,
                     placeholder="Seleccione"
                     disabled={selCategorDis}
                     value={selCategorVal}
-                ></Select>
+                    onChange={(evt) => handleSelCategorChange (evt)}
+                >
+                {
+                    categorLst.map ((categorItem) => 
+                        <option value={categorItem.idCategor}>{categorItem.categor}</option>
+                    )
+                }
+                </Select>
             </div>
             <div className="mb-1">
                 <Label size="default">SubCategor&iacute;a</Label>
@@ -215,7 +507,13 @@ const FilterAmb = function ({visible, setVisibleState, areaLst, setAreaLstState,
                     placeholder="Seleccione"
                     disabled={selMpioAmbDis}
                     value={selMpioAmbVal}
-                ></Select>
+                >
+                {
+                    mpioAmbLst.map ((mpioItem) => 
+                        <option key={mpioItem.idMpio} value={mpioItem.idMpio}>{mpioItem.nomMpio}</option>
+                    )
+                }
+                </Select>
             </div>
             <div className="mb-1">
                 <Label size="default">Fecha inicio</Label>
