@@ -1,0 +1,27 @@
+﻿/*
+    Estilos componente FilterAmb
+    @date 2026-02-12
+    @author IGAC - DIP
+*/
+
+/*
+    Clase alusivo a las opciones Limpiar, Buscar 
+    @date 2026-02-12
+    @author IGAC - DIP
+    @remarks Definición colores
+*/
+.btns {    
+    background-color: #8AA260;
+    color: rgb(255, 255, 255);
+}
+
+/*
+    Clase alusivo al contenedor de la botonera
+    @date 2026-02-12
+    @author IGAC - DIP
+    @remarks Definición aspecto distribución botones
+*/
+.btnsContner{
+    display: flex;
+    justify-content: space-evenly;
+}

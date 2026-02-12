@@ -85,24 +85,89 @@ import { appActions } from 'jimu-core';
 const FilterAmb = function ({visible, setVisibleState, areaLst, setAreaLstState, selAreaVal, setSelAreaValState, selAreaDis, setAreaDisState, tematicaLst, setTematicaLstState, selTematicaVal, setSelTematicaValState, selTematicaDis, setSelTematicaDisState, categorLst, setCategorLstState, selCategorVal, setCategorValState, selCategorDis, setSelCategorDisState, subCategorLst, setSubCategorLstState, selSubCategorVal, setSelSubCategorValState, selSubCategorDis, setSelSubCategorDisState, nomAmbLst, setNomAmbLstState, selNomAmbVal, setSelNomAmbValState, selNomAmbDis, setSelNomAmbDisState, anioAmbLst, setAnioAmbLstState, selAnioAmbVal, setSelAnioAmbValState, selAnioAmbDis, setSelAnioAmbDisState, mpioAmbLst, setMpioAmbLstState, selMpioAmbVal, setSelMpioAmbValState, selMpioAmbDis, setSelMpioAmbDisState, txtFecIniVal, setTxtFecIniValState, txtFecIniDis, setTxtFecIniDisState, txtFecFinVal, setTxtFecFinValState, txtFecFinDis, setTxtFecFinDisState, btnLimpiaDis, setBtnLimpiaDisState, btnSrchDis, setBtnSrchDisState}){
 
     //Sección métodos
+    /**
+     * Método getAreaJSON => Obtener registros campo Área
+     * @date 2026-02-12
+     * @author IGAC - DIP
+     * @remarks Invocado a través del hook useEffect asociado al objeto areaLst
+     */
+    const getAreaJSON = function (){
+        //Objetos locales
+        var areaObj: Object = {};
+        areaObj =   [
+        {
+            "idArea": 1,
+            "area": "Quindio"
+        },
+        {
+            "idArea": 2,
+            "area": "Cuenca del Río La Vieja"
+        }]
+        console.log("Array prueba =>",areaObj);
+        setAreaLstState (areaObj);
+    }
+
+    /**
+     * Método para evaluar la fecha inicial sea menor o igual a la fecha final
+     * @date 2026-02-12
+     * @author IGAC - DIP
+     * @param fecha 
+     */
+
+    const handleFechaIniChange = function (fecha: Date){
+        setTxtFecIniValState(fecha);
+          // Si la nueva fecha inicio es mayor que la fecha fin, ajustar
+          if (fecha > txtFecFinVal) {
+            setTxtFecFinValState (fecha);
+          }
+    }
+    /**
+     * Método para evaluar la fecha final sea mayor o igual a la fecha inicial
+     * @date 2026-02-12
+     * @author IGAC - DIP
+     * @param fecha 
+     */
+    const handleFechaFinChange = function (fecha: Date){
+        if (fecha >= txtFecIniVal){
+            setTxtFecFinValState (fecha);
+        }
+        else{
+            setTxtFecFinValState (txtFecIniVal);
+        }
+    }
+
+    //Sección Hooks
+    /**
+     * Hook que ejecuta el cargue campo Area
+     * @date 2026-02-12
+     * @author IGAC - DIP
+     * @remarks Actualización state objeto areaLst
+     */
+    useEffect (function(){
+        console.log("Ingresando a Hook...");
+        if (areaLst.length == 0)
+        {
+            getAreaJSON();
+        }
+    },[areaLst]);
+
+   
 
     //Sección renderizado
     return (
-        {selNomAmbDis} && <FloatingPanel         
-        onHeaderClose={() => setVisibleState(false)}
-        showHeaderCollapse={true}
-        showHeaderClose={true}
-        draggable={false}
-        headerTitle="TEST FLOAT"
-        defaultSize={{width: 332, height: 591 }}
-        defaultPosition={{x: 150, y: 50}}
-       >
          <form>
             <div className="mb-1">
                 <Label size="default">&Aacute;rea</Label>
                 <Select 
-                placeholder="Seleccione"
-                ></Select>
+                    placeholder="Seleccione"
+                    value={selAreaVal}
+                >
+                {
+                    areaLst.map ((areaItem) => 
+                        <option value={areaItem.idArea}>{areaItem.area}</option>
+                    )
+                }
+                </Select>
             </div>
             <div className="mb-1">
                 <Label size="default">Tem&aacute;tica</Label>
@@ -163,7 +228,7 @@ const FilterAmb = function ({visible, setVisibleState, areaLst, setAreaLstState,
                 }
                 <DatePicker
                     selectedDate={txtFecIniVal}
-                    onChange={(fecIn) => setTxtFecIniDisState (fecIn)}
+                    onChange={(fecIn) => handleFechaIniChange (fecIn)}
                     format="yyyy-MM-dd"
                     showQuickNavToToday
                 ></DatePicker>
@@ -180,17 +245,21 @@ const FilterAmb = function ({visible, setVisibleState, areaLst, setAreaLstState,
                 }
                 <DatePicker
                     selectedDate={txtFecFinVal}
-                    onChange={(fecFin) => setTxtFecFinValState (fecFin)}
+                    onChange={(FecF) => {
+                        setTxtFecFinValState (FecF);
+                    }}
                     format="yyyyMMdd"
+                    minDate={txtFecIniVal}
                 ></DatePicker>
                 
             </div>
             {/* Sección botonera*/}
-            <div className="btns">
+            <div className="btnsContner">
                 <Button                           
                     size="default"
                     type="default"
                     disabled={btnLimpiaDis}
+                    className="btns"
                 >Limpiar
                 </Button>
                 <Button
@@ -198,10 +267,11 @@ const FilterAmb = function ({visible, setVisibleState, areaLst, setAreaLstState,
                     size="default"
                     type="default"
                     disabled={btnSrchDis}
+                    className="btns"
                 >Buscar</Button>
             </div>
         </form>
-    </FloatingPanel>
+    
     )
 }
 export default FilterAmb;
