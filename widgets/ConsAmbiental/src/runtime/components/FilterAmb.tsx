@@ -152,6 +152,30 @@ const FilterAmb = function ({visible, setVisibleState, areaLst, setAreaLstState,
     }
 
     /**
+     * Consulta de subcategorias asociadas
+     * @date 2026-02-13
+     * @author IGAC - DIP
+     * @remarks Por contengencia del servidor SIGQUINDIO, se realiza ejercicio con data registrada en src para dos categorias (2026-02-13)
+     */
+    const getSubCategorJSON = function (Categor: string = "", idCategor: number = -1){
+         //Objetos locales
+         //Validación de acuerdo al parámetro especificado
+         //Toma del parámetro Categor
+         if (typeof Categor !== 'undefined' && idCategor === -1){
+            switch (Categor){
+                case "": {
+                    break;
+                }
+                case "": {
+                    break;
+                }
+            }
+         }
+
+        //switch 
+    }
+
+    /**
      * Método para evaluar la fecha inicial sea menor o igual a la fecha final
      * @date 2026-02-12
      * @author IGAC - DIP
@@ -218,8 +242,11 @@ const FilterAmb = function ({visible, setVisibleState, areaLst, setAreaLstState,
                 getJSONMpio ();
                 break;
             }
-            case 'Tramites ambientales':{
-
+            case 'Tramites ambientales':{                
+                //Habilitar control SubCategoria
+                setSelSubCategorDisState (false);
+                //Crear listados
+                getSubCategorJSON (categorTxtVal, -1);
                 break;
             }
             default: {
@@ -313,7 +340,9 @@ const FilterAmb = function ({visible, setVisibleState, areaLst, setAreaLstState,
      * getJSONMpio => Método para obtener lista de municipios, conocido el identificador del departamento, dado en control Departamento
      * @date 2026-02-12
      * @author IGAC - DIP
-     * @param {number} idDpto (opc)    
+     * @param {number} idDpto (opc)
+     * @dateUpdated 2026-02-13
+     * @changes Reformulación URL consumo servicio municipios
      * @remarks Tomado del proyecto SIEC (Firmas espectrales)
      */
     const getJSONMpio = async function (idDpto = "")
@@ -325,80 +354,79 @@ const FilterAmb = function ({visible, setVisibleState, areaLst, setAreaLstState,
 
         //Cargue listado municipios con departamento asociado a su identificador
         //console.log ("URL consumo municipios con params =>",await (getWhere ('IDMUNICIPIO, NOMBRE', urls.Municipios, false, '1=1', '', '', '', '', '', '', '')));
-        if (idDpto.length === 0)      
-        {
+        if (idDpto.length === 0){
             critSeleccDpto  = "1=1";
         }
         else{
             critSeleccDpto  = "coddepto="+idDpto.toString();
         }
-        urlDivipolaMpios = await getWhere('IDMUNICIPIO, NOMBRE', urls.Municipios, false, critSeleccDpto, '', '', '', '', '', '', '');
+        urlDivipolaMpios = await getWhere('IDMUNICIPIO, NOMBRE', urls['CARTOGRAFIA']['BASE']+'/'+urls['CARTOGRAFIA']['MUNICIPIOS'], false, critSeleccDpto, '', '', '', '', '', '', '');
         console.log ("URL consumo Mpios Map Server =>",urlDivipolaMpios);
 
         //Activar estado cargando lista de municipíos
 	    //setIsLoadState(true);
         //Invocación al servicio en try .. catch
 	    try{
-        await fetch(urlDivipolaMpios, {
-          method:"GET"
-        })
-        .then ((mpiosServer) => {
-          var jsonErr: any = {};
-          if (!mpiosServer.ok)
-          {           
-            jsonErr = {
-              "error": mpiosServer.status,
-              "errorMsg": mpiosServer.statusText
+            await fetch(urlDivipolaMpios, {
+                method:"GET"
+            })
+            .then ((mpiosServer) => {
+            var jsonErr: any = {};
+            if (!mpiosServer.ok)
+            {           
+                jsonErr = {
+                "error": mpiosServer.status,
+                "errorMsg": mpiosServer.statusText
+                }
+                return jsonErr;
             }
-            return jsonErr;
-          }
-          //Validador consumo por error del server (cód http <> 200 )
-          else if (typeof (mpiosServer["error"]) !== 'undefined'){
-            jsonErr = {
-              "errorCode": mpiosServer["error"].code,
-              "errorMsg": mpiosServer["error"].message
+            //Validador consumo por error del server (cód http <> 200 )
+            else if (typeof (mpiosServer["error"]) !== 'undefined'){
+                jsonErr = {
+                "errorCode": mpiosServer["error"].code,
+                "errorMsg": mpiosServer["error"].message
+                }
+                console.error("Error Obteniendo lista departamentos del server =>" ,jsonErr["errorMsg"])+" "+"("+"código http =>"+jsonErr["errorCode"]+")";
+                throw jsonErr["errorMsg"]+" "+"("+"código http =>"+" "+jsonErr["errorCode"]+")";
             }
-            console.error("Error Obteniendo lista departamentos del server =>" ,jsonErr["errorMsg"])+" "+"("+"código http =>"+jsonErr["errorCode"]+")";
-            throw jsonErr["errorMsg"]+" "+"("+"código http =>"+" "+jsonErr["errorCode"]+")";
-          }
-          const jsonMpios = mpiosServer.json();
-          return jsonMpios;
-        })
-        .then ((mpiosDataLst) => {
-          //Objeto local
-          var jsonMpios: any = {};
-          //Validador consumo por error del server (cód http <> 200 )
-          if (typeof (mpiosDataLst["error"]) !== 'undefined'){
-            jsonMpios = {
-              "errorCode": mpiosDataLst["error"].code,
-              "errorMsg": mpiosDataLst["error"].message,
-              "errorMsgDet": mpiosDataLst["error"].details[0]
+            const jsonMpios = mpiosServer.json();
+            return jsonMpios;
+            })
+            .then ((mpiosDataLst) => {
+            //Objeto local
+            var jsonMpios: any = {};
+            //Validador consumo por error del server (cód http <> 200 )
+            if (typeof (mpiosDataLst["error"]) !== 'undefined'){
+                jsonMpios = {
+                "errorCode": mpiosDataLst["error"].code,
+                "errorMsg": mpiosDataLst["error"].message,
+                "errorMsgDet": mpiosDataLst["error"].details[0]
+                }
+                console.error("Error obteniendo data del server =>" ,jsonMpios["errorMsg"])+" "+"("+"código http =>"+jsonMpios["errorCode"]+")";
+                throw jsonMpios["errorMsg"]+" "+"("+"código http =>"+" "+jsonMpios["errorCode"]+")";
             }
-            console.error("Error obteniendo data del server =>" ,jsonMpios["errorMsg"])+" "+"("+"código http =>"+jsonMpios["errorCode"]+")";
-            throw jsonMpios["errorMsg"]+" "+"("+"código http =>"+" "+jsonMpios["errorCode"]+")";
-          }
-          //Desactivar modo cargando
-          //setIsLoadState(false);
-          //console.log("Mpios Lst para combo =>",mpiosDataLst.features);
-          
-          //Mapeo de los atributos desde el objeto consumido del servidor
-          const lstMpio =   mpiosDataLst.features.map ((mpioItem) => (
-            {
-                idMpio:  String (mpioItem.attributes.IDMUNICIPIO),
-                nomMpio:  (mpioItem.attributes.NOMBRE)
-            }
-          ))
+            //Desactivar modo cargando
+            //setIsLoadState(false);
+            //console.log("Mpios Lst para combo =>",mpiosDataLst.features);
+            
+            //Mapeo de los atributos desde el objeto consumido del servidor
+            const lstMpio =   mpiosDataLst.features.map ((mpioItem) => (
+                {
+                    idMpio:  String (mpioItem.attributes.IDMUNICIPIO),
+                    nomMpio:  (mpioItem.attributes.NOMBRE)
+                }
+            ))
 
-          console.log("Mpios List =>", sortMpios (lstMpio));
-          //Al state 
-          setMpioAmbLstState (sortMpios (lstMpio));
-        })
-      }
-      catch (error)
-      {
-        console.log("Error obteniendo municipios del server =>", error);
-        throw error;
-      }
+            console.log("Mpios List =>", sortMpios (lstMpio));
+            //Al state 
+            setMpioAmbLstState (sortMpios (lstMpio));
+            })
+        }
+        catch (error)
+        {
+            console.log("Error obteniendo municipios del server =>", error);
+            throw error;
+        }
     }
 
     /**
@@ -412,7 +440,7 @@ const FilterAmb = function ({visible, setVisibleState, areaLst, setAreaLstState,
      * @remarks FUENTE consulta: Claude AI => https://claude.ai/chat/aa4f51f7-1b86-43ff-9524-8a646e5566bd
      * @remarks Tomado del proyecto SIEC (Firmas espectrales)
      * @remarks Colocar centralizado en utilidades (definir con Equipo trabajo)
-     * @remarks Por ajustar en proyecto
+     * @remarks Por ajustar en proyecto, con atributo nomMpio
      */
     const sortMpios = function (obj, order = 'asc'){
         //Objetos locales
