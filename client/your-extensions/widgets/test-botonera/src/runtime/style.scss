@@ -1,0 +1,21 @@
+/**
+ * @fileoverview Estilos del widget test-botonera.
+ * Layout flexbox para formulario con barra de acciones fija al fondo.
+ *
+ * @module test-botonera/styles
+ * @author IGAC - DIP
+ * @since 2024
+ */
+
+// ===== CONTENEDOR PRINCIPAL =====
+.widget-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+// ===== CONTENIDO SCROLLABLE =====
+.widget-content {
+  flex: 1;
+  overflow-y: auto;
+}

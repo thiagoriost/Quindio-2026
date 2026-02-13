@@ -1,3 +1,16 @@
+/**
+ * @fileoverview Widget de demostración para búsqueda de predios.
+ * Implementa un formulario con validación y uso del componente SearchActionBar.
+ *
+ * @module test-botonera/widget
+ * @requires jimu-core
+ * @requires jimu-ui
+ * @requires shared/components/search-action-bar
+ *
+ * @author IGAC - DIP
+ * @since 2024
+ */
+
 /** @jsx jsx */
 import { React, jsx } from 'jimu-core'
 import { useState } from 'react'
@@ -5,23 +18,49 @@ import { Select, Option, TextInput } from 'jimu-ui'
 import { SearchActionBar } from '../../../shared/components/search-action-bar'
 import './style.scss'
 
+/**
+ * Lista de municipios disponibles para selección.
+ * @constant {Array<{value: string, label: string}>}
+ */
 const municipios = [
   { value: '63192', label: 'CIRCASIA' },
   { value: '63272', label: 'FILANDIA' },
   { value: '63690', label: 'SALENTO' }
 ]
 
+/**
+ * Widget de demostración que muestra un formulario de búsqueda de predios.
+ * Utiliza el componente compartido SearchActionBar para las acciones.
+ *
+ * @component
+ * @returns {JSX.Element} Formulario de búsqueda con validación
+ *
+ * @example
+ * // Uso en Experience Builder
+ * <Widget />
+ */
 const Widget = () => {
 
+  /** @type {string} Código del municipio seleccionado */
   const [municipio, setMunicipio] = useState('')
+  /** @type {string} Zona seleccionada (Rural/Urbano) */
   const [zona, setZona] = useState('')
+  /** @type {string} Número predial ingresado */
   const [predial, setPredial] = useState('')
+  /** @type {string} Mensaje de error de validación */
   const [error, setError] = useState('')
 
+  /** @type {boolean} Indica si la búsqueda está en progreso */
   const [loading, setLoading] = useState(false)
+  /** @type {boolean} Indica si el formulario pasó la validación */
   const [formValido, setFormValido] = useState(false)
 
-  // 🔎 Validación simple del formulario
+  /**
+   * Valida los campos del formulario.
+   * Verifica que municipio, zona y número predial estén correctamente completados.
+   *
+   * @returns {boolean} true si el formulario es válido, false en caso contrario
+   */
   const validarFormulario = () => {
     if (!municipio) {
       setError('Debe seleccionar un municipio')
@@ -42,6 +81,12 @@ const Widget = () => {
     return true
   }
 
+  /**
+   * Manejador del evento de búsqueda.
+   * Valida el formulario y simula una llamada al servicio.
+   *
+   * @returns {void}
+   */
   const handleBuscar = () => {
 
     const esValido = validarFormulario()
@@ -59,6 +104,12 @@ const Widget = () => {
     }, 2000)
   }
 
+  /**
+   * Manejador del evento de limpieza.
+   * Restablece todos los campos del formulario a su estado inicial.
+   *
+   * @returns {void}
+   */
   const handleLimpiar = () => {
 
     console.log('Formulario limpiado')
@@ -77,7 +128,7 @@ const Widget = () => {
 
         <Select
           value={municipio}
-          onChange={(e) => setMunicipio(e.target.value)}
+          onChange={(e) => { setMunicipio(e.target.value) }}
           placeholder="Seleccione municipio"
         >
           {municipios.map(m => (
@@ -89,7 +140,7 @@ const Widget = () => {
 
         <Select
           value={zona}
-          onChange={(e) => setZona(e.target.value)}
+          onChange={(e) => { setZona(e.target.value) }}
           placeholder="Seleccione zona"
           style={{ marginTop: 8 }}
         >
@@ -100,7 +151,7 @@ const Widget = () => {
         <TextInput
           value={predial}
           placeholder="Número predial"
-          onChange={(e) => setPredial(e.target.value.replace(/\D/g, ''))}
+          onChange={(e) => { setPredial(e.target.value.replace(/\D/g, '')) }}
           style={{ marginTop: 8 }}
         />
 

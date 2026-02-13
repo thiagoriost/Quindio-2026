@@ -1,3 +1,13 @@
+/**
+ * @fileoverview Estilos del componente SearchActionBar.
+ * Barra de acciones con botones de búsqueda y limpieza.
+ *
+ * @module shared/components/search-action-bar/styles
+ * @author IGAC - DIP
+ * @since 2024
+ */
+
+// ===== BARRA DE ACCIONES =====
 .search-action-bar {
   display: flex;
   justify-content: flex-end;
@@ -6,11 +16,13 @@
   border-top: 1px solid #e0e0e0;
   background-color: #fff;
 
+  // Ancho mínimo para consistencia visual
   button {
     min-width: 110px;
   }
 }
 
+// ===== ICONO DE AYUDA =====
 .help-icon-wrapper {
   display: inline-flex;
   align-items: center;
