@@ -91,6 +91,7 @@
 
 .tree-node-content:hover {
     background-color: var(--bg-color-gray);
+    font-weight: var(--font-weight-bold);
 }
 
 .tree-node-folder .tree-node-label {
