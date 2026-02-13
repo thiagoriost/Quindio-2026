@@ -10,7 +10,7 @@ start "EXB SERVER" cmd /k ^
 cd /d "E:\IGAC\Software\arcgis-experience-builder-1.19\server" ^&^& npm start
 
 REM === Espera breve para asegurar que el server levante ===
-timeout /t 5 /nobreak > nul
+timeout /t 10 /nobreak > nul
 
 REM === Iniciar CLIENT ===
 echo Iniciando Experience Builder CLIENT...
@@ -18,7 +18,7 @@ start "EXB CLIENT" cmd /k ^
 cd /d "E:\IGAC\Software\arcgis-experience-builder-1.19\client" ^&^& npm start
 
 REM === Espera para que el client levante el puerto 3001 ===
-timeout /t 10 /nobreak > nul
+timeout /t 15 /nobreak > nul
 
 REM === Lanzar Chrome con flags necesarios ===
 echo Abriendo Chrome...

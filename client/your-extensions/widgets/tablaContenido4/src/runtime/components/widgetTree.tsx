@@ -753,7 +753,7 @@ const WidgetTree: React.FC<Widget_Tree_Props> = ({ dataTablaContenido, varJimuMa
              {/* <button type="button" onClick={showState}>GetState</button> */}
             <Tabs>
                 <TabList>
-                    <Tab>Lista de Indicadores RRH</Tab>
+                    <Tab>Lista de Indicadores</Tab>
                     {
                         capasSelectd.length>0 && <Tab>Orden de Indicadores</Tab>
                     }

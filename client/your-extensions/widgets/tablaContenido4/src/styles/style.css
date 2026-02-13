@@ -29,7 +29,7 @@
 }
 
 .tree-container div:hover {
-    background-color: var(--color-secondary-light);
+    /* background-color: var(--color-secondary-light); */
     color: var(--color-secondary);
 }
 
