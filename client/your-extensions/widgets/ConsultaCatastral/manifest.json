@@ -7,6 +7,9 @@
   "author": "CNTI",
   "description": "Consulta predial por municipio y zona",
   "dependency": ["jimu-arcgis"],
-
-  "useDataSources": true
+  "useDataSources": true,
+  "useMapWidget": true,
+  "hasSetting": true,
+  "defaultConfig": {},
+  "supportMapWidget": true
 }
