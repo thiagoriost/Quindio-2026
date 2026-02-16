@@ -9,18 +9,29 @@ import { captureMap } from "./screenshotService"
 import { generatePdf } from "./pdfService"
 
 /**
+ * Opciones de metadatos para el PDF.
+ */
+export interface PrintOptions {
+  /** Título del mapa en el PDF */
+  title?: string
+  /** Autor del mapa */
+  author?: string
+}
+
+/**
  * Hook personalizado que proporciona funcionalidad de impresión de mapas a PDF.
  * Captura el estado actual del mapa y genera un documento PDF descargable.
  * @param {JimuMapView} [jimuMapView] - Instancia de JimuMapView del mapa a imprimir.
+ * @param {PrintOptions} [options] - Opciones de metadatos para el PDF (título, autor).
  * @returns {object} Objeto con la función de impresión y estado de carga.
  * @returns {Function} returns.print - Función asíncrona para ejecutar la impresión.
  * @returns {boolean} returns.loading - Indica si hay una impresión en progreso.
  * @example
- * const { print, loading } = useClientPrint(jimuMapView);
+ * const { print, loading } = useClientPrint(jimuMapView, { title: 'Mi Mapa', author: 'Usuario' });
  *  Luego en el render:
  * <button onClick={print} disabled={loading}>Imprimir</button>
  */
-export const useClientPrint = (jimuMapView?: JimuMapView) => {
+export const useClientPrint = (jimuMapView?: JimuMapView, options?: PrintOptions) => {
 
   const [loading, setLoading] = useState(false)
 
@@ -40,16 +51,18 @@ export const useClientPrint = (jimuMapView?: JimuMapView) => {
       const screenshot = await captureMap(jimuMapView.view)
 
       generatePdf({
-        title: "Mapa generado",
+        title: options?.title || "MAPA TEMÁTICO",
         scale: jimuMapView.view.scale,
-        imageUrl: screenshot.dataUrl
+        imageUrl: screenshot.dataUrl,
+        spatialReference: `WKID ${jimuMapView.view.spatialReference.wkid}`,
+        author: options?.author || "IGAC"
       })
 
     } finally {
       setLoading(false)
     }
 
-  }, [jimuMapView])
+  }, [jimuMapView, options?.title, options?.author])
 
   return { print, loading }
 }

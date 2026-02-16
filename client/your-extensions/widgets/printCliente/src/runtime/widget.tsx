@@ -20,12 +20,44 @@ import { useClientPrint } from "./useClientPrint"
 export default function Widget(props: any) {
 
   const [jimuMapView, setJimuMapView] = React.useState<any>()
+  const [title, setTitle] = React.useState("MAPA TEMÁTICO")
+  const [author, setAuthor] = React.useState("IGAC")
 
-  const { print, loading } = useClientPrint(jimuMapView)
+  const { print, loading } = useClientPrint(jimuMapView, { title, author })
 
   return (
-    <div>
-      <button onClick={print} disabled={loading}>
+    <div style={{ padding: '10px' }}>
+      <div style={{ marginBottom: '10px' }}>
+        <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>
+          Título del mapa:
+        </label>
+        <input
+          type="text"
+          value={title}
+          onChange={(e) => { setTitle(e.target.value) }}
+          placeholder="Ingrese el título del mapa"
+          style={{ width: '100%', padding: '6px', boxSizing: 'border-box' }}
+        />
+      </div>
+
+      <div style={{ marginBottom: '10px' }}>
+        <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>
+          Autor:
+        </label>
+        <input
+          type="text"
+          value={author}
+          onChange={(e) => { setAuthor(e.target.value) }}
+          placeholder="Ingrese el autor"
+          style={{ width: '100%', padding: '6px', boxSizing: 'border-box' }}
+        />
+      </div>
+
+      <button
+        onClick={print}
+        disabled={loading}
+        style={{ width: '100%', padding: '8px', cursor: loading ? 'wait' : 'pointer' }}
+      >
         {loading ? "Generando..." : "Imprimir PDF"}
       </button>
 
