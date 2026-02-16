@@ -1,0 +1,25 @@
+{
+    "name": "advanced-print",
+    "label": "Salida gráfica",
+    "type": "widget",
+    "version": "1.14.0",
+    "dependency": ["jimu-arcgis"],
+    "exbVersion": "1.14.0",
+    "author": "https://github.com/rigoriosh",
+    "description": "Salida gráfica de mapas",
+    "copyright": "",
+    "license": "",
+    "properties": {},
+    "translatedLocales": [
+        "en",
+        "es"
+    ],
+    "defaultSize": {
+        "width": 503,
+        "height": 424
+    },
+    "size":{
+        "width": 503,
+        "height": 424
+    }
+}
