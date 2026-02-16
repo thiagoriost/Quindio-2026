@@ -10,7 +10,7 @@ start "EXB SERVER" cmd /k ^
 cd /d "E:\IGAC\Software\arcgis-experience-builder-1.19\server" ^&^& npm start
 
 REM === Espera breve para asegurar que el server levante ===
-timeout /t 10 /nobreak > nul
+timeout /t 15 /nobreak > nul
 
 REM === Iniciar CLIENT ===
 echo Iniciando Experience Builder CLIENT...
@@ -31,4 +31,6 @@ start "" "C:\Program Files\Google\Chrome\Application\chrome.exe" ^
  https://localhost:3001/
 
 echo Entorno Experience Builder iniciado correctamente.
+timeout /t 15 /nobreak > nul
+
 exit

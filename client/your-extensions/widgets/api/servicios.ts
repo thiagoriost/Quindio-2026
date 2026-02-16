@@ -37,12 +37,12 @@ const mapServerDepartal = 'https://pruebassig.igac.gov.co/server/rest/services/I
 const MapServerMunicipal = 'https://pruebassig.igac.gov.co/server/rest/services/Indicadores_municipios/MapServer'
 
 const urls = {
-    // tablaContenido: 'https://sigquindio.gov.co:8443/ADMINSERV/AdminGeoApplication/AdminGeoWebServices/getTablaContenidoJsTree/public',
+  // tablaContenido: 'https://sigquindio.gov.co:8443/ADMINSERV/AdminGeoApplication/AdminGeoWebServices/getTablaContenidoJsTree/public',
   // tablaContenido: 'http://172.17.3.205:8080/ADMINSERV/AdminGeoApplication/AdminGeoWebServices/getTablaContenidoJsTree/public',
   // tablaContenido: 'https://sae.igac.gov.co:8443/ADMINSERV/AdminGeoApplication/AdminGeoWebServices/getTablaContenidoJsTree/public', // REFORMA AGRARIA
   // tablaContenido: 'localhost:8080/ADMINSERV/AdminGeoApplication/AdminGeoWebServices/getTablaContenidoJsTree/public', // REFORMA AGRARIA
   // tablaContenido: 'http://localhost:8080/ADMINSERV/AdminGeoApplication/AdminGeoWebServices/getTablaContenidoJsTree/public', // REFORMA AGRARIA
-// tablaContenido: 'https://sigquindio.gov.co:8443/ADMINSERV/AdminGeoApplication/AdminGeoWebServices/getTablaContenidoJsTree/public',
+  // tablaContenido: 'https://sigquindio.gov.co:8443/ADMINSERV/AdminGeoApplication/AdminGeoWebServices/getTablaContenidoJsTree/public',
   // tablaContenido: 'http://172.17.3.205:8080/ADMINSERV/AdminGeoApplication/AdminGeoWebServices/getTablaContenidoJsTree/public',
   // tablaContenido: 'https://sae.igac.gov.co:8443/ADMINSERV/AdminGeoApplication/AdminGeoWebServices/getTablaContenidoJsTree/public', // REFORMA AGRARIA
   // tablaContenido: 'localhost:8080/ADMINSERV/AdminGeoApplication/AdminGeoWebServices/getTablaContenidoJsTree/public', // REFORMA AGRARIA
@@ -50,24 +50,24 @@ const urls = {
   tablaContenido: 'https://snra.igac.gov.co/ADMINSERV/AdminGeoApplication/AdminGeoWebServices/getTablaContenidoJsTree/public', // REFORMA AGRARIA
   // tablaContenido: '/ADMINSERV/AdminGeoApplication/AdminGeoWebServices/getTablaContenidoJsTree/public', // REFORMA AGRARIA docker
   // tablaContenido: 'https://sae.igac.gov.co:8444/ADMINSERV/AdminGeoApplication/AdminGeoWebServices/getTablaContenidoJsTree/public', // FIRMAS ESPECTRALES
-  firmasEsp:"https://pruebassig.igac.gov.co/server/rest/services/FE_Edicion/MapServer/0",
- /*  firmasEspDptos: mapServerNal+"/1",
-  firmasEspMpios: mapServerNal+"/0", */
-  firmasEspReal:"https://pruebassig.igac.gov.co/server/rest/services/FE_Puntos_de_Muestreo/MapServer/0",
-  firmasEspTCober:"https://pruebassig.igac.gov.co/server/rest/services/Vista_Puntos_Cobertura/MapServer/0",
+  firmasEsp: "https://pruebassig.igac.gov.co/server/rest/services/FE_Edicion/MapServer/0",
+  /*  firmasEspDptos: mapServerNal+"/1",
+   firmasEspMpios: mapServerNal+"/0", */
+  firmasEspReal: "https://pruebassig.igac.gov.co/server/rest/services/FE_Puntos_de_Muestreo/MapServer/0",
+  firmasEspTCober: "https://pruebassig.igac.gov.co/server/rest/services/Vista_Puntos_Cobertura/MapServer/0",
   api_host: "https://dev-catalogofirmas.igac.gov.co",
   api_getToken: "/auth/login",
-  api_getProybyFields: "/items/Proyectos"+"?fields=Id_Proyecto,ProjectName",
-  api_getCampa_as: "/items/Campanas"+"?fields=*",
-  api_getMetaDatoByPhSig: "/items/Metadatos_Firmas"+"?filter[FileIdentifier][_eq]=",
-  api_getMetaDatoIdMetaByPhSig: "/items/Metadatos_Firmas"+"?fields=Id_Metadato&filter[FileIdentifier][_eq]=",
-  api_getFirmasByObjectId: "/items/Firmas_Espectrales"+"?filter[ObjectId][_eq]=",
+  api_getProybyFields: "/items/Proyectos" + "?fields=Id_Proyecto,ProjectName",
+  api_getCampa_as: "/items/Campanas" + "?fields=*",
+  api_getMetaDatoByPhSig: "/items/Metadatos_Firmas" + "?filter[FileIdentifier][_eq]=",
+  api_getMetaDatoIdMetaByPhSig: "/items/Metadatos_Firmas" + "?fields=Id_Metadato&filter[FileIdentifier][_eq]=",
+  api_getFirmasByObjectId: "/items/Firmas_Espectrales" + "?filter[ObjectId][_eq]=",
   api_getFotoByIdFile: "/assets/",
-  api_getFileCompressByIdMeta: "/items/Metadatos_Firmas_files"+"?filter[Metadatos_Firmas_Id_Metadato][_eq]=",
+  api_getFileCompressByIdMeta: "/items/Metadatos_Firmas_files" + "?filter[Metadatos_Firmas_Id_Metadato][_eq]=",
   api_getCompressByIdFile: "/assets/",
-  api_getValDominioByIdVal: "/items/Valores_Dominio"+"?fields=Descripcion_Valor&filter[Id_Valor_Dominio][_eq]=",
-  api_getProyectosByIdProy: "/items/Proyectos"+"?fields=Id_Proyecto,ProjectName,ProjectDescription,ProjectInstitution"+"&filter[Id_Proyecto][_eq]=",
-  api_getInstrumentosByNomInstrum: "/items/Instrumentos"+"?filter[InstrumentName][_eq]=",
+  api_getValDominioByIdVal: "/items/Valores_Dominio" + "?fields=Descripcion_Valor&filter[Id_Valor_Dominio][_eq]=",
+  api_getProyectosByIdProy: "/items/Proyectos" + "?fields=Id_Proyecto,ProjectName,ProjectDescription,ProjectInstitution" + "&filter[Id_Proyecto][_eq]=",
+  api_getInstrumentosByNomInstrum: "/items/Instrumentos" + "?filter[InstrumentName][_eq]=",
   api_getFileNameByIdFile: "/files/",
   api_getFileNameByIdFileFlds: "?fields=filename_download",
   Municipios: `${MapServerMunicipal}/0`,
@@ -187,10 +187,15 @@ const urls = {
     v_predios_zrc_porcnac: `${mapServerNal}/34`,
     v_predios_ley2da_porcnac: `${mapServerNal}/35`,
     v_indice_gini_ids_nacmun: `${mapServerNal}/15`
+  },
 
-  }
+  CARTOGRAFIA: {
+    BASE: 'https://sigquindio.gov.co/arcgis/rest/services/QUINDIO_III/CartografiaBasica/MapServer',
+    MUNICIPIOS: 75,
+  },
+
 }
 
 export {
-    urls
+  urls
 }

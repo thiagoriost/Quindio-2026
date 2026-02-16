@@ -28,8 +28,12 @@ const Widget = (props: AllWidgetProps<any>) => {
     }
   }
 
+<<<<<<< HEAD:client/your-extensions/widgets/tablaDeContenido2/src/runtime/widget.tsx
   const TraerDataTablaContenido = async (modulo: typeof import('../../../api/servicios')) => {
     const tematicas = await getDataTablaContenido(modulo)
+=======
+  const TraerDataTablaContenido = (modulo) => {
+>>>>>>> 32ec891d4dc6bc0a7812e147b0fc5137ab900e06:widgets/tablaDeContenido/src/runtime/widget.tsx
     setTimeout(async () => {
       if (utilsModule?.logger()) console.log(tematicas)
 
@@ -41,6 +45,11 @@ const Widget = (props: AllWidgetProps<any>) => {
     }, 5000)
   }
 
+  useEffect(() => {
+      TraerDataTablaContenido(servicios)
+  }, [TraerDataTablaContenido, servicios])
+
+
   /**
    * realiza la consulta de la data tabla de contenido la primera vez que se renderiza el componente
    */
@@ -48,14 +57,18 @@ const Widget = (props: AllWidgetProps<any>) => {
     console.log(222222)
     import('../../../api/servicios').then(modulo => {
       setServicios(modulo)
-      TraerDataTablaContenido(modulo)
+      // TraerDataTablaContenido(modulo)
     })
     import('../../../utils/module').then(modulo => { setUtilsModule(modulo) })
 
   }, [])
 
   return (
+<<<<<<< HEAD:client/your-extensions/widgets/tablaDeContenido2/src/runtime/widget.tsx
     <div>
+=======
+    <div className="w-100 p-3 contenedorTablaContenido">
+>>>>>>> 32ec891d4dc6bc0a7812e147b0fc5137ab900e06:widgets/tablaDeContenido/src/runtime/widget.tsx
       {props.useMapWidgetIds && props.useMapWidgetIds.length === 1 && (
         <JimuMapViewComponent useMapWidgetId={props.useMapWidgetIds?.[0]} onActiveViewChange={activeViewChangeHandler} />
       )}
