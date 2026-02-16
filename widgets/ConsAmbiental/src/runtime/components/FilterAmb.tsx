@@ -17,7 +17,7 @@ import { DatePicker } from 'jimu-ui/basic/date-picker';
 import { appActions } from 'jimu-core';
 
 //Endpoint servicios
-import { urls } from '../../../../API/servicios';
+import { urls } from '../../../../api/servicios';
 
 /**
  * Componente para definición de filtros asociados al widget
@@ -155,24 +155,127 @@ const FilterAmb = function ({visible, setVisibleState, areaLst, setAreaLstState,
      * Consulta de subcategorias asociadas
      * @date 2026-02-13
      * @author IGAC - DIP
+     * @dateUpdated 2026-02-16
+     * @changes Inclusión validación para inicializar objeto subCategorJSON, cuando no tenga subcategorias
      * @remarks Por contengencia del servidor SIGQUINDIO, se realiza ejercicio con data registrada en src para dos categorias (2026-02-13)
      */
     const getSubCategorJSON = function (Categor: string = "", idCategor: number = -1){
          //Objetos locales
+         var subCategorJSON: Object = {};
          //Validación de acuerdo al parámetro especificado
+         console.log ("Categoria asociada =>",Categor);
+         console.log ("Id Categoria asociada =>", idCategor);
          //Toma del parámetro Categor
          if (typeof Categor !== 'undefined' && idCategor === -1){
             switch (Categor){
-                case "": {
+                case "Tramites ambientales": {
+                    subCategorJSON = [{
+                        idSubCategor: 1,
+                        subCategor: "Calidad ambiental"
+                    },
+                    {
+                        idSubCategor: 2,
+                        subCategor: "Resolución ambiental"
+                    },
+                    {
+                        idSubCategor: 3,
+                        subCategor: "Procedimientos cuidado y salvoguarda"
+                    },
+                    {
+                        idSubCategor: 4,
+                        subCategor: "Gestión aseo y cuidados ambientales"
+                    },
+                    {
+                        idSubCategor: 5,
+                        subCategor: "Manejo basuras y clasificación"
+                    }]
                     break;
                 }
-                case "": {
+                case "Tramites ambientales predios": {
+                    subCategorJSON = [{
+                        idSubCategor: 10,
+                        subCategor: "Revisión registro Predios y catastro"
+                    },
+                    {
+                        idSubCategor: 11, 
+                        subCategor: "Control plagas y movimiento potreros parcela"
+                    },
+                    {
+                        idSubCategor: 12,
+                        subCategor: "Gestión capacitaciones en registro catastral"
+                    },
+                    {
+                        idSubCategor: 13,  
+                        subCategor: "Controles administrativos ambientales de parcelas"
+                    },
+                    {
+                        idSubCategor: 14,
+                        subCategor: "Manejo materiales en control de potreros"
+                    }]
+                    break;
+                }
+                default:{
+                    subCategorJSON = [];
+                    break;
+                }
+            }
+         }
+         else{
+            switch (idCategor){
+                //Estaciones
+                case 1: {
+                    subCategorJSON = [{
+                        idSubCategor: 20,
+                        subCategor: "Control Trámites usuario"
+                    }, 
+                    {
+                        idSubCategor: 21,
+                        subCategor: "Mediciones"
+                    }, 
+                    {
+                        idSubCategor: 22,
+                        subCategor: "Clasificaciones estaciones"
+                    }, 
+                    {
+                        idSubCategor: 23,
+                        subCategor: "Manejo estaciones pluvimétricas"
+                    }, 
+                    {
+                        idSubCategor: 24,
+                        subCategor: "Gestión administrativa"
+                    }]
+                    break;
+                }
+                //Puntos de calidad
+                case 2:{
+                    subCategorJSON = [{
+                        idSubCategor: 30, 
+                        subCategor: "Revisiones áreas reforestación"
+                    }, 
+                    {
+                        idSubCategor: 31, 
+                        subCategor: "Gestión disposición residuos"
+                    }, 
+                    {
+                        idSubCategor: 32, 
+                        subCategor: "Indicadores manejo forestales"
+                    }, 
+                    {
+                        idSubCategor: 33,
+                        subCategor: "Disposición fungicidas y manejo forestal"
+                    }, 
+                    {
+                        idSubCategor: 34, 
+                        subCategor: "Gestión de calidad con cliente final"
+                    }]
                     break;
                 }
             }
          }
 
-        //switch 
+         //Al State
+         setSubCategorLstState (subCategorJSON);
+        
     }
 
     /**
@@ -229,29 +332,57 @@ const FilterAmb = function ({visible, setVisibleState, areaLst, setAreaLstState,
      * @date 2026-02-12
      * @author IGAC - DIP
      * @param {Event} evt 
+     * @dateUpdated 2026-02-16
+     * @changes Adición validador para procesar campo Subcategoria
      */
     const handleSelCategorChange = async function(evt){
         //Objetos Locales
-        var categorTxtVal:string  =     evt.nativeEvent.target.textContent;
-        switch (categorTxtVal){
-            case 'Predios de reforestación':{
-                //Habilitación campo Municipio (disabled en false)
-                setSelMpioAmbDisState (false);
-                //Verificación URL consumo
-                //console.log ("URL consumo municipios =>",urls.Municipios);
-                getJSONMpio ();
-                break;
-            }
-            case 'Tramites ambientales':{                
-                //Habilitar control SubCategoria
-                setSelSubCategorDisState (false);
-                //Crear listados
-                getSubCategorJSON (categorTxtVal, -1);
-                break;
-            }
-            default: {
-                //deshabilitación campo Municipio (disabled en true)
-                setSelMpioAmbDisState (true);
+        var categorTxtVal:string    =       evt.nativeEvent.target.textContent;
+        var categorVal: number      =       evt.target.value;
+        
+        //Limpieza campo subcategoria
+        if (typeof (selSubCategorVal) !== 'undefined'){
+            selSubCategorVal.length = 0;
+            setSelSubCategorValState (undefined);
+        }
+
+        //Validación del parámetro
+        if (typeof categorTxtVal !== 'undefined'){
+            switch (categorTxtVal){
+                case 'Predios de reforestación':{
+                    //Habilitar control SubCategoria
+                    setSelSubCategorDisState (false);
+                    //Crear listados
+                    getSubCategorJSON (categorTxtVal, -1);                
+                    //Habilitación campo Municipio (disabled en false)
+                    setSelMpioAmbDisState (false);
+                    //Verificación URL consumo
+                    //console.log ("URL consumo municipios =>",urls.Municipios);
+                    getJSONMpio ();
+                    break;
+                }
+                case 'Tramites ambientales':
+                case 'Tramites ambientales predios':
+                {                
+                    //Habilitar control SubCategoria
+                    setSelSubCategorDisState (false);
+                    //Crear listados
+                    getSubCategorJSON (categorTxtVal, -1);
+                    break;
+                }
+                case 'Estaciones':
+                case 'Puntos de calidad':    
+                {
+                    //Habilitar control SubCategoria
+                    setSelSubCategorDisState (false);
+                    //Crear listados
+                    getSubCategorJSON ('', categorVal);
+                    break;
+                }
+                default: {
+                    //deshabilitación campo Municipio (disabled en true)
+                    setSelMpioAmbDisState (true);
+                }
             }
         }
     }
@@ -511,7 +642,13 @@ const FilterAmb = function ({visible, setVisibleState, areaLst, setAreaLstState,
                     placeholder="Seleccione"
                     disabled={selSubCategorDis}
                     value={selSubCategorVal}
-                ></Select>
+                >
+                {
+                   subCategorLst && subCategorLst.map ((subCategorItem) =>
+                        <option key={subCategorItem.idSubCategor} value={subCategorItem.idSubCategor}>{subCategorItem.subCategor}</option>
+                    )
+                }
+                </Select>
             </div>
             <div className="mb-1">
                 <Label size="default">Nombre</Label>
