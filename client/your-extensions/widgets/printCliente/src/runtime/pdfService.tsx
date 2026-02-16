@@ -1,9 +1,13 @@
 /**
  * @fileoverview Servicio para generación de documentos PDF con mapas.
+ * Genera un PDF de 2 páginas:
+ * - Página 1: Mapa con título, escala, sistema de referencia, fecha, autor y flecha de norte
+ * - Página 2: Leyenda automática generada a partir de las capas visibles
  * @module printCliente/pdfService
  */
 
 import JsPDF from "jspdf"
+import { buildLegendItems } from "./legendService"
 
 /**
  * Opciones de configuración para la generación del PDF.
@@ -11,28 +15,49 @@ import JsPDF from "jspdf"
  * @property {string} title - Título que se mostrará en el encabezado del PDF.
  * @property {number} scale - Escala del mapa (ej: 50000 para 1:50000).
  * @property {string} imageUrl - URL de datos (data URL) de la imagen del mapa en formato PNG.
+ * @property {number} imageWidth - Ancho original de la imagen capturada en píxeles.
+ * @property {number} imageHeight - Alto original de la imagen capturada en píxeles.
+ * @property {string} spatialReference - Sistema de referencia espacial del mapa.
+ * @property {string} [author] - Autor del mapa (opcional).
+ * @property {__esri.MapView | __esri.SceneView} view - Vista del mapa para extraer la leyenda.
  */
 interface PdfOptions {
   title: string;
   scale: number;
   imageUrl: string;
+  imageWidth: number;
+  imageHeight: number;
   spatialReference: string;
   author?: string;
+  view: __esri.MapView | __esri.SceneView;
 }
 
+
 /**
- * Genera y descarga un documento PDF con la imagen del mapa.
- * El PDF incluye título, fecha actual, escala aproximada e imagen del mapa.
+ * Genera y descarga un documento PDF con el mapa y su leyenda.
+ *
+ * El PDF generado contiene 2 páginas:
+ * - **Página 1**: Mapa con marco, título, imagen del mapa (manteniendo aspect ratio),
+ *   y cajetín inferior con escala, sistema de referencia, fecha, autor y flecha de norte.
+ * - **Página 2**: Leyenda automática extraída de las capas visibles del mapa,
+ *   con soporte para múltiples páginas si la leyenda es extensa.
+ *
+ * @async
  * @param {PdfOptions} options - Opciones de configuración del PDF.
- * @returns {void}
+ * @returns {Promise<void>} Promesa que se resuelve cuando el PDF ha sido generado y descargado.
  * @example
- * generatePdf({
+ * await generatePdf({
  *   title: "Mapa de ubicación",
  *   scale: 50000,
- *   imageUrl: "data:image/png;base64,..."
+ *   imageUrl: "data:image/png;base64,...",
+ *   imageWidth: 1920,
+ *   imageHeight: 1080,
+ *   spatialReference: "WKID 4326",
+ *   author: "IGAC",
+ *   view: mapView
  * });
  */
-export const generatePdf = (options: PdfOptions): void => {
+export const generatePdf = async (options: PdfOptions): Promise<void> => {
 
   console.log({options})
   const doc = new JsPDF({
@@ -44,96 +69,139 @@ export const generatePdf = (options: PdfOptions): void => {
   const pageWidth = doc.internal.pageSize.getWidth()
   const pageHeight = doc.internal.pageSize.getHeight()
 
+  /* ==========================================
+     PÁGINA 1 → MAPA COMPLETO
+  ========================================== */
    /* ===============================
      MARCO EXTERNO
   =============================== */
-  doc.setLineWidth(0.8)
-  doc.rect(5, 5, pageWidth - 10, pageHeight - 10)
+  doc.setLineWidth(1)
+  doc.rect(10, 10, pageWidth - 20, pageHeight - 20)
 
   /* ===============================
-     TÍTULO
+     TÍTULO SUPERIOR
   =============================== */
-  doc.setFontSize(14)
   doc.setFont("helvetica", "bold")
-  doc.text(options.title.toUpperCase(), pageWidth / 2, 15, {
-    align: "center"
-  })
+  doc.setFontSize(18)
+  doc.text(options.title.toUpperCase(), pageWidth / 2, 20, { align: "center" })
 
-  // Fecha
-  doc.setFontSize(10)
-  doc.text(`Fecha: ${new Date().toLocaleDateString()}`, 10, 22)
+  // Calcular dimensiones del mapa manteniendo la relación de aspecto
+  const mapLeft = 15
+  const mapTop = 30
+  const maxMapWidth = pageWidth - 30
+  const maxMapHeight = pageHeight - 90
 
-  // Escala
-  doc.text(`Escala aproximada: 1:${Math.round(options.scale)}`, 10, 28)
+  // Relación de aspecto de la imagen original
+  const imageAspectRatio = options.imageWidth / options.imageHeight
 
-   /* ===============================
-     IMAGEN MAPA
-  =============================== */
-  const mapTop = 25
-  const mapHeight = 150
+  // Calcular dimensiones finales respetando el aspect ratio
+  let mapWidth: number
+  let mapHeight: number
 
-  doc.setLineWidth(0.5)
-  doc.rect(10, mapTop, pageWidth - 20, mapHeight)
-
-  doc.addImage(
-    options.imageUrl,
-    "PNG",
-    10,
-    mapTop,
-    pageWidth - 20,
-    mapHeight
-  )
-
-  /* ===============================
-     CAJETÍN TÉCNICO
-  =============================== */
-  const footerTop = mapTop + mapHeight + 5
-
-  doc.setLineWidth(0.5)
-  doc.rect(10, footerTop, pageWidth - 20, 30)
-
-  doc.setFontSize(9)
-  doc.setFont("helvetica", "normal")
-
-  doc.text(`Escala: 1:${Math.round(options.scale)}`, 15, footerTop + 8)
-  doc.text(`Sistema Ref.: ${options.spatialReference}`, 15, footerTop + 14)
-  doc.text(`Fecha: ${new Date().toLocaleDateString()}`, 15, footerTop + 20)
-
-  if (options.author) {
-    doc.text(`Autor: ${options.author}`, 15, footerTop + 26)
+  if (maxMapWidth / maxMapHeight > imageAspectRatio) {
+    // El espacio disponible es más ancho que la imagen - ajustar por altura
+    mapHeight = maxMapHeight
+    mapWidth = mapHeight * imageAspectRatio
+  } else {
+    // El espacio disponible es más alto que la imagen - ajustar por ancho
+    mapWidth = maxMapWidth
+    mapHeight = mapWidth / imageAspectRatio
   }
 
-  /* ===============================
-     NORTE (vector simple)
-  =============================== */
-  const northX = pageWidth - 30
-  const northY = footerTop + 10
+  // Centrar horizontalmente
+  const mapLeftCentered = mapLeft + (maxMapWidth - mapWidth) / 2
 
-  doc.setFontSize(12)
-  doc.text("N", northX + 2, northY - 8)
+  doc.rect(mapLeftCentered, mapTop, mapWidth, mapHeight)
+  doc.addImage(options.imageUrl, "PNG", mapLeftCentered, mapTop, mapWidth, mapHeight)
 
-  doc.setLineWidth(1)
-  doc.line(northX, northY, northX, northY - 15)
+   /* ==========================================
+     CAJETÍN INFERIOR
+  ========================================== */
+
+  // Posicionar el cajetín debajo del mapa con un margen
+  const footerTop = mapTop + mapHeight + 5
+  const footerHeight = Math.min(35, pageHeight - footerTop - 15)
+
+  doc.rect(15, footerTop, pageWidth - 30, footerHeight)
+
+  doc.setFontSize(10)
+  doc.setFont("helvetica", "normal")
+
+  doc.text(`Escala: 1:${Math.round(options.scale)}`, 20, footerTop + 10)
+  doc.text(`Sistema Ref.: ${options.spatialReference}`, 20, footerTop + 18)
+  doc.text(`Fecha: ${new Date().toLocaleDateString()}`, 20, footerTop + 26)
+
+  if (options.author) {
+    doc.text(`Autor: ${options.author}`, 20, footerTop + 32)
+  }
+
+  // Norte
+  const northX = pageWidth - 40
+  const northY = footerTop + 25
+
+  doc.setFontSize(14)
+  doc.text("N", northX + 2, northY - 12)
+  doc.line(northX, northY, northX, northY - 20)
   doc.triangle(
-    northX - 3,
-    northY - 12,
-    northX + 3,
-    northY - 12,
+    northX - 4,
+    northY - 15,
+    northX + 4,
+    northY - 15,
     northX,
-    northY - 18,
+    northY - 25,
     "F"
   )
 
-  /* ===============================
-     PIE INSTITUCIONAL
-  =============================== */
-  doc.setFontSize(8)
-  doc.text(
-    "Instituto Geográfico Agustín Codazzi - IGAC",
-    pageWidth / 2,
-    pageHeight - 8,
-    { align: "center" }
-  )
+  /* ==========================================
+     PÁGINA 2 → LEYENDA COMPLETA
+  ========================================== */
 
-  doc.save("mapa_IGAC.pdf")
+  doc.addPage()
+
+  doc.setLineWidth(1)
+  doc.rect(10, 10, pageWidth - 20, pageHeight - 20)
+
+  doc.setFont("helvetica", "bold")
+  doc.setFontSize(18)
+  doc.text("LEYENDA", pageWidth / 2, 20, { align: "center" })
+
+  const legendItems = await buildLegendItems(options.view)
+
+  let y = 35
+
+  doc.setFontSize(10)
+  doc.setFont("helvetica", "normal")
+
+  // Ancho máximo para el texto (margen derecho - posición inicial del texto)
+  const maxTextWidth = pageWidth - 40 - 15 // 40 es donde inicia el texto, 15 es el margen derecho
+  const lineHeight = 5
+
+  for (const item of legendItems) {
+
+    // Dividir el texto en líneas si es muy largo
+    const textLines = doc.splitTextToSize(item.label, maxTextWidth)
+    const blockHeight = textLines.length * lineHeight + 4
+
+    // Salto automático de página si se llena
+    if (y + blockHeight > pageHeight - 20) {
+      doc.addPage()
+      doc.rect(10, 10, pageWidth - 20, pageHeight - 20)
+      y = 25
+    }
+
+    if (item.imageData) {
+      try {
+        doc.addImage(item.imageData, "PNG", 20, y - 6, 10, 10)
+      } catch (err) {
+        console.warn("[generatePdf] Error agregando imagen de leyenda:", err)
+      }
+    }
+
+    // Renderizar cada línea de texto
+    doc.text(textLines, 35, y)
+
+    y += blockHeight
+  }
+
+  doc.save("Mapa_IGAC_A3.pdf")
 }

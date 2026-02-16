@@ -1,5 +1,6 @@
 /**
  * @fileoverview Widget principal para impresión de mapas en PDF del lado del cliente.
+ * Proporciona un formulario para configurar título y autor del mapa antes de generar el PDF.
  * @module printCliente/widget
  */
 
@@ -9,12 +10,16 @@ import { useClientPrint } from "./useClientPrint"
 
 /**
  * Componente principal del widget de impresión de mapas.
- * Permite al usuario generar un PDF del mapa activo con un solo clic.
+ * Permite al usuario:
+ * - Configurar el título del mapa (valor por defecto: "MAPA TEMÁTICO")
+ * - Configurar el autor del mapa (valor por defecto: "IGAC")
+ * - Generar un PDF con el mapa actual, incluyendo leyenda automática
+ *
  * @param {object} props - Propiedades del widget de Experience Builder.
  * @param {string[]} [props.useMapWidgetIds] - Array de IDs de widgets de mapa configurados.
- * @returns {JSX.Element} Interfaz del widget con botón de impresión.
+ * @returns {JSX.Element} Interfaz del widget con formulario y botón de impresión.
  * @example
- * El widget se configura automáticamente en Experience Builder
+ * // El widget se configura automáticamente en Experience Builder
  * <Widget useMapWidgetIds={['map-widget-1']} />
  */
 export default function Widget(props: any) {
