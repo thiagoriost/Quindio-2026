@@ -7,6 +7,10 @@
  * @changes Importar componente DatePicker
  * @dateUpdated 2026-02-12
  * @changes Importar Endpoints servicios
+ * @dateUpdated 2026-02-16
+ * @changes Importar método para procesar duplicados de objetos tipo Array
+ * @changes Importar método para realizar ordenamiento de municpios en orden alfabético (método movido a servicios)
+ * @changes Importar método para realizar ordenamiento de subcategorias en orden alfabético
  **/
 
 import React, { useEffect } from 'react';
@@ -18,6 +22,9 @@ import { appActions } from 'jimu-core';
 
 //Endpoint servicios
 import { urls } from '../../../../api/servicios';
+
+//Importación objetos sortMpios, procesaDuplic
+import { sortMpios, sortSubCategor, procesaDuplic } from '../../../../api/servicios';
 
 /**
  * Componente para definición de filtros asociados al widget
@@ -159,9 +166,10 @@ const FilterAmb = function ({visible, setVisibleState, areaLst, setAreaLstState,
      * @changes Inclusión validación para inicializar objeto subCategorJSON, cuando no tenga subcategorias
      * @remarks Por contengencia del servidor SIGQUINDIO, se realiza ejercicio con data registrada en src para dos categorias (2026-02-13)
      */
-    const getSubCategorJSON = function (Categor: string = "", idCategor: number = -1){
+    const getSubCategorJSON = async function (Categor: string = "", idCategor: number = -1){
          //Objetos locales
          var subCategorJSON: Object = {};
+         var URLSubcategor, getWhereStr: string  = "";
          //Validación de acuerdo al parámetro especificado
          console.log ("Categoria asociada =>",Categor);
          console.log ("Id Categoria asociada =>", idCategor);
@@ -169,49 +177,21 @@ const FilterAmb = function ({visible, setVisibleState, areaLst, setAreaLstState,
          if (typeof Categor !== 'undefined' && idCategor === -1){
             switch (Categor){
                 case "Tramites ambientales": {
-                    subCategorJSON = [{
-                        idSubCategor: 1,
-                        subCategor: "Calidad ambiental"
-                    },
-                    {
-                        idSubCategor: 2,
-                        subCategor: "Resolución ambiental"
-                    },
-                    {
-                        idSubCategor: 3,
-                        subCategor: "Procedimientos cuidado y salvoguarda"
-                    },
-                    {
-                        idSubCategor: 4,
-                        subCategor: "Gestión aseo y cuidados ambientales"
-                    },
-                    {
-                        idSubCategor: 5,
-                        subCategor: "Manejo basuras y clasificación"
-                    }]
+                    //Definición Consumo servicio
+                    //URL asociada: https://sigquindio.gov.co/arcgis/rest/services/QUINDIO_III/AmbientalAlfanumerico/MapServer/10/
+                    URLSubcategor   =   urls.AMBIENTAL.BASE + '/' + urls.AMBIENTAL.CATEGOR[1];
+                    getWhereStr    =   await getWhere ('TIPO_TRAMITE', URLSubcategor, false, '1=1', '', '', '', '', '', '', '');
+                    subCategorJSON = [];
+                    getJSONSubCategor(URLSubcategor, getWhereStr, 'TIPO_TRAMITE');
                     break;
                 }
                 case "Tramites ambientales predios": {
-                    subCategorJSON = [{
-                        idSubCategor: 10,
-                        subCategor: "Revisión registro Predios y catastro"
-                    },
-                    {
-                        idSubCategor: 11, 
-                        subCategor: "Control plagas y movimiento potreros parcela"
-                    },
-                    {
-                        idSubCategor: 12,
-                        subCategor: "Gestión capacitaciones en registro catastral"
-                    },
-                    {
-                        idSubCategor: 13,  
-                        subCategor: "Controles administrativos ambientales de parcelas"
-                    },
-                    {
-                        idSubCategor: 14,
-                        subCategor: "Manejo materiales en control de potreros"
-                    }]
+                    //Definición Consumo servicio
+                    //URL asociada: https://sigquindio.gov.co/arcgis/rest/services/QUINDIO_III/AmbientalAlfanumerico/MapServer/8/
+                    URLSubcategor   =   urls.AMBIENTAL.BASE + '/' + urls.AMBIENTAL.CATEGOR[0];
+                    getWhereStr    =   await getWhere ('DESCRIPCIONVALOR', URLSubcategor, false, '1=1', '', '', '', '', '', '', '');
+                    subCategorJSON = [];
+                    getJSONSubCategor(URLSubcategor, getWhereStr, 'DESCRIPCIONVALOR');
                     break;
                 }
                 default:{
@@ -219,55 +199,19 @@ const FilterAmb = function ({visible, setVisibleState, areaLst, setAreaLstState,
                     break;
                 }
             }
+            //getJSONSubCategor(URLSubcategor, getWhereStr, '');
+
          }
          else{
             switch (idCategor){
                 //Estaciones
                 case 1: {
-                    subCategorJSON = [{
-                        idSubCategor: 20,
-                        subCategor: "Control Trámites usuario"
-                    }, 
-                    {
-                        idSubCategor: 21,
-                        subCategor: "Mediciones"
-                    }, 
-                    {
-                        idSubCategor: 22,
-                        subCategor: "Clasificaciones estaciones"
-                    }, 
-                    {
-                        idSubCategor: 23,
-                        subCategor: "Manejo estaciones pluvimétricas"
-                    }, 
-                    {
-                        idSubCategor: 24,
-                        subCategor: "Gestión administrativa"
-                    }]
+                    subCategorJSON = [];
                     break;
                 }
                 //Puntos de calidad
                 case 2:{
-                    subCategorJSON = [{
-                        idSubCategor: 30, 
-                        subCategor: "Revisiones áreas reforestación"
-                    }, 
-                    {
-                        idSubCategor: 31, 
-                        subCategor: "Gestión disposición residuos"
-                    }, 
-                    {
-                        idSubCategor: 32, 
-                        subCategor: "Indicadores manejo forestales"
-                    }, 
-                    {
-                        idSubCategor: 33,
-                        subCategor: "Disposición fungicidas y manejo forestal"
-                    }, 
-                    {
-                        idSubCategor: 34, 
-                        subCategor: "Gestión de calidad con cliente final"
-                    }]
+                    subCategorJSON = [];
                     break;
                 }
             }
@@ -560,25 +504,99 @@ const FilterAmb = function ({visible, setVisibleState, areaLst, setAreaLstState,
         }
     }
 
-    /**
-     * sortMpios => Método para ordenamiento de municipios
-     * @date 2026-02-12
-     * @author IGAC - DIP
-     * @param {object} obj 
-     * @param {string} order 
-     * @returns {object}
-     * @reamrks campo nombre municipio NOMBRE
-     * @remarks FUENTE consulta: Claude AI => https://claude.ai/chat/aa4f51f7-1b86-43ff-9524-8a646e5566bd
-     * @remarks Tomado del proyecto SIEC (Firmas espectrales)
-     * @remarks Colocar centralizado en utilidades (definir con Equipo trabajo)
-     * @remarks Por ajustar en proyecto, con atributo nomMpio
-     */
-    const sortMpios = function (obj, order = 'asc'){
-        //Objetos locales
-        const sortedObj = [...obj].sort ((a, b) => order === 'asc' ? a.nomMpio.localeCompare (b.nomMpio): b.nomMpio.localeCompare (a.nomMpio));
-        return sortedObj; 
-      }
 
+    /**
+     * Obtener listado de subcategorias asociadas al servicio de Subcategorias
+     * @date 2026-02-16
+     * @author IGAC- DIP
+     * @param {string} urlServ
+     * @param {string} getWhere
+     * @param {string} outFlds
+     */
+    const getJSONSubCategor = async function (urlServ = '', getWhere, outFlds){
+        //Objetos locales
+        console.log ("URL consumo servicio:",getWhere);
+        //Consumo servicio asociado
+        //Invocación al servicio en try .. catch
+	    try{
+            await fetch(getWhere, {
+                method:"GET"
+            })
+            .then ((subCategorServer) => {
+                var jsonErr: any = {};
+                if (!subCategorServer.ok)
+                {           
+                    jsonErr = {
+                        "error": subCategorServer.status,
+                        "errorMsg": subCategorServer.statusText
+                    }
+                    return jsonErr;
+                }
+                //Validador consumo por error del server (cód http <> 200 )
+                else if (typeof (subCategorServer["error"]) !== 'undefined'){
+                    jsonErr = {
+                        "errorCode": subCategorServer["error"].code,
+                        "errorMsg": subCategorServer["error"].message
+                    }
+                    console.error("Error Obteniendo lista subcategorias del server =>" ,jsonErr["errorMsg"])+" "+"("+"código http =>"+jsonErr["errorCode"]+")";
+                    throw jsonErr["errorMsg"]+" "+"("+"código http =>"+" "+jsonErr["errorCode"]+")";
+                }
+                const jsonSubCategor = subCategorServer.json();
+                return jsonSubCategor;
+            })
+            .then ((subCategorDataLst) => {
+                //Objeto local
+                var jsonSubCategor: any = {};
+                //Validador consumo por error del server (cód http <> 200 )
+                if (typeof (subCategorDataLst["error"]) !== 'undefined'){
+                    jsonSubCategor = {
+                        "errorCode": subCategorDataLst["error"].code,
+                        "errorMsg": subCategorDataLst["error"].message,
+                        "errorMsgDet": subCategorDataLst["error"].details[0]
+                    }
+                    console.error("Error obteniendo data del server =>" ,jsonSubCategor["errorMsg"])+" "+"("+"código http =>"+jsonSubCategor["errorCode"]+")";
+                    throw jsonSubCategor["errorMsg"]+" "+"("+"código http =>"+" "+jsonSubCategor["errorCode"]+")";
+                }
+                //Desactivar modo cargando
+                //setIsLoadState(false);               
+               
+                //Mapeo
+                switch (outFlds)
+                {
+                    case 'TIPO_TRAMITE':{
+                        subCategorDataLst["features"]   =   procesaDuplic (subCategorDataLst["features"], 'subCategorTTramite');
+                        console.log("Subcategorias para combo  Unico=>", subCategorDataLst  ["features"]);
+                        const lstSubCategor    =   subCategorDataLst.features.map ((subCategorItem) => ({
+                                idSubCategor: String (subCategorItem.attributes.TIPO_TRAMITE),
+                                subCategorTxt: String (subCategorItem.attributes.TIPO_TRAMITE)
+                        }));
+                        console.log("Subcategorias =>", sortSubCategor (lstSubCategor));
+                        //Al state
+                        setSubCategorLstState (sortSubCategor (lstSubCategor));
+                        break;
+                    }
+                    case 'DESCRIPCIONVALOR':{
+                        subCategorDataLst["features"]   =   procesaDuplic (subCategorDataLst["features"], 'subCategorTDescVal');
+                        console.log("Subcategorias para combo  Unico=>", subCategorDataLst  ["features"]);
+                        const lstSubCategor    =   subCategorDataLst.features.map ((subCategorItem) => ({
+                            idSubCategor: String (subCategorItem.attributes.DESCRIPCIONVALOR),
+                            subCategorTxt: String (subCategorItem.attributes.DESCRIPCIONVALOR)
+                    }));
+                        console.log("Subcategorias =>", sortSubCategor (lstSubCategor));
+                        //Al state
+                        setSubCategorLstState (sortSubCategor (lstSubCategor));
+                        break;
+                    }
+                }
+            })
+        }
+        catch (error)
+        {
+            console.log("Error obteniendo Subcategorias del server =>", error);
+            throw error;
+        }
+    }
+    
     //Sección Hooks
     /**
      * Hook que ejecuta el cargue campo Area
@@ -645,7 +663,7 @@ const FilterAmb = function ({visible, setVisibleState, areaLst, setAreaLstState,
                 >
                 {
                    subCategorLst && subCategorLst.map ((subCategorItem) =>
-                        <option key={subCategorItem.idSubCategor} value={subCategorItem.idSubCategor}>{subCategorItem.subCategor}</option>
+                        <option key={subCategorItem.idSubCategor} value={subCategorItem.idSubCategor}>{subCategorItem.subCategorTxt}</option>
                     )
                 }
                 </Select>
