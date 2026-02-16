@@ -1,6 +1,6 @@
 {
-    "name": "advanced-print",
-    "label": "Salida gráfica",
+    "name": "printCliente",
+    "label": "Salida gráfica - printCliente",
     "type": "widget",
     "version": "1.14.0",
     "dependency": ["jimu-arcgis"],
