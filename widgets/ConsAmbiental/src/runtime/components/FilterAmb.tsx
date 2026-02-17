@@ -11,20 +11,26 @@
  * @changes Importar método para procesar duplicados de objetos tipo Array
  * @changes Importar método para realizar ordenamiento de municpios en orden alfabético (método movido a servicios)
  * @changes Importar método para realizar ordenamiento de subcategorias en orden alfabético
+ * @dateUpdated 2026-02-17
+ * @changes Importar componente SearchActionBar, alusivo a la botonera con opciones ayuda (icono), Limpiar y Buscar.
+ * @changes Aplicar estilo a la botonera, empleando clase css btnsContner
  **/
 
-import React, { useEffect } from 'react';
-import { Button, Input, Label, Radio, Select, TextInput, FloatingPanel } from 'jimu-ui';
+import  { useEffect } from 'react';
+import { Label, Select } from 'jimu-ui';
 //Componente DatePicker
 import { DatePicker } from 'jimu-ui/basic/date-picker';
 
-import { appActions } from 'jimu-core';
+//import { appActions } from 'jimu-core';
 
 //Endpoint servicios
 import { urls } from '../../../../api/servicios';
 
 //Importación objetos sortMpios, procesaDuplic
 import { sortMpios, sortSubCategor, procesaDuplic } from '../../../../api/servicios';
+
+//importación objeto SearchActionBar
+import { SearchActionBar } from '../../../../shared/components/search-action-bar/index';
 
 /**
  * Componente para definición de filtros asociados al widget
@@ -91,12 +97,15 @@ import { sortMpios, sortSubCategor, procesaDuplic } from '../../../../api/servic
  * @changes inclusión param setBtnSrchDisState
  * @dateUpdated 2026-02-12
  * @changes Ocultamieno campo Temática
+ * @dateUpdated 2026-02-17
+ * @changes inclusión param isLoading
+ * @changes inclusión param setIsLoadState
  * @remarks Listado de propiedades enviadas desde el componente maestro
  * @remarks Pruebas con componente FloatingPanel desde jimu-ui
  * @remarks Fuente consulta Claude AI => https://claude.ai/chat/8298f344-84ec-44b9-b0bc-cb8328f56e40
  */
 
-const FilterAmb = function ({visible, setVisibleState, areaLst, setAreaLstState, selAreaVal, setSelAreaValState, selAreaDis, setAreaDisState, tematicaLst, setTematicaLstState, selTematicaVal, setSelTematicaValState, selTematicaDis, setSelTematicaDisState, categorLst, setCategorLstState, selCategorVal, setCategorValState, selCategorDis, setSelCategorDisState, subCategorLst, setSubCategorLstState, selSubCategorVal, setSelSubCategorValState, selSubCategorDis, setSelSubCategorDisState, nomAmbLst, setNomAmbLstState, selNomAmbVal, setSelNomAmbValState, selNomAmbDis, setSelNomAmbDisState, anioAmbLst, setAnioAmbLstState, selAnioAmbVal, setSelAnioAmbValState, selAnioAmbDis, setSelAnioAmbDisState, mpioAmbLst, setMpioAmbLstState, selMpioAmbVal, setSelMpioAmbValState, selMpioAmbDis, setSelMpioAmbDisState, txtFecIniVal, setTxtFecIniValState, txtFecIniDis, setTxtFecIniDisState, txtFecFinVal, setTxtFecFinValState, txtFecFinDis, setTxtFecFinDisState, btnLimpiaDis, setBtnLimpiaDisState, btnSrchDis, setBtnSrchDisState}){
+const FilterAmb = function ({visible, setVisibleState, areaLst, setAreaLstState, selAreaVal, setSelAreaValState, selAreaDis, setAreaDisState, tematicaLst, setTematicaLstState, selTematicaVal, setSelTematicaValState, selTematicaDis, setSelTematicaDisState, categorLst, setCategorLstState, selCategorVal, setCategorValState, selCategorDis, setSelCategorDisState, subCategorLst, setSubCategorLstState, selSubCategorVal, setSelSubCategorValState, selSubCategorDis, setSelSubCategorDisState, nomAmbLst, setNomAmbLstState, selNomAmbVal, setSelNomAmbValState, selNomAmbDis, setSelNomAmbDisState, anioAmbLst, setAnioAmbLstState, selAnioAmbVal, setSelAnioAmbValState, selAnioAmbDis, setSelAnioAmbDisState, mpioAmbLst, setMpioAmbLstState, selMpioAmbVal, setSelMpioAmbValState, selMpioAmbDis, setSelMpioAmbDisState, txtFecIniVal, setTxtFecIniValState, txtFecIniDis, setTxtFecIniDisState, txtFecFinVal, setTxtFecFinValState, txtFecFinDis, setTxtFecFinDisState, btnLimpiaDis, setBtnLimpiaDisState, btnSrchDis, setBtnSrchDisState, isLoading, setIsLoadState}){
 
     //Sección métodos
     /**
@@ -418,6 +427,8 @@ const FilterAmb = function ({visible, setVisibleState, areaLst, setAreaLstState,
      * @param {number} idDpto (opc)
      * @dateUpdated 2026-02-13
      * @changes Reformulación URL consumo servicio municipios
+     * @dateUpdated 2026-02-17
+     * @changes Activación / Desactivacióin estados cargando
      * @remarks Tomado del proyecto SIEC (Firmas espectrales)
      */
     const getJSONMpio = async function (idDpto = "")
@@ -439,7 +450,7 @@ const FilterAmb = function ({visible, setVisibleState, areaLst, setAreaLstState,
         console.log ("URL consumo Mpios Map Server =>",urlDivipolaMpios);
 
         //Activar estado cargando lista de municipíos
-	    //setIsLoadState(true);
+	    setIsLoadState(true);
         //Invocación al servicio en try .. catch
 	    try{
             await fetch(urlDivipolaMpios, {
@@ -481,7 +492,7 @@ const FilterAmb = function ({visible, setVisibleState, areaLst, setAreaLstState,
                 throw jsonMpios["errorMsg"]+" "+"("+"código http =>"+" "+jsonMpios["errorCode"]+")";
             }
             //Desactivar modo cargando
-            //setIsLoadState(false);
+            setIsLoadState(false);
             //console.log("Mpios Lst para combo =>",mpiosDataLst.features);
             
             //Mapeo de los atributos desde el objeto consumido del servidor
@@ -512,10 +523,14 @@ const FilterAmb = function ({visible, setVisibleState, areaLst, setAreaLstState,
      * @param {string} urlServ
      * @param {string} getWhere
      * @param {string} outFlds
+     * @dateUpdated 2026-02-17
+     * @changes Activación / Desactivacióin estados cargando
      */
     const getJSONSubCategor = async function (urlServ = '', getWhere, outFlds){
         //Objetos locales
         console.log ("URL consumo servicio:",getWhere);
+        //Activar estado cargando lista de municipíos
+	    setIsLoadState(true);
         //Consumo servicio asociado
         //Invocación al servicio en try .. catch
 	    try{
@@ -558,7 +573,7 @@ const FilterAmb = function ({visible, setVisibleState, areaLst, setAreaLstState,
                     throw jsonSubCategor["errorMsg"]+" "+"("+"código http =>"+" "+jsonSubCategor["errorCode"]+")";
                 }
                 //Desactivar modo cargando
-                //setIsLoadState(false);               
+                setIsLoadState(false);               
                
                 //Mapeo
                 switch (outFlds)
@@ -597,6 +612,49 @@ const FilterAmb = function ({visible, setVisibleState, areaLst, setAreaLstState,
         }
     }
     
+    /**
+     * Método LimpiarControles() => Realiza la operación de "reset" (estado inicial) de los controles según tipo: 1.Combo => Deselecciona valor; 2.Radio => Deselecciona valor; 3.Text => Borra campo
+     * @date 2026-02-17
+     * @author IGAC - DIP
+     * @remarks Tomado del proyecto SIEC (Firmas Espectrales), componente FiltersSrcSIEC
+     * */
+    const LimpiarControles = function(){
+        //Objetos para los widgets externos: Bar-Chart y TablaResultados
+        /* var dataToRenderBarChart: string = "";
+        var dataToRenderTablaResultados: string = ""; */
+        
+        //Tipo Combo (Select)
+        areaLst.length = 0;
+        setAreaLstState(undefined);
+        setSelAreaValState([]);
+        getAreaJSON();
+        //setAreaLstState(undefined);
+        categorLst.length = 0;
+        //setCategorLstState(undefined);
+        setSelCategorDisState(true);
+        subCategorLst.length = 0;
+        setSelSubCategorValState([]);
+        setSelSubCategorDisState(true);
+        nomAmbLst.length = 0;
+        setNomAmbLstState([]);
+        setSelNomAmbDisState(true);
+        anioAmbLst.length = 0;
+        setAnioAmbLstState([]);
+        mpioAmbLst.length = 0;
+        setMpioAmbLstState([]);
+        setSelMpioAmbDisState(true);
+        
+        //Tipo Texto
+        setTxtFecIniValState(new Date());
+        setTxtFecFinValState(new Date());
+        
+        //Tipo botón
+        //setCatalBtnState (false);
+  
+        //State del Data Grid
+        //setRows([]);
+      }
+
     //Sección Hooks
     /**
      * Hook que ejecuta el cargue campo Area
@@ -735,24 +793,15 @@ const FilterAmb = function ({visible, setVisibleState, areaLst, setAreaLstState,
                 
             </div>
             {/* Sección botonera*/}
-            <div className="btnsContner">
-                <Button                           
-                    size="default"
-                    type="default"
-                    disabled={btnLimpiaDis}
-                    className="btns"
-                >Limpiar
-                </Button>
-                <Button
-                    htmlType="submit"              
-                    size="default"
-                    type="default"
-                    disabled={btnSrchDis}
-                    className="btns"
-                >Buscar</Button>
-            </div>
+            <SearchActionBar
+                onSearch={isLoading}
+                disableSearch={isLoading}
+                onClear={LimpiarControles}
+                loading={isLoading}
+                helpText="Defina los respectivos criterios, y seleccione la opción Buscar"
+            >
+            </SearchActionBar>
         </form>
-    
     )
 }
 export default FilterAmb;
