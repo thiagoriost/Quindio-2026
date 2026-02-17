@@ -7,6 +7,7 @@
 import { React } from "jimu-core"
 import { JimuMapViewComponent } from "jimu-arcgis"
 import { useClientPrint } from "./useClientPrint"
+import { SearchActionBar } from '../../../shared/components/search-action-bar'
 
 /**
  * Componente principal del widget de impresión de mapas.
@@ -29,6 +30,16 @@ export default function Widget(props: any) {
   const [author, setAuthor] = React.useState("IGAC")
 
   const { print, loading } = useClientPrint(jimuMapView, { title, author })
+
+  /**
+   * Restablece los campos del formulario a sus valores vacíos.
+   * Limpia el título y el autor del mapa.
+   * @returns {void}
+   */
+  const handleLimpiar = (): void => {
+    setTitle("")
+    setAuthor("")
+  }
 
   return (
     <div style={{ padding: '10px' }}>
@@ -58,13 +69,23 @@ export default function Widget(props: any) {
         />
       </div>
 
-      <button
+      {/* <button
         onClick={print}
         disabled={loading}
         style={{ width: '100%', padding: '8px', cursor: loading ? 'wait' : 'pointer' }}
       >
         {loading ? "Generando..." : "Imprimir PDF"}
-      </button>
+      </button> */}
+
+      <SearchActionBar
+        onSearch={print}
+        onClear={handleLimpiar}
+        loading={loading}
+        disableSearch={loading}
+        searchLabel="Imprimir PDF"
+        searchLabelLoading="Generando PDF..."
+        clearLabel="Limpiar campos"
+      />
 
       <JimuMapViewComponent
         useMapWidgetId={props.useMapWidgetIds?.[0]}

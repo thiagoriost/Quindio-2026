@@ -1,8 +1,8 @@
 /**
  * @fileoverview Servicio para generación de documentos PDF con mapas.
- * Genera un PDF de 2 páginas:
+ * Genera un PDF con las siguientes páginas:
  * - Página 1: Mapa con título, escala, sistema de referencia, fecha, autor y flecha de norte
- * - Página 2: Leyenda automática generada a partir de las capas visibles
+ * - Página 2+ (opcional): Leyenda automática agrupada por capas visibles (solo si existen leyendas)
  * @module printCliente/pdfService
  */
 
@@ -136,7 +136,7 @@ export const generatePdf = async (options: PdfOptions): Promise<void> => {
   }
 
   // Norte
-  const northX = pageWidth - 40
+  /* const northX = pageWidth - 40
   const northY = footerTop + 25
 
   doc.setFontSize(14)
@@ -150,11 +150,19 @@ export const generatePdf = async (options: PdfOptions): Promise<void> => {
     northX,
     northY - 25,
     "F"
-  )
+  ) */
 
   /* ==========================================
-     PÁGINA 2 → LEYENDA COMPLETA
+     PÁGINA 2 → LEYENDA COMPLETA (solo si hay leyendas)
   ========================================== */
+
+  const legendGroups = await buildLegendItems(options.view)
+
+  // Solo crear página de leyenda si existen elementos
+  if (legendGroups.length === 0) {
+    doc.save("Mapa_IGAC_A3.pdf")
+    return
+  }
 
   doc.addPage()
 
@@ -165,42 +173,72 @@ export const generatePdf = async (options: PdfOptions): Promise<void> => {
   doc.setFontSize(18)
   doc.text("LEYENDA", pageWidth / 2, 20, { align: "center" })
 
-  const legendItems = await buildLegendItems(options.view)
-
   let y = 35
 
-  doc.setFontSize(10)
-  doc.setFont("helvetica", "normal")
-
-  // Ancho máximo para el texto (margen derecho - posición inicial del texto)
-  const maxTextWidth = pageWidth - 40 - 15 // 40 es donde inicia el texto, 15 es el margen derecho
+  // Ancho máximo para el texto de items (con indentación)
+  const maxTextWidth = pageWidth - 50 - 15 // 50 es donde inicia el texto indentado, 15 es el margen derecho
+  // Ancho máximo para el título de la capa (sin indentación)
+  const maxTitleWidth = pageWidth - 20 - 15 // 20 es donde inicia el título, 15 es el margen derecho
   const lineHeight = 5
 
-  for (const item of legendItems) {
+  for (let groupIndex = 0; groupIndex < legendGroups.length; groupIndex++) {
+    const group = legendGroups[groupIndex]
 
-    // Dividir el texto en líneas si es muy largo
-    const textLines = doc.splitTextToSize(item.label, maxTextWidth)
-    const blockHeight = textLines.length * lineHeight + 4
+    // Dividir el título en líneas si es muy largo
+    doc.setFont("helvetica", "bold")
+    doc.setFontSize(11)
+    const titleLines = doc.splitTextToSize(group.layerTitle, maxTitleWidth)
+    const titleBlockHeight = titleLines.length * lineHeight + 3
 
-    // Salto automático de página si se llena
-    if (y + blockHeight > pageHeight - 20) {
+    // Verificar si hay espacio para el título del grupo
+    if (y + titleBlockHeight > pageHeight - 20) {
       doc.addPage()
       doc.rect(10, 10, pageWidth - 20, pageHeight - 20)
       y = 25
     }
 
-    if (item.imageData) {
-      try {
-        doc.addImage(item.imageData, "PNG", 20, y - 6, 10, 10)
-      } catch (err) {
-        console.warn("[generatePdf] Error agregando imagen de leyenda:", err)
+    // Renderizar título de la capa (sub-encabezado)
+    doc.text(titleLines, 20, y)
+    y += titleBlockHeight
+
+    // Renderizar items de la leyenda con indentación
+    doc.setFontSize(10)
+    doc.setFont("helvetica", "normal")
+
+    for (const item of group.items) {
+      // Dividir el texto en líneas si es muy largo
+      const textLines = doc.splitTextToSize(item.label, maxTextWidth)
+      const blockHeight = textLines.length * lineHeight + 6
+
+      // Salto automático de página si se llena
+      if (y + blockHeight > pageHeight - 20) {
+        doc.addPage()
+        doc.rect(10, 10, pageWidth - 20, pageHeight - 20)
+        y = 25
       }
+
+      // Imagen del símbolo (indentada)
+      if (item.imageData) {
+        try {
+          doc.addImage(item.imageData, "PNG", 25, y - 5, 8, 8)
+        } catch (err) {
+          console.warn("[generatePdf] Error agregando imagen de leyenda:", err)
+        }
+      }
+
+      // Texto del item (indentado)
+      doc.text(textLines, 38, y)
+
+      y += textLines.length * lineHeight + 4
     }
 
-    // Renderizar cada línea de texto
-    doc.text(textLines, 35, y)
-
-    y += blockHeight
+    // Línea separadora entre grupos de capas
+    if (groupIndex < legendGroups.length - 1) {
+      doc.setDrawColor(180, 180, 180)
+      doc.setLineWidth(0.4)
+      doc.line(20, y, pageWidth - 20, y)
+      y += 8 // Espacio después de la línea
+    }
   }
 
   doc.save("Mapa_IGAC_A3.pdf")
