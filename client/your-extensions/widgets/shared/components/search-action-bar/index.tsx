@@ -38,6 +38,8 @@ export interface SearchActionBarProps {
   clearLabel?: string
   /** Texto de ayuda mostrado en tooltip */
   helpText?: string
+  /** Texto del botón de búsqueda cuando está en estado de carga */
+  searchLabelLoading?: string
 }
 
 /**
@@ -64,7 +66,8 @@ export const SearchActionBar: React.FC<SearchActionBarProps> = ({
   disableClear = false,
   searchLabel = 'Buscar',
   clearLabel = 'Limpiar',
-  helpText = ''
+  helpText = '',
+  searchLabelLoading = 'Buscando...'
 }) => {
 
   /**
@@ -121,7 +124,7 @@ export const SearchActionBar: React.FC<SearchActionBarProps> = ({
         {searchLabel}
       */}
 
-        {loading ? 'Buscando...' : searchLabel}
+        {loading ? searchLabelLoading : searchLabel}
       </Button>
 
     </div>

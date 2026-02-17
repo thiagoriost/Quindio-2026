@@ -22,6 +22,17 @@ export interface LegendItem {
 }
 
 /**
+ * Representa un grupo de leyendas agrupadas por capa.
+ * @interface LegendGroup
+ * @property {string} layerTitle - Título de la capa.
+ * @property {LegendItem[]} items - Items de leyenda pertenecientes a esta capa.
+ */
+export interface LegendGroup {
+  layerTitle: string;
+  items: LegendItem[];
+}
+
+/**
  * Convierte un elemento SVG a formato PNG usando canvas.
  * Necesario porque jsPDF no soporta imágenes SVG directamente.
  * @param {SVGElement} svgElement - Elemento SVG a convertir.
@@ -97,7 +108,7 @@ const extractImageData = async (previewElement: HTMLElement): Promise<string | u
 }
 
 /**
- * Construye los items de leyenda a partir de las capas visibles del mapa.
+ * Construye los grupos de leyenda a partir de las capas visibles del mapa.
  *
  * Proceso de extracción:
  * 1. Filtra solo FeatureLayers visibles
@@ -107,22 +118,26 @@ const extractImageData = async (previewElement: HTMLElement): Promise<string | u
  *    - UniqueValueRenderer: extrae uniqueValueInfos
  *    - SimpleRenderer: extrae el símbolo único
  * 4. Convierte cada símbolo a imagen PNG usando symbolUtils.renderPreviewHTML
+ * 5. Agrupa los items por capa para renderizado jerárquico
  *
  * @async
  * @param {__esri.MapView | __esri.SceneView} view - Vista del mapa de la cual extraer las capas.
- * @returns {Promise<LegendItem[]>} Array de items de leyenda con etiquetas e imágenes.
+ * @returns {Promise<LegendGroup[]>} Array de grupos de leyenda organizados por capa.
  * @example
- * const legendItems = await buildLegendItems(mapView);
- * legendItems.forEach(item => {
- *   console.log(item.label);     // "Capa - Valor 1"
- *   console.log(item.imageData); // "data:image/png;base64,..."
+ * const legendGroups = await buildLegendItems(mapView);
+ * legendGroups.forEach(group => {
+ *   console.log(group.layerTitle);  // "Nombre de la capa"
+ *   group.items.forEach(item => {
+ *     console.log(item.label);      // "Valor 1 - Valor 2"
+ *     console.log(item.imageData);  // "data:image/png;base64,..."
+ *   });
  * });
  */
 export const buildLegendItems = async (
   view: __esri.MapView | __esri.SceneView
-): Promise<LegendItem[]> => {
+): Promise<LegendGroup[]> => {
 
-  const items: LegendItem[] = []
+  const groups: LegendGroup[] = []
 
   // Cargar symbolUtils para renderizar símbolos a imagen
   const [symbolUtils] = await loadModules(["esri/symbols/support/symbolUtils"])
@@ -153,6 +168,8 @@ export const buildLegendItems = async (
       const cbRenderer = renderer
       console.log("[buildLegendItems] ClassBreakInfos encontrados:", cbRenderer.classBreakInfos?.length)
 
+      const layerItems: LegendItem[] = []
+
       for (const info of cbRenderer.classBreakInfos || []) {
         const symbol = info.symbol
         let imageData: string | undefined
@@ -171,9 +188,16 @@ export const buildLegendItems = async (
           }
         }
 
-        items.push({
-          label: `${layer.title} - ${info.label || `${info.minValue} - ${info.maxValue}`}`,
+        layerItems.push({
+          label: info.label || `${info.minValue} - ${info.maxValue}`,
           imageData
+        })
+      }
+
+      if (layerItems.length > 0) {
+        groups.push({
+          layerTitle: layer.title || "Capa",
+          items: layerItems
         })
       }
     }
@@ -182,6 +206,8 @@ export const buildLegendItems = async (
     if (renderer.type === "unique-value") {
       const uvRenderer = renderer
       console.log("[buildLegendItems] UniqueValueInfos encontrados:", uvRenderer.uniqueValueInfos?.length)
+
+      const layerItems: LegendItem[] = []
 
       for (const info of uvRenderer.uniqueValueInfos || []) {
         const symbol = info.symbol
@@ -199,9 +225,16 @@ export const buildLegendItems = async (
           }
         }
 
-        items.push({
-          label: `${layer.title} - ${info.label || String(info.value)}`,
+        layerItems.push({
+          label: info.label || String(info.value),
           imageData
+        })
+      }
+
+      if (layerItems.length > 0) {
+        groups.push({
+          layerTitle: layer.title || "Capa",
+          items: layerItems
         })
       }
     }
@@ -224,13 +257,16 @@ export const buildLegendItems = async (
         }
       }
 
-      items.push({
-        label: layer.title || "Capa",
-        imageData
+      groups.push({
+        layerTitle: layer.title || "Capa",
+        items: [{
+          label: "Símbolo único",
+          imageData
+        }]
       })
     }
   }
 
-  console.log("[buildLegendItems] Total items generados:", items.length)
-  return items
+  console.log("[buildLegendItems] Total grupos generados:", groups.length)
+  return groups
 }
