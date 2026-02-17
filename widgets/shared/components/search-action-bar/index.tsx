@@ -15,6 +15,14 @@ export interface SearchActionBarProps {
   helpText?: string
 }
 
+/**
+ * @date 2026-02-13
+ * @author Ing.CEF
+ * @param param0 
+ * @dateUpdated 2026-02-17
+ * @changes inclusión clase estilo btnsContner, desde style.scss por medio de un div contenedor
+ * @returns {Object} HTML 
+ */
 export const SearchActionBar: React.FC<SearchActionBarProps> = ({
   onSearch,
   onClear,
@@ -39,38 +47,40 @@ export const SearchActionBar: React.FC<SearchActionBarProps> = ({
   }
 
   return (
-    <div className="search-action-bar">
+    <div className='btnsContner'>
+      <div className="search-action-bar">
 
-      {helpText && (
-        <Tooltip title={helpText} placement="bottom">
-          <span className="help-icon-wrapper mr-2">
-            <Icon icon={HelpOutlined} size={16} />
-          </span>
-        </Tooltip>
-      )}
+        {helpText && (
+          <Tooltip title={helpText} placement="bottom">
+            <span className="help-icon-wrapper mr-2">
+              <Icon icon={HelpOutlined} size={16} />
+            </span>
+          </Tooltip>
+        )}
 
 
-      <Button
-        type="default"
-        onClick={handleClear}
-        disabled={disableClear || loading}
-      >
-        {clearLabel}
-      </Button>
+        <Button
+          type="default"
+          onClick={handleClear}
+          disabled={disableClear || loading}
+        >
+          {clearLabel}
+        </Button>
 
-      <Button
-        type="primary"
-        onClick={handleSearch}
-        disabled={disableSearch || loading}
-      >
-        {/* Asi para cargar spinner dentro del boton sin que se mueva el texto
-        {loading && <Loading width={16} height={16} className="mr-2" />}
-        {searchLabel}
-      */}
+        <Button
+          type="primary"
+          onClick={handleSearch}
+          disabled={disableSearch || loading}
+        >
+          {/* Asi para cargar spinner dentro del boton sin que se mueva el texto
+          {loading && <Loading width={16} height={16} className="mr-2" />}
+          {searchLabel}
+        */}
 
-        {loading ? 'Buscando...' : searchLabel}
-      </Button>
+          {loading ? 'Buscando...' : searchLabel}
+        </Button>
 
+      </div>
     </div>
   )
 }

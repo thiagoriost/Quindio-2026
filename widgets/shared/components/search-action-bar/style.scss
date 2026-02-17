@@ -22,3 +22,14 @@
     opacity: 1;
   }
 }
+
+/*
+    Clase alusivo al contenedor de la botonera
+    @date 2026-02-17
+    @author IGAC - DIP
+    @remarks Definición aspecto distribución botones, parte inferior widget
+*/
+.btnsContner{
+  display: flex;
+  justify-content: space-evenly;
+}
