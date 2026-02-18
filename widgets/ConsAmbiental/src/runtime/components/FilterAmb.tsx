@@ -235,47 +235,78 @@ const FilterAmb = function ({visible, setVisibleState, areaLst, setAreaLstState,
      * Método para evaluar la fecha inicial sea menor o igual a la fecha final
      * @date 2026-02-12
      * @author IGAC - DIP
-     * @param fecha
+     * @param {Date} fecha
+     * @dateUpdated 2026-02-16
+     * @changes Fix registro campo Fecha inicio
      * @remarks FUENTE consulta: Claude AI => https://claude.ai/chat/a65c215c-6a44-4b8e-9125-98cdb2b41020 
+     * @remarks FUENTE consulta: Claude AI => https://claude.ai/chat/e2b51b55-4bc3-42e7-a3c5-5e2c960979bc
+     * 
      */
 
-    const handleFechaIniChange = function (fecha: Date){
-        setTxtFecIniValState(fecha);
+    const handleFechaIniChange = function (mSegTS: number){
+        var fecControl: Date    =   new Date ();
+        //Al momento de procesar
+        //const fecControlShort=  fecControl.toISOString().split('T');
+        //console.log ("Fecha ini set =>",fecControlShort);
+        if (typeof mSegTS !== 'undefined'){
+            fecControl    =   new Date (mSegTS);
+            //Seteo al state del control
+            setTxtFecIniValState(fecControl);
+        }
           // Si la nueva fecha inicio es mayor que la fecha fin, ajustar
-          if (fecha > txtFecFinVal) {
+          /* if (fecha > txtFecFinVal) {
             setTxtFecFinValState (fecha);
-          }
+          } */
     }
     /**
      * Método para evaluar la fecha final sea mayor o igual a la fecha inicial
      * @date 2026-02-12
      * @author IGAC - DIP
-     * @param fecha 
+     * @param {number} fechaTimeSt 
      */
-    /* const handleFechaFinChange = function (fecha: Date){
-        if (fecha >= txtFecIniVal){
+    const handleFechaFinChange = function (fechaTimeSt: number){
+        //Objetos locales
+        var fecFinTxtVal: String; 
+        var fecFinDate: Date;
+        /* if (fecha >= txtFecIniVal){
             setTxtFecFinValState (fecha);
         }
         else{
             setTxtFecFinValState (txtFecIniVal);
+        } */
+        if (typeof fechaTimeSt !== 'undefined'){
+            fecFinDate      =   new Date (fechaTimeSt); 
+            fecFinTxtVal    =   fecFinDate.toLocaleDateString();
+            console.log ("Fecha Fin =>",fecFinTxtVal);
+            //Al state del control
+            setTxtFecFinValState (fecFinDate);
         }
-    } */
+    }
 
+    /** Sección procesamiento eventos controles componente */
     /**
      * Evento handleSelAreaChange => Evento que modifica campo Área, al seleccionar un item del control
      * @date 2026-02-12
      * @author IGAC - DIP
      * @param {Event} evt
+     * @dateUpdated 2026-02-18
+     * @changes Asignación valor campo Area al State asociado
+     * 
      */
     const handleSelAreaChange = function(evt){
         //Objetos Locales
         console.log ("Valor Área selecc =>", evt.target.value);
         console.log ("Text Área selecc =>", evt.nativeEvent.target.textContent);
+        var areaValTxt  =   evt.nativeEvent.target.textContent;
         //Habilitar campo Categoria (disabled en false)
         setSelCategorDisState (false);
         //Limpiar campo categoria
         categorLst.length = 0;
         setCategorLstState(undefined);
+        if (typeof areaValTxt !== 'undefined'){
+            //Asignar state al campo Area
+            setSelAreaValState (areaValTxt);
+        }
         //Poblar campo Categoria
         getCategorJSON ();
     }
@@ -287,6 +318,8 @@ const FilterAmb = function ({visible, setVisibleState, areaLst, setAreaLstState,
      * @param {Event} evt 
      * @dateUpdated 2026-02-16
      * @changes Adición validador para procesar campo Subcategoria
+     * @dateUpdated 2026-02-18
+     * @changes Asignación valor campo Categoria al State asociado
      */
     const handleSelCategorChange = async function(evt){
         //Objetos Locales
@@ -337,9 +370,72 @@ const FilterAmb = function ({visible, setVisibleState, areaLst, setAreaLstState,
                     setSelMpioAmbDisState (true);
                 }
             }
+            //Asignaciópn campo Categoria al state
+            setCategorValState (categorTxtVal);
         }
     }
 
+    /**
+     * Evento que modifica campo SubCatyegoría, al seleccionar un item del control
+     * @date 2026-02-18
+     * @author IGAC - DIP
+     * @param {Event} evt 
+     */
+    const handleSelSubCategorChange = async function(evt){
+        //Objetos locales
+        var subCategorValTxt    =   evt.nativeEvent.target.textContent;
+        //Validación para asignación al campo
+        if (typeof subCategorValTxt !== 'undefined'){
+            setSelSubCategorValState (subCategorValTxt)
+        }
+    }
+
+    /**
+     * handleSelNomAmbChange => Método para asignar item asociado al control Nombre
+     * @date 2026-02-18
+     * @author IGAC - DIP
+     * @param {Event} evt 
+     */
+    const handleSelNomAmbChange = async function (evt){
+        //Objetos locales
+        var nomAmbValTxt        =   evt.nativeEvent.target.textContent;
+        //Validación para asignación al campo
+        if (typeof nomAmbValTxt !== 'undefined'){
+            setSelNomAmbValState (nomAmbValTxt);
+        }
+    }
+
+    /**
+     *  handleSelA_oAmbChange => Método para asignar item asociado al control año
+     *  @date 2026-02-18
+     *  @author IGAC - DIP
+     *  @param {Event} evt 
+     */
+    const handleSelA_oAmbChange = async function (evt){
+        //Objetos locales
+        var a_oValTxt       =   evt.nativeEvent.target.textContent;
+        //Validación para asignación al campo
+        if (typeof a_oValTxt !== 'undefined'){
+            setSelAnioAmbValState (a_oValTxt);
+        }
+    }
+
+    /**
+     * handleSelMpioAmbChange => Método para asignar item asociado al control Municipio
+     *  @date 2026-02-18
+     *  @author IGAC - DIP
+     *  @param {Event} evt 
+     */ 
+    const handleSelMpioAmbChange = async function (evt){
+        //Objetos locales
+        var mpioAmbTxt  =   evt.nativeEvent.target.textContent;
+        //Validación para asignación al campo
+         if (typeof mpioAmbTxt !== 'undefined'){
+            setSelMpioAmbValState (mpioAmbTxt);
+         }
+    }
+    
+    /** Sección procesamiento filtros al mapserver*/
     /**
      * Método para construcción de la cláusula WHERE asociado al servicio de firmas espectrales.
      * @date 2025-04-16
@@ -654,6 +750,41 @@ const FilterAmb = function ({visible, setVisibleState, areaLst, setAreaLstState,
         //State del Data Grid
         //setRows([]);
       }
+    
+    /**
+     * Evento asignado al click con el botón izquierdo del mouse, opción Buscar. El Propósito, es realizar la búsqueda en el servidor de mapas (MapServer) y renderizarlo en componente Tabla de Resultados.
+     * @date 2026-02-18
+     * @author IGAC - DIP
+     * @param {Event} evt
+     * @returns void 
+     */
+    /*const srchAmb = function (evt: { preventDefault: () => void; }){*/
+    const srchAmb = function (){
+        //Objetos locales
+        //Para no refrescar el formulario
+        //evt.preventDefault;
+        var fecIniControlShort, fecFinControlShort : String = "";
+        //Cargue de parámetros del formulario
+        //Campo Area
+        console.log ("Area seleccionada =>",selAreaVal);
+        //Campo Categoría
+        console.log ("Categoria seleccionada =>",selCategorVal);
+        //Campo Subcategoria
+        console.log ("SubCategoria seleccionada =>",selSubCategorVal);
+        //Campo Nombre
+        console.log ("Nombre seleccionado =>",selNomAmbVal);
+        //Campo A_o
+        console.log ("A_o seleccionado =>", selAnioAmbVal);
+        //Campo Municipio
+        console.log ("Municipio seleccionado =>", selMpioAmbVal);
+        //Campo Fecha inicio
+        fecIniControlShort=  txtFecIniVal.toISOString().split('T');
+        console.log ("Fecha inicio seleccionada =>", fecIniControlShort[0]);
+        //Campo Fecha final
+        fecFinControlShort  =   txtFecFinVal.toISOString().split('T');
+        console.log ("Fecha final seleccionada =>", fecFinControlShort[0]);
+
+    }
 
     //Sección Hooks
     /**
@@ -718,6 +849,7 @@ const FilterAmb = function ({visible, setVisibleState, areaLst, setAreaLstState,
                     placeholder="Seleccione"
                     disabled={selSubCategorDis}
                     value={selSubCategorVal}
+                    onChange={(evt) => handleSelSubCategorChange (evt)}
                 >
                 {
                    subCategorLst && subCategorLst.map ((subCategorItem) =>
@@ -748,6 +880,7 @@ const FilterAmb = function ({visible, setVisibleState, areaLst, setAreaLstState,
                     placeholder="Seleccione"
                     disabled={selMpioAmbDis}
                     value={selMpioAmbVal}
+                    onChange={(evt) => handleSelMpioAmbChange (evt)}
                 >
                 {
                     mpioAmbLst.map ((mpioItem) => 
@@ -768,8 +901,9 @@ const FilterAmb = function ({visible, setVisibleState, areaLst, setAreaLstState,
                 <DatePicker
                     selectedDate={txtFecIniVal}
                     onChange={(fecIn) => handleFechaIniChange (fecIn)}
-                    format="yyyy-MM-dd"
+                    format="yyyyMMdd"
                     showQuickNavToToday
+                    showDoneButton
                 ></DatePicker>
             </div>
             <div className="mb-1">
@@ -784,17 +918,17 @@ const FilterAmb = function ({visible, setVisibleState, areaLst, setAreaLstState,
                 }
                 <DatePicker
                     selectedDate={txtFecFinVal}
-                    onChange={(FecF) => {
-                        setTxtFecFinValState (FecF);
-                    }}
+                    onChange={(FecF) => handleFechaFinChange (FecF)}
                     format="yyyyMMdd"
                     minDate={txtFecIniVal}
+                    showQuickNavToToday
+                    showDoneButton
                 ></DatePicker>
                 
             </div>
             {/* Sección botonera*/}
             <SearchActionBar
-                onSearch={isLoading}
+                onSearch={srchAmb}
                 disableSearch={isLoading}
                 onClear={LimpiarControles}
                 loading={isLoading}
