@@ -13,6 +13,9 @@ import type { IMConfig } from '../config';
 //Importación componente Definición Filtros
 import FilterAmb from './components/FilterAmb';
 
+//Importación estilos 
+import '../styles/stylesConsAmb.css';
+
 /**
  * Widget Consulta Ambiental componente maestro
  * @date 2026-02-10
@@ -29,7 +32,17 @@ import FilterAmb from './components/FilterAmb';
  * @changes Inclusion propiedad state selCategorVal
  * @changes Inclusion propiedad state selCategorDis
  * @changes Inclusion propiedad state subCategorLst
- * @changes Inclusion propiedad state 
+ * @changes Inclusion propiedad state selSubCategorVal
+ * @changes Inclusion propiedad state selSubCategorDis
+ * @changes Inclusion propiedad state nombAmbLst
+ * @changes Inclusion propiedad state selNombAmbVal
+ * @changes Inclusion propiedad state selNombAmbDis
+ * @changes Inclusion propiedad state anioAmbLst
+ * @changes Inclusion propiedad state selAreaVal 
+ * @dateUpdated 2026-02-19
+ * @changes Cambio tipo state selAreaVal <number> => <number | null>
+ * @changes Inclusion propiedad state selAreaKey
+ * @changes Inclusion propiedad state setSelAreaKey
  * @remarks Sección procesamiento
  */
 
@@ -40,7 +53,8 @@ const Widget = (props: AllWidgetProps<IMConfig>) => {
   //State Lista campo Área
   const [areaLst, setAreaLst]               = useState ([]);
   //State Control Área
-  const [selAreaVal, setSelAreaVal]         = useState <number>();
+  const [selAreaVal, setSelAreaVal]         = useState <number | null>(null);
+  const [selAreaKey, setSelAreaKey]         = useState (0);
   //State asociado a Estado control Área
   const [selAreaDis, setSelAreaDis]         = useState <boolean>(true);
   //State Lista campo temática
@@ -80,11 +94,11 @@ const Widget = (props: AllWidgetProps<IMConfig>) => {
   //State asociado a Estado control Municipio
   const [selMpioDis, setSelMpioDis]         = useState <boolean>(true);
   //State Fecha inicio
-  const [txtFecIniVal, setTxtFecIniVal]     = useState <Date>();
+  const [txtFecIniVal, setTxtFecIniVal]     = useState <Date>(new Date());
   //State asociado a Estado campo Fecha inicio
   const [txtFecIniDis, setTxtFecIniDis]     = useState <boolean>(true);
   //State Fecha fin
-  const [txtFecFinVal, setTxtFecFinVal]     = useState <string>();
+  const [txtFecFinVal, setTxtFecFinVal]     = useState <Date>(new Date());
   //State asociado a Estado campo Fecha fin
   const [txtFecFinDis, setTxtFecFinDis]     = useState <boolean>(true);
   //Opciones de la botonera
@@ -92,6 +106,9 @@ const Widget = (props: AllWidgetProps<IMConfig>) => {
   const [btnLimpiaDis, setBtnLimpiaDis]     = useState <boolean>(false);
   //State Opc Buscar
   const [btnSrchDis, setBtnSrchDis]         = useState <boolean>(false);
+  //Objeto que maneja el estado cargando - 2026-02-17
+  const [isLoading, setIsLoading]           = useState(false);
+
   //Mapa
   const [jimuMapView, setJimuMapView]       = useState<JimuMapView>(); 
     
@@ -112,6 +129,8 @@ const Widget = (props: AllWidgetProps<IMConfig>) => {
         setSelAreaValState={setSelAreaVal}
         selAreaDis      = {selAreaDis}
         setAreaDisState = {setSelAreaDis}
+        selAreaKey      = {selAreaKey}
+        setAreaKeyState = {setSelAreaKey}
         tematicaLst     = {tematicaLst}
         setTematicaLstState={setTematicaLst}
         selTematicaVal  = {selTematicaVal}
@@ -160,6 +179,8 @@ const Widget = (props: AllWidgetProps<IMConfig>) => {
         setBtnLimpiaDisState={setBtnLimpiaDis}
         btnSrchDis      = {btnSrchDis}
         setBtnSrchDisState={setBtnSrchDis}
+        isLoading       = {isLoading}
+        setIsLoadState  = {setIsLoading}
       ></FilterAmb>
     </div>
   )

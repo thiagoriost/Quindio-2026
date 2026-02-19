@@ -38,6 +38,61 @@ import { SearchActionBar } from '../../../../shared/components/search-action-bar
  * @author IGAC - DIP
  * @param visible
  * @param setVisibleState
+ * @param areaLst
+ * @param setAreaLstState
+ * @param selAreaDis
+ * @param setAreaDisState
+ * @param tematicaLst
+ * @param setTematicaLstState
+ * @param selTematicaVal
+ * @param setSelTematicaValState
+ * @param selTematicaDis
+ * @param setSelTematicaDisState
+ * @param categorLst
+ * @param setCategorLstState
+ * @param selCategorVal
+ * @param setCategorValState
+ * @param selCategorDis
+ * @param setSelCategorDisState
+ * @param subCategorLst
+ * @param setSubCategorLstState
+ * @param selSubCategorVal
+ * @param setSelSubCategorValState
+ * @param selSubCategorDis
+ * @param nomAmbLst
+ * @param setNomAmbLstState
+ * @param selNomAmbVal
+ * @param setSelNomAmbValState
+ * @param selNomAmbDis
+ * @param setSelNomAmbDisState
+ * @param anioAmbLst
+ * @param setAnioAmbLstState
+ * @param selAnioAmbVal
+ * @param setSelAnioAmbValState
+ * @param selAnioAmbDis
+ * @param setSelAnioAmbDisState
+ * @param mpioAmbLst
+ * @param setMpioAmbLstState
+ * @param selMpioAmbVal
+ * @param setSelMpioAmbValState
+ * @param selMpioAmbDis
+ * @param setSelMpioAmbDisState
+ * @param txtFecIniVal
+ * @param setTxtFecIniValState
+ * @param txtFecIniDis
+ * @param setTxtFecIniDisState
+ * @param txtFecFinVal
+ * @param setTxtFecFinValState
+ * @param txtFecFinDis
+ * @param setTxtFecFinDisState
+ * @param btnLimpiaDis
+ * @param setBtnLimpiaDisState
+ * @param btnSrchDis
+ * @param setBtnSrchDisState
+ * @param isLoading
+ * @param setIsLoadState
+ * @param selAreaKey
+ * @param setAreaKeyState
  * @dateUpdated 2026-02-11
  * @changes inclusión param visible
  * @changes inclusión param setVisibleState
@@ -100,15 +155,19 @@ import { SearchActionBar } from '../../../../shared/components/search-action-bar
  * @dateUpdated 2026-02-17
  * @changes inclusión param isLoading
  * @changes inclusión param setIsLoadState
+ * @dateUpdated 2026-02-19
+ * @changes inclusión param selAreaKey
+ * @changes inclusión param setAreaKeyState
  * @remarks Listado de propiedades enviadas desde el componente maestro
  * @remarks Pruebas con componente FloatingPanel desde jimu-ui
  * @remarks Fuente consulta Claude AI => https://claude.ai/chat/8298f344-84ec-44b9-b0bc-cb8328f56e40
  */
 
-const FilterAmb = function ({visible, setVisibleState, areaLst, setAreaLstState, selAreaVal, setSelAreaValState, selAreaDis, setAreaDisState, tematicaLst, setTematicaLstState, selTematicaVal, setSelTematicaValState, selTematicaDis, setSelTematicaDisState, categorLst, setCategorLstState, selCategorVal, setCategorValState, selCategorDis, setSelCategorDisState, subCategorLst, setSubCategorLstState, selSubCategorVal, setSelSubCategorValState, selSubCategorDis, setSelSubCategorDisState, nomAmbLst, setNomAmbLstState, selNomAmbVal, setSelNomAmbValState, selNomAmbDis, setSelNomAmbDisState, anioAmbLst, setAnioAmbLstState, selAnioAmbVal, setSelAnioAmbValState, selAnioAmbDis, setSelAnioAmbDisState, mpioAmbLst, setMpioAmbLstState, selMpioAmbVal, setSelMpioAmbValState, selMpioAmbDis, setSelMpioAmbDisState, txtFecIniVal, setTxtFecIniValState, txtFecIniDis, setTxtFecIniDisState, txtFecFinVal, setTxtFecFinValState, txtFecFinDis, setTxtFecFinDisState, btnLimpiaDis, setBtnLimpiaDisState, btnSrchDis, setBtnSrchDisState, isLoading, setIsLoadState}){
+const FilterAmb = function ({visible, setVisibleState, areaLst, setAreaLstState, selAreaVal, setSelAreaValState, selAreaDis, setAreaDisState, selAreaKey, setAreaKeyState, tematicaLst, setTematicaLstState, selTematicaVal, setSelTematicaValState, selTematicaDis, setSelTematicaDisState, categorLst, setCategorLstState, selCategorVal, setCategorValState, selCategorDis, setSelCategorDisState, subCategorLst, setSubCategorLstState, selSubCategorVal, setSelSubCategorValState, selSubCategorDis, setSelSubCategorDisState, nomAmbLst, setNomAmbLstState, selNomAmbVal, setSelNomAmbValState, selNomAmbDis, setSelNomAmbDisState, anioAmbLst, setAnioAmbLstState, selAnioAmbVal, setSelAnioAmbValState, selAnioAmbDis, setSelAnioAmbDisState, mpioAmbLst, setMpioAmbLstState, selMpioAmbVal, setSelMpioAmbValState, selMpioAmbDis, setSelMpioAmbDisState, txtFecIniVal, setTxtFecIniValState, txtFecIniDis, setTxtFecIniDisState, txtFecFinVal, setTxtFecFinValState, txtFecFinDis, setTxtFecFinDisState, btnLimpiaDis, setBtnLimpiaDisState, btnSrchDis, setBtnSrchDisState, isLoading, setIsLoadState}){
 
-    //Sección métodos
-    /**
+    /************************************************************************
+    //*************************** Sección métodos **********************
+    /************************************************************************
      * Método getAreaJSON => Obtener registros campo Área
      * @date 2026-02-12
      * @author IGAC - DIP
@@ -283,8 +342,9 @@ const FilterAmb = function ({visible, setVisibleState, areaLst, setAreaLstState,
         }
     }
 
-    /** Sección procesamiento eventos controles componente */
-    /**
+    /********************************************************************************
+     *********** Sección procesamiento eventos controles componente **************/
+    /********************************************************************************
      * Evento handleSelAreaChange => Evento que modifica campo Área, al seleccionar un item del control
      * @date 2026-02-12
      * @author IGAC - DIP
@@ -320,6 +380,7 @@ const FilterAmb = function ({visible, setVisibleState, areaLst, setAreaLstState,
      * @changes Adición validador para procesar campo Subcategoria
      * @dateUpdated 2026-02-18
      * @changes Asignación valor campo Categoria al State asociado
+     * @remarks OJO, para optimizar invocación cargue listado municipios (2026-02-19)
      */
     const handleSelCategorChange = async function(evt){
         //Objetos Locales
@@ -379,14 +440,23 @@ const FilterAmb = function ({visible, setVisibleState, areaLst, setAreaLstState,
      * Evento que modifica campo SubCatyegoría, al seleccionar un item del control
      * @date 2026-02-18
      * @author IGAC - DIP
-     * @param {Event} evt 
+     * @param {Event} evt
+     * @dateUpdated 2026-02-19
+     * @changes Habilitación campo Municipio, al seleccionar Subcategoria 
+     * @changes Invocar cargue listado municipios
      */
     const handleSelSubCategorChange = async function(evt){
         //Objetos locales
         var subCategorValTxt    =   evt.nativeEvent.target.textContent;
-        //Validación para asignación al campo
+        //Validación para asignación al campo y habilitación campo municipio
         if (typeof subCategorValTxt !== 'undefined'){
-            setSelSubCategorValState (subCategorValTxt)
+            //Validación para asignación al campo
+            setSelSubCategorValState (subCategorValTxt);
+            //Consumo lista municipios
+            //console.log ("URL consumo municipios =>",urls.Municipios);
+            getJSONMpio ();
+            //Habilitación campo Municipio
+            setSelMpioAmbDisState (false);
         }
     }
 
@@ -435,7 +505,10 @@ const FilterAmb = function ({visible, setVisibleState, areaLst, setAreaLstState,
          }
     }
     
-    /** Sección procesamiento filtros al mapserver*/
+    /**********************************************************************************
+     ************* Sección procesamiento filtros al mapserver **********************/
+    /*********************************************************************************/
+    
     /**
      * Método para construcción de la cláusula WHERE asociado al servicio de firmas espectrales.
      * @date 2025-04-16
@@ -721,9 +794,12 @@ const FilterAmb = function ({visible, setVisibleState, areaLst, setAreaLstState,
         
         //Tipo Combo (Select)
         areaLst.length = 0;
-        setAreaLstState(undefined);
-        setSelAreaValState([]);
+        setSelAreaValState(null);
+        setAreaKeyState (prev => prev + 1);
         getAreaJSON();
+        /*setAreaLstState(undefined);
+        setSelAreaValState([]); */
+        
         //setAreaLstState(undefined);
         categorLst.length = 0;
         //setCategorLstState(undefined);
@@ -783,10 +859,79 @@ const FilterAmb = function ({visible, setVisibleState, areaLst, setAreaLstState,
         //Campo Fecha final
         fecFinControlShort  =   txtFecFinVal.toISOString().split('T');
         console.log ("Fecha final seleccionada =>", fecFinControlShort[0]);
+        //Inclusión validación para campos requeridos (al menos 1 es requerido)
+        //En construcción
+        //Deshabilitar opción Buscar, mientras se procesan los criterios
+        //setBtnSrchDisState (true);
 
+        //Limpieza del data Grid 
+        //En construcción
+        
+        //Sección construcción criterios de acuerdo a filtros - 2026-02-19
+        //Invocación generación data con base al filtro especificado
+        getJSONFilter();
     }
 
-    //Sección Hooks
+    /**
+     * @date 2026-02-19
+     */
+    const getJSONFilter = async function(){
+        //Objetos Locales
+        var fecIniControlShort, fecFinControlShort  :String = "";
+        var condicFec, where                        :String = undefined;
+        //Zona de depuración código
+        console.log("Datos correctos para construcción filtros");
+         //Campo Fecha inicio
+        fecIniControlShort=  txtFecIniVal.toISOString().split('T');
+        console.log ("Fecha inicio seleccionada =>", fecIniControlShort[0]);
+        //Campo Fecha final
+        fecFinControlShort  =   txtFecFinVal.toISOString().split('T');
+        console.log ("Fecha final seleccionada =>", fecFinControlShort[0]);
+        //Procesamiento del where
+        //Área - N/A para consulta, ya que, actua sobre mapa base
+        /* if (typeof selAreaVal !== 'undefined'){
+
+        } */
+        //Categoria
+        if (typeof selCategorVal !== 'undefined'){
+            //Subcategoria
+            if (typeof selSubCategorVal !== 'undefined'){
+                //Municipio
+                if (typeof selMpioAmbVal !== 'undefined'){
+                    //Fecha Inicio < Fecha Final
+                    if (new Date (fecIniControlShort[0]).getTime() <= new Date (fecFinControlShort[0]).getTime()){
+                        //Proceso del WHERE (subcategoria, Municipio, Fecha Ini, Fecha Fin)
+                        //Análisis fechas
+                        if (fecIniControlShort[0] === fecFinControlShort[0]){
+                            condicFec =   "FECHARESOLUCION="+" "+ "Date"+" "+"'"+  fecIniControlShort[0]+"'";
+                        }
+                        else {
+                            condicFec = "FECHARESOLUCION >"+" " +"Date"+" "+"'"+ fecIniControlShort[0]+"'"+" "+"AND" + " "+ "FECHARESOLUCION <"+" "+ "Date"+" "+"'" + (fecFinControlShort[0])+"'";
+                        }
+                        where = "TIPO_TRAMITE="+"'"+selSubCategorVal+"'"+" "+"AND"+" "+"MUNICIPIO="+"'"+selMpioAmbVal+"'"+" "+"AND"+" "+condicFec;
+                        console.log ("Criterio WHERE =>",where);
+                    }
+                    else{
+                        console.log ("Fechas no válidas. LA fecha inicial debe ser menos a la fecha final!");
+                    }
+                }
+                else{
+                    console.log ("Municipio no especificado!."); 
+                }
+            }
+            else{
+                console.log ("Subcategoria no especificada!");
+            }
+            //Generación petición al mapserver - OJO
+
+        }
+        else{
+            console.log ("Categoria no especificada!");
+        }
+    }
+    /******************************************************************************
+     *****************************  Sección Hooks   *****************************
+    ******************************************************************************/
     /**
      * Hook que ejecuta el cargue campo Area
      * @date 2026-02-12
@@ -802,15 +947,17 @@ const FilterAmb = function ({visible, setVisibleState, areaLst, setAreaLstState,
     },[areaLst]);
 
    
-
-    //Sección renderizado
+    /******************************************************************************* 
+    ******************************  Sección renderizado **************************
+    ********************************************************************************/
     return (
          <form>
             <div className="mb-1">
                 <Label size="default">&Aacute;rea</Label>
-                <Select 
+                <Select
+                    key={selAreaKey} 
                     placeholder="Seleccione"
-                    value={selAreaVal}
+                    value={selAreaVal ?? undefined}
                     onChange={handleSelAreaChange}
                 >
                 {
