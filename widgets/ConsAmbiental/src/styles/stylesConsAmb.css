@@ -16,12 +16,38 @@
 }
 
 /*
-    Clase alusivo al contenedor de la botonera
-    @date 2026-02-12
+    Clase para actualizar texto en opción "Done", componente DatePicker
+    @date 2026-02-19
     @author IGAC - DIP
-    @remarks Definición aspecto distribución botones
+    @remarks También aplica para actualizar texto en opción "Today" => "Hoy"
+    @remarks Fuente consulta: Claude, AI => https://claude.ai/chat/e2b51b55-4bc3-42e7-a3c5-5e2c960979bc
 */
-.btnsContner{
-    display: flex;
-    justify-content: space-evenly;
+.input-btn-container > .jimu-btn > .w-100,
+.jimu-datepicker > .quick-nav-virtual-date > .jimu-btn
+{
+    font-size: 0 !important;
+}
+
+/*
+    Clase para actualizar texto en opción "Done", bajo componente DatePicker, después de renderizar componente
+    @date 2026-02-19
+    @author IGAC - DIP
+    @remarks Fuente consulta: Claude, AI => https://claude.ai/chat/e2b51b55-4bc3-42e7-a3c5-5e2c960979bc
+*/
+
+.input-btn-container > .jimu-btn > .w-100::after{
+    content: "Aceptar";
+    font-size: 0.875rem;
+}
+
+/*
+    Clase para actualizar texto en opción "Today" => "Hoy", bajo componente DatePicker, después de renderizar componente
+    @date 2026-02-19
+    @author IGAC - DIP
+    @remarks Fuente consulta: Claude, AI => https://claude.ai/chat/e2b51b55-4bc3-42e7-a3c5-5e2c960979bc
+*/
+
+.jimu-datepicker > .quick-nav-virtual-date > .jimu-btn::after{
+    content: "Hoy";
+    font-size: 0.875rem;
 }
