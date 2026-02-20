@@ -1,0 +1,6 @@
+# Ignorar carpetas principales
+client/*
+!client/your-extensions/
+!client/your-extensions/**
+!client/package.json
+server/
