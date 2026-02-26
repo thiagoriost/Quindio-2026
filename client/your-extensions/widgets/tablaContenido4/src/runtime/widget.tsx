@@ -13,6 +13,7 @@ import { JimuMapViewComponent, type JimuMapView } from 'jimu-arcgis'
 import '../styles/style.css'
 import type { ItemResponseTablaContenido, TablaDeContenidoInterface } from "../types/interfaces"
 import Widget_Tree from "./components/widgetTree"
+import { fallbackTablaContenido } from "../data/fallbackTablaContenido"
 
 /**
  * Widget principal que gestiona la Tabla de Contenido.
@@ -102,6 +103,7 @@ export default Widget
  * Consulta los datos de la tabla de contenido desde el servicio REST.
  * Retorna datos planos (sin jerarquía) que luego son transformados
  * por la función `buildTree` en widgetTree.tsx para construir el árbol.
+ * Si el servicio no responde o falla, utiliza los datos de fallback.
  *
  * @async
  * @param {Object} servicios - Módulo con las URLs de los servicios
@@ -128,6 +130,12 @@ export const getDataTablaContenido = async (servicios: { urls: { tablaContenido:
 
     const responseData: TablaDeContenidoInterface[] = await response.json()
 
+    // Verificar si la respuesta tiene datos válidos
+    if (!responseData || !Array.isArray(responseData) || responseData.length === 0) {
+      console.warn('Servicio sin datos, usando datos de fallback')
+      return fallbackTablaContenido
+    }
+
     // Mapear y normalizar los datos para asegurar consistencia de tipos
     const normalizedData: ItemResponseTablaContenido[] = responseData.map(item => ({
       ATRIBUTO: item.ATRIBUTO || '',
@@ -147,8 +155,8 @@ export const getDataTablaContenido = async (servicios: { urls: { tablaContenido:
 
     return normalizedData
   } catch (error) {
-    console.error('Error fetching layers:', error)
-    return undefined
+    console.error('Error fetching layers, usando datos de fallback:', error)
+    return fallbackTablaContenido
   }
 }
 

@@ -81,7 +81,7 @@ export default function Widget(props: any) {
         onSearch={print}
         onClear={handleLimpiar}
         loading={loading}
-        disableSearch={loading}
+        disableSearch={loading || author.trim() === "" || title.trim() === ""}
         searchLabel="Imprimir PDF"
         searchLabelLoading="Generando PDF..."
         clearLabel="Limpiar campos"
