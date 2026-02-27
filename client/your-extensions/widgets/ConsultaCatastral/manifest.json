@@ -11,5 +11,8 @@
   "useMapWidget": true,
   "hasSetting": true,
   "defaultConfig": {},
-  "supportMapWidget": true
+  "supportMapWidget": true,
+    "properties": {
+    "hasStyle": true
+  }
 }

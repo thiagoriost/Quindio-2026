@@ -1,15 +1,98 @@
-.barraEscalaSelect {
-  width: 120px;
-  border-radius: 10px;
-  padding: 4px;
+
+@import '../../../utils/styles/presetsQundio.css';
+
+.barraEscalaModern {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-medium);
+  background: var(--bg-color-white);
+  color: var(--text-color-primary);
+  border-radius: var(--border-radius-lg);
+  padding: var(--spacing-xs) var(--spacing-xs);
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  box-shadow: var(--shadow-medium);
+  min-width: 240px;
+  max-width: 100%;
+  border: 1px solid var(--border-color-light);
+  gap: var(--spacing-md);
+  transition: box-shadow var(--transition-fast), border-color var(--transition-fast);
 }
 
-.divBarraEscala {
-  font-size: 10pt;
-  font-weight: bold;
-  background-color: #8aa260;
-  color: white;
-  border-radius: 15px;
-  padding: 10px;
+.barraEscalaHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-sm);
+  justify-content: center;
+}
+
+.barraEscalaIcon {
+  font-size: var(--font-size-xl);
+  background: var(--color-primary-hover);
+  border-radius: var(--border-radius-circle);
+  padding: var(--spacing-xs);
+  color: var(--text-color-white);
+  box-shadow: var(--shadow-light);
+  margin-right: var(--spacing-xs);
+}
+
+.barraEscalaTitle {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-primary);
+  letter-spacing: 0.5px;
+}
+.barraEscalaSelectContainer {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--spacing-xs);
+}
+
+.barraEscalaLabel {
+  font-size: var(--font-size-sm);
+  color: var(--text-color-secondary);
+  margin-bottom: var(--spacing-xs);
+  margin-left: 2px;
+}
+
+.barraEscalaSelect {
+  width: 100%;
+  border-radius: var(--border-radius-md);
+  padding: var(--spacing-sm);
+  font-size: var(--font-size-md);
+  background: var(--color-primary-light);
+  color: var(--text-color-primary);
+  border: 1px solid var(--border-color-medium);
+  box-shadow: var(--shadow-light);
+  transition: box-shadow var(--transition-fast), border-color var(--transition-fast);
+  cursor: pointer;
+}
+.barraEscalaFeedback {
+  margin-top: var(--spacing-xs);
+  text-align: center;
+}
+
+.barraEscalaActual {
+  font-size: var(--font-size-sm);
+  color: var(--color-primary-active);
+  background: var(--color-primary-transparent);
+  border-radius: var(--border-radius-sm);
+  padding: 2px 8px;
   display: inline-block;
+}
+
+.barraEscalaSelect:focus {
+  outline: none;
+  border-color: var(--color-primary-hover);
+  box-shadow: var(--shadow-medium);
+}
+
+.barraEscalaSelect option {
+  background: var(--bg-color-white);
+  color: var(--text-color-primary);
 }

@@ -5,3 +5,4 @@ client/*
 !client/package.json
 server/
 soccerPromt.txt
+node_modules/*

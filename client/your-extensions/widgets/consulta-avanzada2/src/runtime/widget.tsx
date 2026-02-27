@@ -3,14 +3,14 @@ import { JimuMapViewComponent, type JimuMapView } from 'jimu-arcgis' // The map 
 import { Button } from 'jimu-ui' // import components
 import 'react-data-grid/lib/styles.css'
 
-const { useEffect, useState } = React
-
 import { Polygon } from '@arcgis/core/geometry'
-import { type InterfaceResponseConsulta, type interfaceFeature } from '../types/interfaceResponseConsultaSimple'
+import type { InterfaceResponseConsulta, interfaceFeature } from '../types/interfaceResponseConsultaSimple'
 import '../styles/style.css'
 import FeatureLayer from '@arcgis/core/layers/FeatureLayer'
 import { type InterfaceColumns, type Row, type interfaceMensajeModal, typeMSM } from '../types/interfaces'
 import { loadModules } from 'esri-loader'
+
+const { useEffect, useState } = React
 // import ModalComponent from './components/ModalComponent'
 // import { loadEsriModules } from './components/TablaResultados'
 // import InputSelect from './components/InputSelect'
@@ -773,7 +773,7 @@ const ConsultaAvanzada = (props: AllWidgetProps<any>) => {
    */
   useEffect(() => {
     if (campo)consultarValores()
-    return () => {}
+
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [campo])
 
@@ -783,7 +783,7 @@ const ConsultaAvanzada = (props: AllWidgetProps<any>) => {
    */
   useEffect(() => {
     servicios && getJSONContenido(jsonSERV)
-    return () => {}
+
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [servicios])
 

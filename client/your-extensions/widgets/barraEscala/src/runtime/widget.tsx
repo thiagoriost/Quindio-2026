@@ -2,6 +2,7 @@
 import {useState, useCallback } from 'react'
 import type { AllWidgetProps } from 'jimu-core'
 import { JimuMapViewComponent, type JimuMapView } from 'jimu-arcgis'
+import '../styles/styles.scss'
 
 /**
  * Representa un nivel de detalle (Level of Detail, LOD) para el mapa.
@@ -38,10 +39,21 @@ const LODS: LOD[] = [
  * @see https://developers.arcgis.com/experience-builder/
  */
 const Widget = (props: AllWidgetProps<any>) => {
-
+  // Handler to set the JimuMapView instance when the map view becomes active
   const [jimuMapView, setJimuMapView] = useState<JimuMapView | null>(null)
   const [currentScale, setCurrentScale] = useState<number | null>(null)
 
+  const onActiveViewChange = (jimuMapView: JimuMapView) => {
+    setJimuMapView(jimuMapView)
+    if (jimuMapView && jimuMapView.view) {
+      // Only call watchScale if the view is a MapView (not SceneView)
+      const view = jimuMapView.view as __esri.MapView
+      // Check for a property unique to MapView (e.g., 'center')
+      if (view && 'center' in view) {
+        watchScale(view)
+      }
+    }
+  }
 
   /**
    * Sincroniza el estado del widget cuando cambia la escala del mapa.
@@ -50,30 +62,16 @@ const Widget = (props: AllWidgetProps<any>) => {
    */
   const watchScale = useCallback((view: __esri.MapView) => {
     view.watch('scale', (newScale: number) => {
-      const closest = LODS.reduce((prev, curr) =>
-        Math.abs(curr.scale - newScale) < Math.abs(prev.scale - newScale)
+      const closest = LODS.reduce((prev, curr) => {
+        console.log({view, prev, curr, newScale})
+        return Math.abs(curr.scale - newScale) < Math.abs(prev.scale - newScale)
           ? curr
           : prev
-      )
+      })
       setCurrentScale(closest.level)
     })
   }, [])
-
-
-  /**
-   * Callback que se ejecuta cuando el MapView está disponible o cambia.
-   * Inicializa el estado y comienza a observar los cambios de escala.
-   * @param {JimuMapView} jmv - Instancia de JimuMapView proporcionada por el widget de mapa.
-   */
-  const onActiveViewChange = useCallback((jmv: JimuMapView) => {
-    if (!jmv) return
-
-    setJimuMapView(jmv)
-    const view = jmv.view as __esri.MapView
-
-    setCurrentScale(view.zoom)
-    watchScale(view)
-  }, [watchScale])
+// ...existing code...
 
   /**
    * Maneja el cambio manual de escala desde el elemento select.
@@ -96,23 +94,28 @@ const Widget = (props: AllWidgetProps<any>) => {
   }
 
   return (
-    <div className="divBarraEscala">
+    <div className="divBarraEscala barraEscalaModern">
       <JimuMapViewComponent
         useMapWidgetId={props.useMapWidgetIds?.[0]}
         onActiveViewChange={onActiveViewChange}
       />
-        <h1>Rigo</h1>
-      <select
-        className="barraEscalaSelect"
-        value={currentScale ?? ''}
-        onChange={handleChange}
-      >
-        {LODS.map(lod => (
-          <option key={lod.level} value={lod.level}>
-            {`1:${lod.scale.toLocaleString('es-CO')}`}
-          </option>
-        ))}
-      </select>
+      <div className="barraEscalaHeader">
+        <span className="barraEscalaIcon">🔍</span>
+        <span className="barraEscalaTitle">Escala:</span>
+      </div>
+      <div className="barraEscalaSelectContainer">
+        <select
+          className="barraEscalaSelect"
+          value={currentScale ?? ''}
+          onChange={handleChange}
+        >
+          {LODS.map(lod => (
+            <option key={lod.level} value={lod.level}>
+              {`1:${lod.scale.toLocaleString('es-CO')}`}
+            </option>
+          ))}
+        </select>
+      </div>
     </div>
   )
 }
