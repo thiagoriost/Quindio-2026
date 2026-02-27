@@ -42,6 +42,7 @@ const Widget = (props: AllWidgetProps<any>) => {
   // Handler to set the JimuMapView instance when the map view becomes active
   const [jimuMapView, setJimuMapView] = useState<JimuMapView | null>(null)
   const [currentScale, setCurrentScale] = useState<number | null>(null)
+  const [pointerCoords, setPointerCoords] = useState<{x: number, y: number} | null>(null)
 
   const onActiveViewChange = (jimuMapView: JimuMapView) => {
     setJimuMapView(jimuMapView)
@@ -69,6 +70,14 @@ const Widget = (props: AllWidgetProps<any>) => {
           : prev
       })
       setCurrentScale(closest.level)
+    })
+    // Escuchar el movimiento del puntero para actualizar coordenadas
+    view.on('pointer-move', (evt: __esri.ViewPointerMoveEvent) => {
+      // Convertir a coordenadas planas (x, y)
+      const point = view.toMap({ x: evt.x, y: evt.y })
+      if (point) {
+        setPointerCoords({ x: point.x, y: point.y })
+      }
     })
   }, [])
 // ...existing code...
@@ -115,6 +124,14 @@ const Widget = (props: AllWidgetProps<any>) => {
             </option>
           ))}
         </select>
+      </div>
+      <div className="barraEscalaCoordsContainer">
+        <span className="barraEscalaCoordsLabel">Coordenadas planas:</span>
+        <br />
+        <span className="barraEscalaCoordsValue">
+          {pointerCoords ? `X: ${pointerCoords.x.toFixed(2)}, 
+                            Y: ${pointerCoords.y.toFixed(2)}` : 'Mueva el puntero sobre el mapa'}
+        </span>
       </div>
     </div>
   )
