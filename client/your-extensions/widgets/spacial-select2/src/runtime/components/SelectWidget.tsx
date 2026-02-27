@@ -289,7 +289,6 @@ const SelectWidget = ({ props }) => {
       }
     }
 
-    return () => {}
   }, [props.jimuMapView])
 
   /**
@@ -298,12 +297,11 @@ const SelectWidget = ({ props }) => {
   useEffect(() => {
     import('../../../../commonWidgets/widgetsModule').then(modulo => { setWidgetModules(modulo) })
     seeLayers()
-    return () => {}
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   return (
-    <div className="w-100 p-3 bg-primary">
+    <div className="w-100 p-3" style={{ backgroundColor: 'var(--sys-color-primary)' }}>
 
       {
         mostrarResultadoFeaturesConsulta

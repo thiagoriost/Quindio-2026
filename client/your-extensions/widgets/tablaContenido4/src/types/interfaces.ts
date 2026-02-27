@@ -2,16 +2,16 @@
  * @fileoverview Interfaces y tipos para el widget de Tabla de Contenido.
  * Define las estructuras de datos para la tabla de contenido, árbol,
  * context menu y capas desplegadas.
- * 
+ *
  * @module tablaContenido4/types/interfaces
  */
 
-import Layer from "@arcgis/core/layers/Layer";
+import type Layer from "@arcgis/core/layers/Layer"
 
 /**
  * Interfaz base para los datos de la tabla de contenido del servicio.
  * Representa un registro plano que puede ser una temática (sin URL) o una capa (con URL).
- * 
+ *
  * @interface TablaDeContenidoInterface
  */
 export interface TablaDeContenidoInterface {
@@ -71,14 +71,14 @@ export enum Estado {
  */
 export interface interfaceCapasNietos {
     capas: interfCapa[];
-    tematicasNietas: {
+    tematicasNietas: Array<{
         capasBisnietos: TablaDeContenidoInterface[];
         IDTEMATICAPADRE: number;
         IDTEMATICA: number;
         NOMBRETEMATICA: string;
         TITULOCAPA?: string;
 
-    }[];
+    }>;
 }
 
 /**
@@ -105,12 +105,12 @@ export interface datosBasicosInterface {
 /**
  * Interfaz normalizada para los datos de la tabla de contenido.
  * Usada internamente después de normalizar los datos del servicio.
- * 
+ *
  * @interface ItemResponseTablaContenido
  */
 export interface ItemResponseTablaContenido {
     ATRIBUTO: string;
-    DESCRIPCIONSERVICIO: Descripcionservicio;
+    DESCRIPCIONSERVICIO: Descripcionservicio | string;
     IDCAPA: number;
     IDTEMATICA: number;
     IDTEMATICAPADRE: number;
@@ -122,6 +122,7 @@ export interface ItemResponseTablaContenido {
     URL: string;
     URLSERVICIOWFS: string;
     VISIBLE: boolean;
+    ESTADO?: string;
     capasHijas?: Tematicas[];
     capasNietas?: ItemResponseTablaContenido[]
 }
@@ -218,7 +219,7 @@ export interface UniqueValueInfo {
     description: string;
     label: string;
     symbol: Symbol;
-    values?: Array<string[]>;
+    values?: string[][];
     value?: string;
 }
 
@@ -231,7 +232,7 @@ export interface Symbol {
 }
 
 export interface InterfaceFeaturesLayersDeployed {
-    capa:  ItemResponseTablaContenido;
+    capa: ItemResponseTablaContenido;
     layer: Layer;
 }
 

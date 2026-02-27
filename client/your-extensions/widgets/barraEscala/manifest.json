@@ -1,0 +1,20 @@
+{
+  "name": "barraEscala",
+  "label": "Barra de escala",
+  "type": "widget",
+  "version": "1.19.0",
+  "exbVersion": "1.19.0",
+  "author": "rigorios8103@gmail.com",
+  "description": "Widget para mostrar la barra de escala en el mapa.",
+  "copyright": "Copyright 2026 Rigorios. All rights reserved.",
+  "license": "http://www.apache.org/licenses/LICENSE-2.0",
+  "properties": {},
+  "dependency": "jimu-arcgis",
+  "translatedLocales": [
+    "en"
+  ],
+  "defaultSize": {
+    "width": 400,
+    "height": 250
+  }
+}

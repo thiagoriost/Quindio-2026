@@ -3,16 +3,15 @@
     "label": "Salida gráfica - printCliente",
     "type": "widget",
     "version": "1.14.0",
-    "dependency": ["jimu-arcgis"],
     "exbVersion": "1.14.0",
     "author": "https://github.com/rigoriosh",
     "description": "Salida gráfica de mapas",
     "copyright": "",
-    "license": "",
+    "license": "http://www.apache.org/licenses/LICENSE-2.0",
     "properties": {},
+    "dependency": "jimu-arcgis",
     "translatedLocales": [
-        "en",
-        "es"
+        "en"
     ],
     "defaultSize": {
         "width": 503,

@@ -3,7 +3,12 @@ import React, { useState, useEffect } from 'react'
 import { JimuMapViewComponent, type JimuMapView } from 'jimu-arcgis' // The map object can be accessed using the JimuMapViewComponent
 import '../styles/style.css'
 import type { CapasTematicas, ItemResponseTablaContenido, TablaDeContenidoInterface, datosBasicosInterface, interfaceCapasNietos } from '../types/interfaces'
-import Widget_Tree from './components/widgetTree'
+import WidgetTree from './components/widgetTree'
+import * as projection from "@arcgis/core/geometry/projection"
+
+interface ServiciosModule {
+  urls: { tablaContenido: string }
+}
 
 /**
  * Widget que se encarga de consultar la data de la tabla de contenido y renderizar el arbol de capas
@@ -14,7 +19,7 @@ import Widget_Tree from './components/widgetTree'
 const Widget = (props: AllWidgetProps<any>) => {
   const [varJimuMapView, setJimuMapView] = useState<JimuMapView>() // To add the layer to the Map, a reference to the Map must be saved into the component state.
   const [groupedLayers, setGroupedLayers] = useState<CapasTematicas[]>([]) // arreglo donde se almacenara la tabla de contenido ordenada
-  const [servicios, setServicios] = useState<typeof import('../../../api/servicios') | null>(null)
+  const [servicios, setServicios] = useState<ServiciosModule | null>(null)
   const [utilsModule, setUtilsModule] = useState<any>(null)
   const [isCollapsed, setIsCollapsed] = useState<boolean>(false) // Estado para controlar si el widget está colapsado
 
@@ -28,33 +33,32 @@ const Widget = (props: AllWidgetProps<any>) => {
     }
   }
 
-<<<<<<< HEAD:client/your-extensions/widgets/tablaDeContenido2/src/runtime/widget.tsx
-  const TraerDataTablaContenido = async (modulo: typeof import('../../../api/servicios')) => {
-    const tematicas = await getDataTablaContenido(modulo)
-=======
-  const TraerDataTablaContenido = (modulo) => {
->>>>>>> 32ec891d4dc6bc0a7812e147b0fc5137ab900e06:widgets/tablaDeContenido/src/runtime/widget.tsx
-    setTimeout(async () => {
-      if (utilsModule?.logger()) console.log(tematicas)
-
-      if (!tematicas) return
-      setGroupedLayers(tematicas)
-    }, 3000)
-    setTimeout(() => {
-      setIsCollapsed(!isCollapsed)
-    }, 5000)
-  }
-
   useEffect(() => {
-      TraerDataTablaContenido(servicios)
-  }, [TraerDataTablaContenido, servicios])
+    const traerDataTablaContenido = async (modulo: ServiciosModule) => {
+      const tematicas = await getDataTablaContenido(modulo)
+      await projection.load()
+      setTimeout(() => {
+        if (utilsModule?.logger()) console.log(tematicas)
+
+        if (!tematicas) return
+        setGroupedLayers(tematicas)
+      }, 3000)
+      setTimeout(() => {
+        setIsCollapsed(prev => !prev)
+      }, 5000)
+    }
+
+    if (servicios) {
+      traerDataTablaContenido(servicios)
+    }
+  }, [servicios, utilsModule])
 
 
   /**
    * realiza la consulta de la data tabla de contenido la primera vez que se renderiza el componente
    */
   useEffect(() => {
-    console.log(222222)
+
     import('../../../api/servicios').then(modulo => {
       setServicios(modulo)
       // TraerDataTablaContenido(modulo)
@@ -64,11 +68,7 @@ const Widget = (props: AllWidgetProps<any>) => {
   }, [])
 
   return (
-<<<<<<< HEAD:client/your-extensions/widgets/tablaDeContenido2/src/runtime/widget.tsx
     <div>
-=======
-    <div className="w-100 p-3 contenedorTablaContenido">
->>>>>>> 32ec891d4dc6bc0a7812e147b0fc5137ab900e06:widgets/tablaDeContenido/src/runtime/widget.tsx
       {props.useMapWidgetIds && props.useMapWidgetIds.length === 1 && (
         <JimuMapViewComponent useMapWidgetId={props.useMapWidgetIds?.[0]} onActiveViewChange={activeViewChangeHandler} />
       )}
@@ -83,8 +83,8 @@ const Widget = (props: AllWidgetProps<any>) => {
             {isCollapsed ? '☰' : '▲'}
           </button>
           {!isCollapsed && (
-            <div className="w-100 p-3 bg-primary text-white contenedorTablaContenido">
-            <Widget_Tree dataTablaContenido={groupedLayers} setDataTablaContenido={setGroupedLayers} varJimuMapView={varJimuMapView}/>
+            <div className="w-100 p-3 contenedorTablaContenido" style={{ backgroundColor: 'var(--sys-color-primary)', color: 'var(--sys-color-on-primary)' }}>
+            <WidgetTree dataTablaContenido={groupedLayers} setDataTablaContenido={setGroupedLayers} varJimuMapView={varJimuMapView}/>
             </div>
           )}
         </div>
