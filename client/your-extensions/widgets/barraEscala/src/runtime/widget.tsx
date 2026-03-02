@@ -1,5 +1,5 @@
 /** @jsx jsx */
-import {useState, useCallback } from 'react'
+import {useState, useCallback, useEffect, useRef } from 'react'
 import type { AllWidgetProps } from 'jimu-core'
 import { JimuMapViewComponent, type JimuMapView } from 'jimu-arcgis'
 import '../styles/styles.scss'
@@ -19,16 +19,17 @@ interface LOD {
 }
 
 const LODS: LOD[] = [
-  { level: 0, resolution: 0.00118973050291514, scale: 500000 },
-  { level: 1, resolution: 0.000713838301749084, scale: 300000 },
-  { level: 2, resolution: 0.000356919150874542, scale: 150000 },
-  { level: 3, resolution: 0.000237946100583028, scale: 100000 },
-  { level: 4, resolution: 0.000118973050291514, scale: 50000 },
-  { level: 5, resolution: 0.000059486525145757, scale: 25000 },
-  { level: 6, resolution: 0.0000237946100583028, scale: 10000 },
-  { level: 7, resolution: 0.0000118973050291514, scale: 5000 },
-  { level: 8, resolution: 0.00000475892201166056, scale: 2000 },
-  { level: 9, resolution: 0.00000118973050291514, scale: 500 }
+  { level: 0, resolution: 0.00237946100583028, scale: 1000000 },
+  { level: 1, resolution: 0.00118973050291514, scale: 500000 },
+  { level: 2, resolution: 0.000713838301749084, scale: 300000 },
+  { level: 3, resolution: 0.000356919150874542, scale: 150000 },
+  { level: 4, resolution: 0.000237946100583028, scale: 100000 },
+  { level: 5, resolution: 0.000118973050291514, scale: 50000 },
+  { level: 6, resolution: 0.000059486525145757, scale: 25000 },
+  { level: 7, resolution: 0.0000237946100583028, scale: 10000 },
+  { level: 8, resolution: 0.0000118973050291514, scale: 5000 },
+  { level: 9, resolution: 0.00000475892201166056, scale: 2000 },
+  { level: 10, resolution: 0.00000118973050291514, scale: 500 }
 ]
 
 /**
@@ -40,6 +41,16 @@ const LODS: LOD[] = [
  * @see https://developers.arcgis.com/experience-builder/
  */
 const Widget = (props: AllWidgetProps<any>) => {
+  // Estado para congelar la actualización de coordenadas
+  const [freezeCoords, setFreezeCoords] = useState(false)
+  // Referencia para mantener el valor actualizado de freezeCoords en los listeners
+  const freezeCoordsRef = useRef(freezeCoords)
+  // Estado para almacenar el gráfico del marcador
+  const [markerGraphic, setMarkerGraphic] = useState<any>(null)
+    // Sincronizar el valor de freezeCoordsRef con freezeCoords
+    useEffect(() => {
+      freezeCoordsRef.current = freezeCoords
+    }, [freezeCoords])
   // Handler to set the JimuMapView instance when the map view becomes active
   const [jimuMapView, setJimuMapView] = useState<JimuMapView | null>(null)
   const [currentScale, setCurrentScale] = useState<number | null>(null)
@@ -73,36 +84,83 @@ const Widget = (props: AllWidgetProps<any>) => {
       })
       setCurrentScale(closest.level)
     })
-    // Escuchar el movimiento del puntero para actualizar coordenadas
+    // Escuchar el movimiento del puntero para actualizar coordenadas SOLO si no está congelado
     view.on('pointer-move', (evt: __esri.ViewPointerMoveEvent) => {
-      // Convertir a coordenadas planas (x, y)
+      if (freezeCoordsRef.current) return
       const point = view.toMap({ x: evt.x, y: evt.y })
       if (point) {
         setPointerCoords({ x: point.x, y: point.y })
         // --- Conversión y asignación de coordenadas geográficas ---
-        // Verifica si el punto ya está en el sistema de referencia geográfico (WKID 4326)
         if (point.spatialReference && point.spatialReference.wkid === 4326) {
-          // Si ya está en 4326, asigna directamente latitud (y) y longitud (x)
           setPointerGeoCoords({ lat: point.y, lon: point.x })
         } else if ((window as any).require) {
-          // Si no está en 4326 pero existe el cargador AMD de ArcGIS, carga el módulo de utilidades
           (window as any).require(['esri/geometry/support/webMercatorUtils'], (webMercatorUtils: any) => {
-            // Convierte el punto a coordenadas geográficas (WGS84)
             const geoPoint = webMercatorUtils.webMercatorToGeographic(point)
-            // Asigna la latitud y longitud convertidas al estado
             setPointerGeoCoords({ lat: geoPoint.y, lon: geoPoint.x })
           })
         } else {
-          // Si no es posible convertir, limpia el estado de coordenadas geográficas
           setPointerGeoCoords(null)
         }
       } else {
-        // Si no hay punto válido, limpia ambos estados de coordenadas
         setPointerCoords(null)
         setPointerGeoCoords(null)
       }
     })
+
+    // Escuchar click para congelar coordenadas y colocar marcador
+    view.on('click', (evt: __esri.ViewClickEvent) => {
+      if (!freezeCoordsRef.current) {
+        setFreezeCoords(true)
+        const point = view.toMap({ x: evt.x, y: evt.y })
+        if (point) {
+          (window as any).require([
+            'esri/Graphic',
+            'esri/symbols/SimpleMarkerSymbol'
+          ], (Graphic: any, SimpleMarkerSymbol: any) => {
+            if (markerGraphic) {
+              view.graphics.remove(markerGraphic)
+            }
+            // Obtener el color de la variable CSS --color-primary
+            const colorPrimary = getComputedStyle(document.documentElement).getPropertyValue('--color-primary').trim() || '#0078d4'
+            // Convertir color hex a array RGBA
+            function hexToRgba(hex: string, alpha = 1) {
+              let c = hex.replace('#', '')
+              if (c.length === 3) c = c[0]+c[0]+c[1]+c[1]+c[2]+c[2]
+              const num = parseInt(c, 16)
+              return [
+                (num >> 16) & 255,
+                (num >> 8) & 255,
+                num & 255,
+                alpha
+              ]
+            }
+            const marker = new Graphic({
+              geometry: point,
+              symbol: new SimpleMarkerSymbol({
+                style: 'diamond',
+                color: hexToRgba(colorPrimary, 1),
+                size: '16px',
+                outline: {
+                  color: [255, 255, 255],
+                  width: 2
+                }
+              })
+            })
+            view.graphics.add(marker)
+            setMarkerGraphic(marker)
+          })
+        }
+      }
+    })
   }, [])
+
+  useEffect(() => {
+
+    console.log({freezeCoords})
+
+
+  }, [freezeCoords])
+
 
   /**
    * Maneja el cambio manual de escala desde el elemento select.
@@ -147,31 +205,50 @@ const Widget = (props: AllWidgetProps<any>) => {
           ))}
         </select>
       </div>
+      {
+        freezeCoords &&
+          <div className='borderRight'>
+            <label>
+              <input
+                type="checkbox"
+                checked={!freezeCoords}
+                onChange={e => {
+                  const checked = e.target.checked
+                  setFreezeCoords(!checked)
+                  if (checked && jimuMapView && jimuMapView.view && markerGraphic) {
+                    // Eliminar marcador si se reanuda
+                    jimuMapView.view.graphics.remove(markerGraphic)
+                    setMarkerGraphic(null)
+                  }
+                }}
+              />{' '}
+              Etiquetar coordenadas
+            </label>
+          </div>
+      }
       <div className="barraEscalaCoordsContainer">
         {jimuMapView && jimuMapView.view &&
-          <span className='spacialReferenceStyle'>SR: {jimuMapView.view.spatialReference.wkid}</span>
+          <span className='borderRight'>SR: {jimuMapView.view.spatialReference.wkid}</span>
         }
-
-          {pointerCoords && (
-            <div className='planasCoordeStyle'>
-              <span className="barraEscalaCoordsLabel">Coordenadas planas:</span>
-              <br />
-              <span className="barraEscalaCoordsValue">
-                X: {pointerCoords.x.toFixed(2)}, Y: {pointerCoords.y.toFixed(2)}
-              </span>
-              <br />
-            </div>
-          )}
-          {pointerGeoCoords && (
-            <div >
-              <span className="barraEscalaCoordsLabel">Coordenadas geográficas:</span>
-              <br />
-              <span className="barraEscalaCoordsValue">
-                Lat: {pointerGeoCoords.lat.toFixed(6)}, Lon: {pointerGeoCoords.lon.toFixed(6)}
-              </span>
-            </div>
-          )}
-
+        {pointerCoords && (
+          <div className='planasCoordeStyle'>
+            <span className="barraEscalaCoordsLabel">Coordenadas planas:</span>
+            <br />
+            <span className="barraEscalaCoordsValue">
+              X: {pointerCoords.x.toFixed(2)}, Y: {pointerCoords.y.toFixed(2)}
+            </span>
+            <br />
+          </div>
+        )}
+        {pointerGeoCoords && (
+          <div >
+            <span className="barraEscalaCoordsLabel">Coordenadas geográficas:</span>
+            <br />
+            <span className="barraEscalaCoordsValue">
+              Lat: {pointerGeoCoords.lat.toFixed(6)}, Lon: {pointerGeoCoords.lon.toFixed(6)}
+            </span>
+          </div>
+        )}
       </div>
     </div>
   )
