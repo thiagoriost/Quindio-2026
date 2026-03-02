@@ -4,6 +4,7 @@ import type { AllWidgetProps } from 'jimu-core'
 import { JimuMapViewComponent, type JimuMapView } from 'jimu-arcgis'
 import '../styles/styles.scss'
 
+
 /**
  * Representa un nivel de detalle (Level of Detail, LOD) para el mapa.
  * @typedef {Object} LOD
@@ -126,12 +127,18 @@ const Widget = (props: AllWidgetProps<any>) => {
         </select>
       </div>
       <div className="barraEscalaCoordsContainer">
-        <span className="barraEscalaCoordsLabel">Coordenadas planas:</span>
-        <br />
-        <span className="barraEscalaCoordsValue">
-          {pointerCoords ? `X: ${pointerCoords.x.toFixed(2)}, 
-                            Y: ${pointerCoords.y.toFixed(2)}` : 'Mueva el puntero sobre el mapa'}
-        </span>
+          {pointerCoords && (
+            <div>
+            <span className="barraEscalaCoordsLabel">Coordenadas planas:</span>
+            <br />
+            <span className="barraEscalaCoordsValue">
+              X: {pointerCoords.x.toFixed(2)}, Y: {pointerCoords.y.toFixed(2)}
+            </span>
+            <br />
+            <span>RS: {jimuMapView.view.spatialReference.wkid}</span>
+            </div>
+          )
+                                }
       </div>
     </div>
   )
