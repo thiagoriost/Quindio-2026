@@ -13,10 +13,18 @@
   align-items: stretch;
   box-shadow: var(--shadow-medium);
   // min-width: 240px;
-  max-width: 100%;
+  // max-width: 100%;
   border: 1px solid var(--border-color-light);
   gap: var(--spacing-md);
   transition: box-shadow var(--transition-fast), border-color var(--transition-fast);
+}
+
+.barraEscalaCoordsContainer{
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: var(--spacing-xs);
+  flex: 1;
 }
 
 .barraEscalaHeader {
@@ -95,4 +103,18 @@
 .barraEscalaSelect option {
   background: var(--bg-color-white);
   color: var(--text-color-primary);
+}
+
+.spacialReferenceStyle{
+  align-items: anchor-center;
+  display: flex;
+  border-right: solid 1px;
+  margin-right: 5px;
+  padding-right: 5px;
+}
+
+.planasCoordeStyle{
+  border-right: solid 1px;
+    margin-right: 5px;
+    padding-right: 5px;
 }

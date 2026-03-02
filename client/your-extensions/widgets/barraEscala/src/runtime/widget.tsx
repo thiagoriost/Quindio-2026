@@ -44,6 +44,7 @@ const Widget = (props: AllWidgetProps<any>) => {
   const [jimuMapView, setJimuMapView] = useState<JimuMapView | null>(null)
   const [currentScale, setCurrentScale] = useState<number | null>(null)
   const [pointerCoords, setPointerCoords] = useState<{x: number, y: number} | null>(null)
+  const [pointerGeoCoords, setPointerGeoCoords] = useState<{lat: number, lon: number} | null>(null)
 
   const onActiveViewChange = (jimuMapView: JimuMapView) => {
     setJimuMapView(jimuMapView)
@@ -78,10 +79,30 @@ const Widget = (props: AllWidgetProps<any>) => {
       const point = view.toMap({ x: evt.x, y: evt.y })
       if (point) {
         setPointerCoords({ x: point.x, y: point.y })
+        // --- Conversión y asignación de coordenadas geográficas ---
+        // Verifica si el punto ya está en el sistema de referencia geográfico (WKID 4326)
+        if (point.spatialReference && point.spatialReference.wkid === 4326) {
+          // Si ya está en 4326, asigna directamente latitud (y) y longitud (x)
+          setPointerGeoCoords({ lat: point.y, lon: point.x })
+        } else if ((window as any).require) {
+          // Si no está en 4326 pero existe el cargador AMD de ArcGIS, carga el módulo de utilidades
+          (window as any).require(['esri/geometry/support/webMercatorUtils'], (webMercatorUtils: any) => {
+            // Convierte el punto a coordenadas geográficas (WGS84)
+            const geoPoint = webMercatorUtils.webMercatorToGeographic(point)
+            // Asigna la latitud y longitud convertidas al estado
+            setPointerGeoCoords({ lat: geoPoint.y, lon: geoPoint.x })
+          })
+        } else {
+          // Si no es posible convertir, limpia el estado de coordenadas geográficas
+          setPointerGeoCoords(null)
+        }
+      } else {
+        // Si no hay punto válido, limpia ambos estados de coordenadas
+        setPointerCoords(null)
+        setPointerGeoCoords(null)
       }
     })
   }, [])
-// ...existing code...
 
   /**
    * Maneja el cambio manual de escala desde el elemento select.
@@ -127,18 +148,30 @@ const Widget = (props: AllWidgetProps<any>) => {
         </select>
       </div>
       <div className="barraEscalaCoordsContainer">
+        {jimuMapView && jimuMapView.view &&
+          <span className='spacialReferenceStyle'>SR: {jimuMapView.view.spatialReference.wkid}</span>
+        }
+
           {pointerCoords && (
-            <div>
-            <span className="barraEscalaCoordsLabel">Coordenadas planas:</span>
-            <br />
-            <span className="barraEscalaCoordsValue">
-              X: {pointerCoords.x.toFixed(2)}, Y: {pointerCoords.y.toFixed(2)}
-            </span>
-            <br />
-            <span>RS: {jimuMapView.view.spatialReference.wkid}</span>
+            <div className='planasCoordeStyle'>
+              <span className="barraEscalaCoordsLabel">Coordenadas planas:</span>
+              <br />
+              <span className="barraEscalaCoordsValue">
+                X: {pointerCoords.x.toFixed(2)}, Y: {pointerCoords.y.toFixed(2)}
+              </span>
+              <br />
             </div>
-          )
-                                }
+          )}
+          {pointerGeoCoords && (
+            <div >
+              <span className="barraEscalaCoordsLabel">Coordenadas geográficas:</span>
+              <br />
+              <span className="barraEscalaCoordsValue">
+                Lat: {pointerGeoCoords.lat.toFixed(6)}, Lon: {pointerGeoCoords.lon.toFixed(6)}
+              </span>
+            </div>
+          )}
+
       </div>
     </div>
   )
