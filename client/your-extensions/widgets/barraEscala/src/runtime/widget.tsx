@@ -18,6 +18,13 @@ interface LOD {
   scale: number
 }
 
+/**
+ * Arreglo de niveles de detalle (LODS) utilizados para definir las escalas y resoluciones disponibles en el widget de barra de escala.
+ * Cada elemento representa un nivel de zoom del mapa, con su resolución y escala asociada.
+ * Este arreglo permite al widget mostrar opciones de escala predefinidas y realizar conversiones entre escala y nivel de detalle.
+ * Es fundamental para sincronizar la escala visualizada en el mapa y para permitir al usuario seleccionar una escala específica.
+ * @type {LOD[]}
+ */
 const LODS: LOD[] = [
   { level: 0, resolution: 0.00237946100583028, scale: 1000000 },
   { level: 1, resolution: 0.00118973050291514, scale: 500000 },
@@ -37,7 +44,7 @@ const LODS: LOD[] = [
  * Permite seleccionar y visualizar la escala del mapa de manera interactiva.
  *
  * @module BarraEscalaWidget
- * @author IGAC
+ * @author IGAC-Rigoberto Rios
  * @see https://developers.arcgis.com/experience-builder/
  */
 const Widget = (props: AllWidgetProps<any>) => {
@@ -63,24 +70,34 @@ const Widget = (props: AllWidgetProps<any>) => {
   const [pointerCoords, setPointerCoords] = useState<{x: number, y: number} | null>(null)
   const [pointerGeoCoords, setPointerGeoCoords] = useState<{lat: number, lon: number} | null>(null)
 
+  /**
+   * Efecto que carga dinámicamente el módulo de utilidades al montar el componente.
+   * Este módulo puede contener funciones auxiliares (por ejemplo, para logging o cálculos específicos)
+   * que se usan en el widget. El resultado se almacena en el estado local 'utilsModule'.
+   * Se ejecuta solo una vez al inicio (dependencias vacías).
+   */
   useEffect(() => {
+    import('../../../utils/module').then(modulo => { setUtilsModule(modulo) })
+  }, [])
 
-      import('../../../utils/module').then(modulo => { setUtilsModule(modulo) })
-
-
-    }, [])
-
-  const onActiveViewChange = (jimuMapView: JimuMapView) => {
-    setJimuMapView(jimuMapView)
-    if (jimuMapView && jimuMapView.view) {
-      // Only call watchScale if the view is a MapView (not SceneView)
-      const view = jimuMapView.view as __esri.MapView
-      // Check for a property unique to MapView (e.g., 'center')
-      if (view && 'center' in view) {
-        watchScale(view)
+    /**
+     * Maneja el evento de cambio de vista activa en el widget de mapa.
+     * Asigna la instancia de JimuMapView al estado local y, si la vista es de tipo MapView,
+     * inicia la observación de la escala y los eventos de puntero mediante watchScale.
+     * Esto permite que el widget sincronice su estado con la vista activa del mapa y actualice la escala y coordenadas.
+     * @param {JimuMapView} jimuMapView Instancia activa de JimuMapView proporcionada por el componente de mapa.
+     */
+    const onActiveViewChange = (jimuMapView: JimuMapView) => {
+      setJimuMapView(jimuMapView)
+      if (jimuMapView && jimuMapView.view) {
+        // Solo llamar a watchScale si la vista es MapView (no SceneView)
+        const view = jimuMapView.view as __esri.MapView
+        // Verifica una propiedad única de MapView (por ejemplo, 'center')
+        if (view && 'center' in view) {
+          watchScale(view)
+        }
       }
     }
-  }
 
   /**
    * Sincroniza el estado del widget cuando cambia la escala del mapa.
@@ -152,8 +169,15 @@ const Widget = (props: AllWidgetProps<any>) => {
     })
   }, [])
 
-  const visualizarCoordenadas = (point: __esri.Point | null) => {
-    if (point) {
+    /**
+     * Actualiza el estado del widget con las coordenadas del puntero en el mapa.
+     * Asigna las coordenadas planas (x, y) y, si es posible, convierte y asigna las coordenadas geográficas (lat, lon).
+     * Si el punto está en Web Mercator, realiza la conversión a geográficas usando webMercatorUtils.
+     * Si no hay punto, limpia ambos estados de coordenadas.
+     * @param {__esri.Point | null} point Punto del mapa a visualizar o null para limpiar.
+     */
+    const visualizarCoordenadas = (point: __esri.Point | null) => {
+      if (point) {
         setPointerCoords({ x: point.x, y: point.y })
         // --- Conversión y asignación de coordenadas geográficas ---
         if (point.spatialReference && point.spatialReference.wkid === 4326) {
@@ -170,7 +194,7 @@ const Widget = (props: AllWidgetProps<any>) => {
         setPointerCoords(null)
         setPointerGeoCoords(null)
       }
-  }
+    }
 
 
   /**
