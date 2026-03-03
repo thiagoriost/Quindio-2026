@@ -41,21 +41,34 @@ const LODS: LOD[] = [
  * @see https://developers.arcgis.com/experience-builder/
  */
 const Widget = (props: AllWidgetProps<any>) => {
+  /** @type {any} Módulo de utilidades cargado dinámicamente */
+    const [utilsModule, setUtilsModule] = useState<any>(null)
   // Estado para congelar la actualización de coordenadas
   const [freezeCoords, setFreezeCoords] = useState(false)
   // Referencia para mantener el valor actualizado de freezeCoords en los listeners
   const freezeCoordsRef = useRef(freezeCoords)
+  // Sincronizar el valor de freezeCoordsRef con freezeCoords
+  useEffect(() => {
+    freezeCoordsRef.current = freezeCoords
+  }, [freezeCoords])
   // Estado para almacenar el gráfico del marcador
   const [markerGraphic, setMarkerGraphic] = useState<any>(null)
-    // Sincronizar el valor de freezeCoordsRef con freezeCoords
-    useEffect(() => {
-      freezeCoordsRef.current = freezeCoords
-    }, [freezeCoords])
+  const markerGraphicRef = useRef(markerGraphic)
+  useEffect(() => {
+    markerGraphicRef.current = markerGraphic
+  }, [markerGraphic])
   // Handler to set the JimuMapView instance when the map view becomes active
   const [jimuMapView, setJimuMapView] = useState<JimuMapView | null>(null)
   const [currentScale, setCurrentScale] = useState<number | null>(null)
   const [pointerCoords, setPointerCoords] = useState<{x: number, y: number} | null>(null)
   const [pointerGeoCoords, setPointerGeoCoords] = useState<{lat: number, lon: number} | null>(null)
+
+  useEffect(() => {
+
+      import('../../../utils/module').then(modulo => { setUtilsModule(modulo) })
+
+
+    }, [])
 
   const onActiveViewChange = (jimuMapView: JimuMapView) => {
     setJimuMapView(jimuMapView)
@@ -77,7 +90,7 @@ const Widget = (props: AllWidgetProps<any>) => {
   const watchScale = useCallback((view: __esri.MapView) => {
     view.watch('scale', (newScale: number) => {
       const closest = LODS.reduce((prev, curr) => {
-        console.log({view, prev, curr, newScale})
+        if (utilsModule?.logger()) console.log({view, prev, curr, newScale})
         return Math.abs(curr.scale - newScale) < Math.abs(prev.scale - newScale)
           ? curr
           : prev
@@ -88,37 +101,22 @@ const Widget = (props: AllWidgetProps<any>) => {
     view.on('pointer-move', (evt: __esri.ViewPointerMoveEvent) => {
       if (freezeCoordsRef.current) return
       const point = view.toMap({ x: evt.x, y: evt.y })
-      if (point) {
-        setPointerCoords({ x: point.x, y: point.y })
-        // --- Conversión y asignación de coordenadas geográficas ---
-        if (point.spatialReference && point.spatialReference.wkid === 4326) {
-          setPointerGeoCoords({ lat: point.y, lon: point.x })
-        } else if ((window as any).require) {
-          (window as any).require(['esri/geometry/support/webMercatorUtils'], (webMercatorUtils: any) => {
-            const geoPoint = webMercatorUtils.webMercatorToGeographic(point)
-            setPointerGeoCoords({ lat: geoPoint.y, lon: geoPoint.x })
-          })
-        } else {
-          setPointerGeoCoords(null)
-        }
-      } else {
-        setPointerCoords(null)
-        setPointerGeoCoords(null)
-      }
+      visualizarCoordenadas(point)
     })
 
     // Escuchar click para congelar coordenadas y colocar marcador
     view.on('click', (evt: __esri.ViewClickEvent) => {
-      if (!freezeCoordsRef.current) {
+      // if (!freezeCoordsRef.current) {
         setFreezeCoords(true)
         const point = view.toMap({ x: evt.x, y: evt.y })
+        visualizarCoordenadas(point)
         if (point) {
           (window as any).require([
             'esri/Graphic',
             'esri/symbols/SimpleMarkerSymbol'
           ], (Graphic: any, SimpleMarkerSymbol: any) => {
-            if (markerGraphic) {
-              view.graphics.remove(markerGraphic)
+            if (markerGraphicRef.current) {
+              view.graphics.remove(markerGraphicRef.current)
             }
             // Obtener el color de la variable CSS --color-primary
             const colorPrimary = getComputedStyle(document.documentElement).getPropertyValue('--color-primary').trim() || '#0078d4'
@@ -150,16 +148,29 @@ const Widget = (props: AllWidgetProps<any>) => {
             setMarkerGraphic(marker)
           })
         }
-      }
+      // }
     })
   }, [])
 
-  useEffect(() => {
-
-    console.log({freezeCoords})
-
-
-  }, [freezeCoords])
+  const visualizarCoordenadas = (point: __esri.Point | null) => {
+    if (point) {
+        setPointerCoords({ x: point.x, y: point.y })
+        // --- Conversión y asignación de coordenadas geográficas ---
+        if (point.spatialReference && point.spatialReference.wkid === 4326) {
+          setPointerGeoCoords({ lat: point.y, lon: point.x })
+        } else if ((window as any).require) {
+          (window as any).require(['esri/geometry/support/webMercatorUtils'], (webMercatorUtils: any) => {
+            const geoPoint = webMercatorUtils.webMercatorToGeographic(point)
+            setPointerGeoCoords({ lat: geoPoint.y, lon: geoPoint.x })
+          })
+        } else {
+          setPointerGeoCoords(null)
+        }
+      } else {
+        setPointerCoords(null)
+        setPointerGeoCoords(null)
+      }
+  }
 
 
   /**
@@ -168,11 +179,10 @@ const Widget = (props: AllWidgetProps<any>) => {
    * @param {React.ChangeEvent<HTMLSelectElement>} event - Evento de cambio del select.
    */
   const handleChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    console.log({event})
     if (!jimuMapView) return
 
     const selectedLevel = Number(event.target.value)
-    console.log({selectedLevel})
+    if (utilsModule?.logger()) console.log({selectedLevel})
     const selectedLod = LODS.find(l => l.level === selectedLevel)
 
     if (!selectedLod) return
@@ -228,7 +238,7 @@ const Widget = (props: AllWidgetProps<any>) => {
       }
       <div className="barraEscalaCoordsContainer">
         {jimuMapView && jimuMapView.view &&
-          <span className='borderRight'>SR: {jimuMapView.view.spatialReference.wkid}</span>
+          <span className='borderRight'>SR_b: {jimuMapView.view.spatialReference.wkid}</span>
         }
         {pointerCoords && (
           <div className='planasCoordeStyle'>
