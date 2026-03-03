@@ -222,26 +222,26 @@ const Widget = (props: AllWidgetProps<any>) => {
         useMapWidgetId={props.useMapWidgetIds?.[0]}
         onActiveViewChange={onActiveViewChange}
       />
-      <div className="barraEscalaHeader">
+      <div className="barraEscalaHeader borderBottom">
         <span className="barraEscalaIcon">🔍</span>
         <span className="barraEscalaTitle">Escala:</span>
-      </div>
-      <div className="barraEscalaSelectContainer">
-        <select
-          className="barraEscalaSelect"
-          value={currentScale ?? ''}
-          onChange={handleChange}
-        >
-          {LODS.map(lod => (
-            <option key={lod.level} value={lod.level}>
-              {`1:${lod.scale.toLocaleString('es-CO')}`}
-            </option>
-          ))}
-        </select>
+        <div className="barraEscalaSelectContainer">
+          <select
+            className="barraEscalaSelect"
+            value={currentScale ?? ''}
+            onChange={handleChange}
+          >
+            {LODS.map(lod => (
+              <option key={lod.level} value={lod.level}>
+                {`1:${lod.scale.toLocaleString('es-CO')}`}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
       {
         freezeCoords &&
-          <div className='borderRight'>
+          <div className='borderBottom'>
             <label>
               <input
                 type="checkbox"
@@ -262,7 +262,7 @@ const Widget = (props: AllWidgetProps<any>) => {
       }
       <div className="barraEscalaCoordsContainer">
         {jimuMapView && jimuMapView.view &&
-          <span className='borderRight'>SR_b: {jimuMapView.view.spatialReference.wkid}</span>
+          <span className='borderBottom'>SR_b: {jimuMapView.view.spatialReference.wkid}</span>
         }
         {pointerCoords && (
           <div className='planasCoordeStyle'>
