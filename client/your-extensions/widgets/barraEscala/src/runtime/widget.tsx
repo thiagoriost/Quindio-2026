@@ -1,8 +1,9 @@
 /** @jsx jsx */
-import {useState, useCallback, useEffect, useRef } from 'react'
-import type { AllWidgetProps } from 'jimu-core'
+// import {useState, useCallback, useEffect, useRef } from 'react'
+import { React, type AllWidgetProps } from "jimu-core"
 import { JimuMapViewComponent, type JimuMapView } from 'jimu-arcgis'
 import '../styles/styles.scss'
+import { useCallback, useEffect, useRef, useState } from "react"
 
 
 /**
@@ -49,7 +50,6 @@ const LODS: LOD[] = [
  */
 const Widget = (props: AllWidgetProps<any>) => {
   /** @type {any} Módulo de utilidades cargado dinámicamente */
-    const [utilsModule, setUtilsModule] = useState<any>(null)
   // Estado para congelar la actualización de coordenadas
   const [freezeCoords, setFreezeCoords] = useState(false)
   // Referencia para mantener el valor actualizado de freezeCoords en los listeners
@@ -65,20 +65,41 @@ const Widget = (props: AllWidgetProps<any>) => {
     markerGraphicRef.current = markerGraphic
   }, [markerGraphic])
   // Handler to set the JimuMapView instance when the map view becomes active
+  /**
+   * Estado reactivo para la instancia activa de JimuMapView.
+   * Permite acceder y actualizar la vista del mapa utilizada por el widget.
+   */
   const [jimuMapView, setJimuMapView] = useState<JimuMapView | null>(null)
-  const [currentScale, setCurrentScale] = useState<number | null>(null)
-  const [pointerCoords, setPointerCoords] = useState<{x: number, y: number} | null>(null)
-  const [pointerGeoCoords, setPointerGeoCoords] = useState<{lat: number, lon: number} | null>(null)
 
   /**
-   * Efecto que carga dinámicamente el módulo de utilidades al montar el componente.
-   * Este módulo puede contener funciones auxiliares (por ejemplo, para logging o cálculos específicos)
-   * que se usan en el widget. El resultado se almacena en el estado local 'utilsModule'.
-   * Se ejecuta solo una vez al inicio (dependencias vacías).
+   * Estado para el nivel de escala actual del mapa (LOD).
+   * Se actualiza automáticamente al cambiar la escala del mapa.
    */
-  useEffect(() => {
-    import('../../../utils/module').then(modulo => { setUtilsModule(modulo) })
-  }, [])
+  const [currentScale, setCurrentScale] = useState<number | null>(null)
+
+  /**
+   * Estado para las coordenadas planas del puntero en el SR actual del mapa.
+   * Estructura: { x, y, sr }.
+   */
+  const [pointerCoords, setPointerCoords] = useState<{x: number, y: number, sr: number} | null>(null)
+
+  /**
+   * Estado para las coordenadas geográficas (lat/lon) del puntero en SR 4326.
+   * Estructura: { lat, lon, sr }.
+   */
+  const [pointerGeoCoords, setPointerGeoCoords] = useState<{lat: number, lon: number, sr: number} | null>(null)
+
+  /**
+   * Estado para las coordenadas planas del puntero proyectadas a SR 9377 (MAGNA Bogotá).
+   * Estructura: { x, y, sr }.
+   */
+  const [pointerCoords9377, setPointerCoords9377] = useState<{x: number, y: number, sr: number} | null>(null)
+
+  /**
+   * Estado para las coordenadas geográficas (lat/lon) del puntero proyectadas desde SR 9377 a SR 4326.
+   * Estructura: { lat, lon, sr }.
+   */
+  const [pointerGeoCoords9377, setPointerGeoCoords9377] = useState<{lat: number, lon: number, sr: number} | null>(null)
 
     /**
      * Maneja el evento de cambio de vista activa en el widget de mapa.
@@ -107,7 +128,7 @@ const Widget = (props: AllWidgetProps<any>) => {
   const watchScale = useCallback((view: __esri.MapView) => {
     view.watch('scale', (newScale: number) => {
       const closest = LODS.reduce((prev, curr) => {
-        if (utilsModule?.logger()) console.log({view, prev, curr, newScale})
+        if (loggerValue) console.log({view, prev, curr, newScale})
         return Math.abs(curr.scale - newScale) < Math.abs(prev.scale - newScale)
           ? curr
           : prev
@@ -169,32 +190,86 @@ const Widget = (props: AllWidgetProps<any>) => {
     })
   }, [])
 
-    /**
-     * Actualiza el estado del widget con las coordenadas del puntero en el mapa.
-     * Asigna las coordenadas planas (x, y) y, si es posible, convierte y asigna las coordenadas geográficas (lat, lon).
-     * Si el punto está en Web Mercator, realiza la conversión a geográficas usando webMercatorUtils.
-     * Si no hay punto, limpia ambos estados de coordenadas.
-     * @param {__esri.Point | null} point Punto del mapa a visualizar o null para limpiar.
-     */
-    const visualizarCoordenadas = (point: __esri.Point | null) => {
-      if (point) {
-        setPointerCoords({ x: point.x, y: point.y })
-        // --- Conversión y asignación de coordenadas geográficas ---
-        if (point.spatialReference && point.spatialReference.wkid === 4326) {
-          setPointerGeoCoords({ lat: point.y, lon: point.x })
-        } else if ((window as any).require) {
-          (window as any).require(['esri/geometry/support/webMercatorUtils'], (webMercatorUtils: any) => {
-            const geoPoint = webMercatorUtils.webMercatorToGeographic(point)
-            setPointerGeoCoords({ lat: geoPoint.y, lon: geoPoint.x })
-          })
+  /**
+   * Actualiza el estado del widget con las coordenadas del puntero en el mapa.
+   * Muestra coordenadas planas y geográficas en la SR por defecto y proyectadas a SR 9377 (MAGNA Bogotá).
+   * Si hay transformaciones oficiales, las utiliza para la proyección.
+   * @param {__esri.Point | null} point Punto del mapa a visualizar o null para limpiar.
+   */
+  const visualizarCoordenadas = useCallback((point: __esri.Point | null) => {
+
+    if (loggerValue) console.log({point})
+    if (!point) {
+      setPointerCoords(null)
+      setPointerGeoCoords(null)
+      setPointerCoords9377(null)
+      setPointerGeoCoords9377(null)
+      return
+    }
+
+    // SR por defecto
+    setPointerCoords({ x: point.x, y: point.y, sr: point.spatialReference?.wkid || 0 })
+
+    // Geográficas en SR por defecto
+    if (point.spatialReference && point.spatialReference.wkid === 4326) {
+      setPointerGeoCoords({ lat: point.y, lon: point.x, sr: 4326 })
+    } else if ((window as any).require) {
+      (window as any).require(['esri/geometry/support/webMercatorUtils'], (webMercatorUtils: any) => {
+        const geoPoint = webMercatorUtils.webMercatorToGeographic(point)
+        setPointerGeoCoords({ lat: geoPoint.y, lon: geoPoint.x, sr: 4326 })
+      })
+    } else {
+      setPointerGeoCoords(null)
+    }
+
+    // Proyección a 9377 (MAGNA Bogotá)
+    const tryProject9377 = async (retryCount = 0) => {
+      const projection = (window as any).arcgisProjection
+      const PointArcgis = (window as any).arcgisPoint
+      const SpatialReference = (window as any).arcgisSpatialReference
+      // Si los módulos aún no están listos, reintenta hasta 5 veces
+      /* if (!projection || !PointArcgis || !SpatialReference) {
+        if (retryCount < 5) {
+          setTimeout(() => tryProject9377(retryCount + 1), 300)
         } else {
-          setPointerGeoCoords(null)
+          setPointerCoords9377(null)
+          setPointerGeoCoords9377(null)
+        }
+        return
+      } */
+      await projection.load?.()
+      const targetSR = new SpatialReference({ wkid: 9377 })
+      const srcPoint = new PointArcgis({ x: point.x, y: point.y, spatialReference: point.spatialReference })
+      let projected = null
+      let usedTransformation = null
+      try {
+        // Buscar transformaciones oficiales
+        const transformations = projection.getTransformations(srcPoint.spatialReference, targetSR)
+        usedTransformation = transformations && transformations.length > 0 ? transformations[0] : null
+        projected = projection.project(srcPoint, targetSR)
+        if (loggerValue) console.log({projected, srcPoint: srcPoint.spatialReference.wkid, targetSR: targetSR.wkid, transformations: transformations, usedTransformation})
+        if (!projected) {
+          console.warn('La proyección retornó null. Es probable que falten archivos de grids para la transformación geodésica (por ejemplo, ntv2, nadgrids, etc.). Verifica la configuración de ArcGIS JS API y la disponibilidad de los grids requeridos para la transformación oficial seleccionada.', {srcPoint, targetSR, usedTransformation})
+        }
+      } catch (e) {
+        projected = null
+      }
+      if (projected) {
+        setPointerCoords9377({ x: projected.x, y: projected.y, sr: 9377 })
+        // Obtener geográficas de 9377
+        const geo9377 = projection.project(projected, new SpatialReference({ wkid: 4326 }))
+        if (geo9377) {
+          setPointerGeoCoords9377({ lat: geo9377.y, lon: geo9377.x, sr: 4326 })
+        } else {
+          setPointerGeoCoords9377(null)
         }
       } else {
-        setPointerCoords(null)
-        setPointerGeoCoords(null)
+        setPointerCoords9377(null)
+        setPointerGeoCoords9377(null)
       }
     }
+    tryProject9377()
+  }, [])
 
 
   /**
@@ -206,7 +281,7 @@ const Widget = (props: AllWidgetProps<any>) => {
     if (!jimuMapView) return
 
     const selectedLevel = Number(event.target.value)
-    if (utilsModule?.logger()) console.log({selectedLevel})
+    if (loggerValue) console.log({selectedLevel})
     const selectedLod = LODS.find(l => l.level === selectedLevel)
 
     if (!selectedLod) return
@@ -215,6 +290,40 @@ const Widget = (props: AllWidgetProps<any>) => {
       scale: selectedLod.scale
     })
   }
+
+  /**
+   * Efecto que carga dinámicamente el módulo de utilidades al montar el componente.
+   * Este módulo puede contener funciones auxiliares (por ejemplo, para logging o cálculos específicos)
+   * que se usan en el widget. El resultado se almacena en el estado local 'utilsModule'.
+   * Se ejecuta solo una vez al inicio (dependencias vacías).
+   */
+  // Estado reactivo para logger
+  const [loggerValue, setLoggerValue] = useState<any>(null)
+
+  useEffect(() => {
+    // Validar logger en localStorage y actualizar el estado
+    let loggerParsed = null
+    try {
+      loggerParsed = JSON.parse(localStorage.getItem('logger'))?.logger
+    } catch (e) {
+      loggerParsed = localStorage.getItem('logger')
+    }
+    setLoggerValue(loggerParsed)
+
+    // Carga dinámica de proyección de ArcGIS JS API (compatible con CDN)
+    if (!(window as any).arcgisProjectionLoaded) {
+      (window as any).require && (window as any).require([
+        'esri/geometry/projection',
+        'esri/geometry/Point',
+        'esri/geometry/SpatialReference'
+      ], (projection: any, Point: any, SpatialReference: any) => {
+        (window as any).arcgisProjection = projection;
+        (window as any).arcgisPoint = Point;
+        (window as any).arcgisSpatialReference = SpatialReference;
+        (window as any).arcgisProjectionLoaded = true
+      })
+    }
+  }, [])
 
   return (
     <div className="divBarraEscala barraEscalaModern">
@@ -261,12 +370,12 @@ const Widget = (props: AllWidgetProps<any>) => {
           </div>
       }
       <div className="barraEscalaCoordsContainer">
-        {jimuMapView && jimuMapView.view &&
-          <span className='borderBottom'>SR_b: {jimuMapView.view.spatialReference.wkid}</span>
+        {(jimuMapView && jimuMapView.view && loggerValue) &&
+          <span className='borderBottom'>SR actual: {jimuMapView.view.spatialReference.wkid}</span>
         }
-        {pointerCoords && (
+        {(pointerCoords && loggerValue) && (
           <div className='planasCoordeStyle'>
-            <span className="barraEscalaCoordsLabel">Coordenadas planas:</span>
+            <span className="barraEscalaCoordsLabel">Coordenadas planas (SR {pointerCoords.sr}):</span>
             <br />
             <span className="barraEscalaCoordsValue">
               X: {pointerCoords.x.toFixed(2)}, Y: {pointerCoords.y.toFixed(2)}
@@ -275,11 +384,30 @@ const Widget = (props: AllWidgetProps<any>) => {
           </div>
         )}
         {pointerGeoCoords && (
-          <div >
-            <span className="barraEscalaCoordsLabel">Coordenadas geográficas:</span>
+          <div>
+            <span className="barraEscalaCoordsLabel">Coordenadas geográficas (SR {pointerGeoCoords.sr}):</span>
             <br />
             <span className="barraEscalaCoordsValue">
               Lat: {pointerGeoCoords.lat.toFixed(6)}, Lon: {pointerGeoCoords.lon.toFixed(6)}
+            </span>
+          </div>
+        )}
+        {pointerCoords9377 && (
+          <div className='planasCoordeStyle'>
+            <span className="barraEscalaCoordsLabel">Coordenadas planas (SR 9377):</span>
+            <br />
+            <span className="barraEscalaCoordsValue">
+              X: {pointerCoords9377.x.toFixed(2)}, Y: {pointerCoords9377.y.toFixed(2)}
+            </span>
+            <br />
+          </div>
+        )}
+        {(pointerGeoCoords9377 && loggerValue) && (
+          <div>
+            <span className="barraEscalaCoordsLabel">Coordenadas geográficas (SR 4326, desde 9377):</span>
+            <br />
+            <span className="barraEscalaCoordsValue">
+              Lat: {pointerGeoCoords9377.lat.toFixed(6)}, Lon: {pointerGeoCoords9377.lon.toFixed(6)}
             </span>
           </div>
         )}

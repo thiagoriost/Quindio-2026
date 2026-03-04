@@ -140,58 +140,58 @@ const realizarConsulta = async ({
   outStatistics ='',
   groupByFieldsForStatistics=''
 }) => {
-  const controller = new AbortController();    
-  if (logger())  console.info(`REALIZANDO CONSULTA..... realizarConsulta()`,
+  const controller = new AbortController()
+  if (logger()) { console.info(`REALIZANDO CONSULTA..... realizarConsulta()`,
     {
       id: consecutivoConsultas,
-      Parametros_Consulta:{ OutFields, url, returnGeometry, where, outStatistics, groupByFieldsForStatistics, },      
+      Parametros_Consulta:{ OutFields, url, returnGeometry, where, outStatistics, groupByFieldsForStatistics, },
     }
-  )
+  ) }
   try {
     // Construcción de parámetros base
     const baseParams = new URLSearchParams({
       where: where,
       returnGeometry: returnGeometry.toString(),
       f: 'pjson'
-    });
+    })
 
     // Agregar parámetros específicos según el tipo de consulta
     if (outStatistics && outStatistics.length > 0) {
-      baseParams.append('groupByFieldsForStatistics', groupByFieldsForStatistics);
-      baseParams.append('outStatistics', outStatistics);
+      baseParams.append('groupByFieldsForStatistics', groupByFieldsForStatistics)
+      baseParams.append('outStatistics', outStatistics)
     } else if (OutFields) {
-      baseParams.append('outFields', OutFields);
+      baseParams.append('outFields', OutFields)
       // baseParams.append('geometryType', 'esriGeometryEnvelope');
     } else {
-      throw new Error('Debe proporcionar OutFields o outStatistics');
+      throw new Error('Debe proporcionar OutFields o outStatistics')
     }
 
     // Construir URL final
-    const finalUrl = `${url}/query?${baseParams.toString()}`;
-    
+    const finalUrl = `${url}/query?${baseParams.toString()}`
+
     // Realizar la petición
     const response = await fetch(finalUrl, {
       method: 'GET',
       signal: controller.signal,
       redirect: 'follow'
-    });
+    })
 
     if (!response.ok) {
-      throw new Error(`Error en la petición: ${response.status}`);
+      throw new Error(`Error en la petición: ${response.status}`)
     }
-    const toResponse = await response.json();
+    const toResponse = await response.json()
 
-    if (logger())    console.info(`Respuesta Consulta ...... realizarConsulta()`,
+    if (logger()) { console.info(`Respuesta Consulta ...... realizarConsulta()`,
       {
         id: consecutivoConsultas,
         Repuesta_Consulta:toResponse
       }
-    )
+    ) }
     consecutivoConsultas++
-    return toResponse;
+    return toResponse
   } catch (error) {
-    if (logger()) console.error('Error en realizarConsulta:', error);
-    throw error; // Re-lanzar el error para manejo superior
+    if (logger()) console.error('Error en realizarConsulta:', error)
+    throw error // Re-lanzar el error para manejo superior
   }
 }
 
@@ -499,12 +499,12 @@ const queryAttributesLayer = async ({ url, definitionExpression, returnGeometry,
     url: 'https://js.arcgis.com/4.29/'
   })
 
-  if (logger())console.info(`REALIZANDO CONSULTA..... queryAttributesLayer()`,
+  if (logger()) { console.info(`REALIZANDO CONSULTA..... queryAttributesLayer()`,
     {
       id: consecutivoConsultas,
-      Parametros_Consulta:{ url, definitionExpression, returnGeometry, outFields},     
+      Parametros_Consulta:{ url, definitionExpression, returnGeometry, outFields},
     }
-  )
+  ) }
 
   const layer = new FeatureLayer({ url })
   // Crear y ejecutar la consulta
@@ -515,13 +515,13 @@ const queryAttributesLayer = async ({ url, definitionExpression, returnGeometry,
   // query.outFields = ['OBJECTID', 'OBJECTID_1', 'DEPARTAMEN', 'MUNICIPIO', 'PCC', 'VEREDA']
 
   const dataResponse = await layer.queryFeatures(query)
-  // if (logger()) 
-  if (logger())console.info(`Respuesta Consulta ...... queryAttributesLayer()`,
+  // if (logger())
+  if (logger()) { console.info(`Respuesta Consulta ...... queryAttributesLayer()`,
       {
-        id: consecutivoConsultas,        
+        id: consecutivoConsultas,
         Repuesta_Consulta:dataResponse
       }
-    )
+    ) }
   consecutivoConsultas++
   return dataResponse
 }
@@ -598,13 +598,13 @@ const dibujarPoligono = async (
       if (!rings || !attributes) {
         if (logger()) console.log({ rings, attributes })
       }
-      if (attributes.dataIndicadores) {// esto aplica cuando es el coropletico municipal nacional
+      if (attributes.dataIndicadores) { // esto aplica cuando es el coropletico municipal nacional
         let calculaTotalFieldValue = 0
         attributes.dataIndicadores.forEach(e => {
           const value = e.attributes ? e.attributes[fieldValueToSetRangeCoropletico] : e[fieldValueToSetRangeCoropletico]
           calculaTotalFieldValue += value
         })
-        
+
         attributes[fieldValueToSetRangeCoropletico] = calculaTotalFieldValue
       } //else {
       fieldToFixRange = attributes[fieldValueToSetRangeCoropletico]
