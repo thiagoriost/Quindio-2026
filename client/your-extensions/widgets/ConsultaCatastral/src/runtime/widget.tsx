@@ -1,29 +1,78 @@
 /** @jsx jsx */
-import { TextInput, Radio, Button, Label, Select, Option } from 'jimu-ui';
-import { useRef, useEffect, useState } from 'react'
-
+import './style.scss'
+import { TextInput, Radio, Label, Select, Option } from 'jimu-ui';
+import { React, IMState } from 'jimu-core';
+import { useSelector } from 'react-redux'
 import { MUNICIPIOS_CONFIG, MunicipioConfig } from '../config/municipios.config';
 import { JimuMapViewComponent, JimuMapView } from 'jimu-arcgis'
 import Graphic from 'esri/Graphic'
 import GraphicsLayer from 'esri/layers/GraphicsLayer'
 import Polygon from 'esri/geometry/Polygon'
 import { SearchActionBar } from '../../../shared/components/search-action-bar'
-import './style.scss'
 import { ArcgisService } from '../../../shared/services/arcgis.service';
-//import { urls } from 'widgets/api/servicios';
 import { urls } from '../../../api/servicios';
+import { alertService } from '../../../shared/services/alert.service'
+import { ApiResponse } from 'widgets/shared/models/api-response.model';
+import { useOnWidgetClose } from '../../../shared/hooks/useOnWidgetClose';
+import { usePopupManager } from '../../../shared/hooks/usePopupManager';
+import { useCancelableHttp } from '../../../shared/hooks/useCancelableHttp';
+import { appActions, getAppStore } from 'jimu-core'
+import { WIDGET_IDS } from '../../../shared/constants/widget-ids'
+import { features } from 'process';
 
-// Definimos la interfaz para evitar errores de tipo
+/**
+ * @file Widget de Consulta Catastral.
+ * 
+ * Permite realizar búsquedas de predios por:
+ * - Matrícula inmobiliaria
+ * - Número predial
+ * 
+ * El widget:
+ * - Carga dinámicamente los municipios desde un servicio ArcGIS.
+ * - Consulta capas MapServer según configuración por municipio.
+ * - Resalta el predio encontrado en el mapa.
+ * - Aplica zoom automático a la geometría.
+ * - Registra popup reutilizable con opción de exportación.
+ * - Cancela peticiones HTTP pendientes al cerrar el widget.
+ * 
+ * Requiere estar vinculado a un Map Widget en Experience Builder.
+ */
+
+/**
+ * Representa una opción seleccionable de municipio en el dropdown.
+ */
 interface MunicipioOption {
+    /** Código DANE del municipio */
     value: string;
+    /** Nombre visible del municipio */
     label: string;
 }
+
+/**
+ * Tipos de búsqueda soportados por el widget.
+ * 
+ * - `matricula`: búsqueda por matrícula inmobiliaria.
+ * - `predial`: búsqueda por número predial.
+ */
 type TipoBusqueda = 'matricula' | 'predial';
 
+/**
+ * Componente principal del Widget de Consulta Predial.
+ *
+ * @param props - Propiedades entregadas por Experience Builder.
+ * 
+ * @remarks
+ * - Utiliza `JimuMapViewComponent` para conectarse al mapa.
+ * - Usa `ArcgisService` para consultas a servicios MapServer.
+ * - Usa `useCancelableHttp` para cancelar peticiones activas.
+ * - Usa `usePopupManager` para registrar popups reutilizables.
+ * - Usa `useOnWidgetClose` para limpiar estado al cerrar.
+ * 
+ * @returns JSX.Element
+ */
 const Widget = (props: any) => {
-    // -----------------------------
-    // STATE
-    // -----------------------------
+
+    const { useRef, useEffect, useState } = React
     const [municipios, setMunicipios] = useState<MunicipioOption[]>([])
     const [municipio, setMunicipio] = useState<string>('')
     const [tipoBusqueda, setTipoBusqueda] = useState<TipoBusqueda>('matricula');
@@ -42,40 +91,77 @@ const Widget = (props: any) => {
 
     const arcgisService = new ArcgisService()
 
+    const { execute, cancelAll } = useCancelableHttp()
 
-    const MAPSERVER_BASE_URL =
-        'https://sigquindio.gov.co/arcgis/rest/services/QUINDIO_III/Catastro_Nuevo1/MapServer';
+    const view = jimuMapView?.view ?? null
+    // Hook reusable del popup
+    const { registerPopup } = usePopupManager(view)
 
-    interface ArcGisQueryResponse {
-        features: any[];
+    // Cuando el mapa esté listo
+    const handleActiveViewChange = (jmv: JimuMapView) => {
+        setJimuMapView(jmv)
     }
 
-    // -----------------------------
-    // Cargar municipios (WFS)
-    // -----------------------------
+    // obtener el estado del widget
+    const widgetState = useSelector((state: IMState) =>
+        state.widgetsRuntimeInfo?.[props.id]?.state
+    )
+    // y luego usarlo en useRef
+    const prevState = useRef(widgetState)
+
+    //
+    const widgetResultId = WIDGET_IDS.RESULT
+
+
+    /**
+      * Estructura esperada de respuesta simplificada del servicio ArcGIS.
+      */
+    interface ArcGisQueryResponse {
+        /** Lista de features retornadas por la consulta */
+        features: any[];
+
+        /** Sistema de referencia espacial del resultado */
+        spatialReference?: __esri.SpatialReference;
+
+        /** Tipo de geometría devuelta */
+        geometryType?: string
+
+        /** Campos del layer */
+        fields?: any[]
+    }
+
+    /**
+     * Carga los municipios desde el servicio ArcGIS configurado.
+     * 
+     * - Consulta la capa de municipios.
+     * - Ordena alfabéticamente.
+     * - Actualiza el estado `municipios`.
+     * - Maneja estado de carga.
+     */
     const cargarMunicipios = async () => {
         console.log('Cargando municipios...')
 
         setLoading(true)
 
-        const response = await arcgisService.queryLayer<any>(
-            urls.CARTOGRAFIA.BASE,
-            urls.CARTOGRAFIA.MUNICIPIOS,
-            {
-                where: '1=1',
-                outFields: 'IDMUNICIPIO,NOMBRE',
-                returnGeometry: false
-            }
+        const response = await execute((signal) =>
+            arcgisService.queryLayer<any>(
+                urls.CARTOGRAFIA.BASE,
+                urls.CARTOGRAFIA.MUNICIPIOS,
+                {
+                    outFields: '*',
+                    returnGeometry: true
+                },
+                true,
+                signal
+            )
         )
 
         if (!response.success) {
-            setMensaje(response.error)
+            setLoading(false)
             return
         }
 
-        
         const features = response.data.features
-        console.log('Features municipios', features)
 
         const lista = features
             .map((f: any) => ({
@@ -88,58 +174,28 @@ const Widget = (props: any) => {
         setLoading(false)
     }
 
-    const cargarMunicipios_ant = async () => {
-        try {
-            setLoading(true)
-
-            const url =
-
-                'https://sigquindio.gov.co/arcgis/rest/services/QUINDIO_III/CartografiaBasica/MapServer/75/' +
-                'query?where=1%3D1&outFields=IDMUNICIPIO%2CNOMBRE&returnGeometry=false&f=pjson'
-
-            const response = await fetch(url)
-
-            if (!response.ok) {
-                throw new Error('Error consultando municipios')
-            }
-
-            const geojson = await response.json()
-
-            const lista = geojson.features
-                .map((f: any) => ({
-                    value: String(f.attributes.IDMUNICIPIO),
-                    label: f.attributes.NOMBRE
-                }))
-                .sort((a: any, b: any) => a.label.localeCompare(b.label))
-
-            setMunicipios(lista)
-
-        } catch (e) {
-            console.error(e)
-            setError('No se pudieron cargar los municipios')
-        } finally {
-            setLoading(false)
-        }
-    }
     // -----------------------------
     // Ejecutar al iniciar
     // -----------------------------
     useEffect(() => {
-        cargarMunicipios()
-    }, [])
+        console.log('Cambio de estado del widget', { widgetState, prevState: prevState.current })
+        if (widgetState === 'OPENED') {
+            cargarMunicipios()
+        }
+    }, [widgetState])
+
 
     useEffect(() => {
-
         console.log('useEffect de inicialización del MapView', { jimuMapView, state: props.state })
 
         const jmv = jimuMapViewRef.current
 
         if (!jmv) return
 
-        // 🔥 Si está en Widget Controller, esperamos a que esté OPENED
+        // Si está en Widget Controller, esperamos a que esté OPENED
         if (props.state && props.state !== 'OPENED') return
 
-        // 🔥 Evitar inicializar dos veces
+        // Evitar inicializar dos veces
         if (initializedRef.current) return
 
         const view = jmv.view
@@ -164,18 +220,31 @@ const Widget = (props: any) => {
 
     }, [jimuMapView, props.state])
 
-    // ------------------------------------------------
-    // Pintar predio + zoom
-    // ------------------------------------------------
+
+    /**
+     * Dibuja el predio en el mapa y realiza zoom.
+     * 
+     * @param feature - Feature retornada desde el servicio ArcGIS.
+     * 
+     * @remarks
+     * - Limpia gráficos previos.
+     * - Convierte la geometría a `Polygon`.
+     * - Aplica simbología de resaltado.
+     * - Registra popup exportable.
+     * - Hace zoom con factor de expansión 2.
+     */
     const pintarPredio = (feature: any) => {
-        console.log('Pintando predio', feature);
 
-        if (!jimuMapView || !graphicsLayerRef.current) return;
+        console.log('Pintando predio', feature)
 
-        graphicsLayerRef.current.removeAll();
+        if (!jimuMapView || !graphicsLayerRef.current) return
 
-        const geometry = Polygon.fromJSON(feature.geometry);
-        geometry.spatialReference = jimuMapView.view.spatialReference;
+        const view = jimuMapView.view
+
+        graphicsLayerRef.current.removeAll()
+
+        const geometry = Polygon.fromJSON(feature.geometry)
+        geometry.spatialReference = view.spatialReference
 
         const graphic = new Graphic({
             geometry: geometry,
@@ -184,74 +253,85 @@ const Widget = (props: any) => {
                 color: [255, 0, 0, 0.2],
                 outline: { color: [255, 0, 0], width: 2 }
             },
-            attributes: feature.attributes,
-            // CONFIGURACIÓN DEL POPUP NATIVO
-            popupTemplate: {
-                title: "Detalles del Predio: {NUMEROPREDIAL}", // Usa llaves para campos
-                content: [
-                    {
-                        type: "fields", // Formato tabla nativo
-                        fieldInfos: [
-                            { fieldName: "NUMEROPREDIAL", label: "Número Predial" },
-                            { fieldName: "DIRECCION", label: "Dirección" },
-                            { fieldName: "TIPO", label: "Zona" },
-                            { fieldName: "SHAPE_AREA", label: "Área (m2)" },
-                            { fieldName: "SHAPE_PERIMETRO", label: "Perímetro (m)" },
-                        ]
-                    }
-                ]
-            }
-        });
+            attributes: feature.attributes
+        })
 
-        graphicsLayerRef.current.add(graphic);
+        // Registrar popup reusable (sin repetir estructura)
+        registerPopup(graphic, {
+            title: `Detalles del Predio: ${valorBusqueda}`,
+            fileName: `Predio_${valorBusqueda}`,
+            fields: [
+                { fieldName: 'NUMEROPREDIAL', label: 'Número Predial' },
+                { fieldName: 'DIRECCION', label: 'Dirección' },
+                { fieldName: 'TIPO', label: 'Zona' },
+                { fieldName: 'SHAPE_AREA', label: 'Área (m2)' },
+                { fieldName: 'SHAPE_PERIMETRO', label: 'Perímetro (m)' }
+            ]
+        })
 
-        jimuMapView.view.goTo({
+        graphicsLayerRef.current.add(graphic)
+
+        // Zoom al predio
+        view.goTo({
             target: graphic.geometry.extent.expand(2)
-        });
-    };
-    // -----------------------------
-    // HELPERS
-    // -----------------------------
+        })
+
+    }
+    /**
+     * Obtiene la configuración del municipio seleccionado.
+     * 
+     * @returns Configuración del municipio o `undefined` si no existe.
+     */
     const obtenerMunicipio = (): MunicipioConfig | undefined => {
         return MUNICIPIOS_CONFIG.find(m => m.dane === municipio);
     };
+
+    /**
+     * Realiza consulta a un MapServer específico.
+     * 
+     * @param layerId - ID de la capa dentro del servicio.
+     * @param where - Expresión WHERE para filtrar.
+     * 
+     * @returns Promesa con `ApiResponse<ArcGisQueryResponse>`.
+     * 
+     * @remarks
+     * - Usa `useCancelableHttp` para permitir cancelación.
+     * - Retorna error si el MapView no está listo.
+     */
     const consultarMapServer = async (
         layerId: number,
         where: string
-    ): Promise<ArcGisQueryResponse> => {
-        const url = `${MAPSERVER_BASE_URL}/${layerId}/query`;
-
-        console.log('Consultando MapServer con URL:', url, 'y where:', where);
+    ): Promise<ApiResponse<ArcGisQueryResponse>> => {
 
         const jmv = jimuMapViewRef.current
 
-        if (!jmv.view) {
+        if (!jmv?.view) {
             console.warn('MapView no listo aún')
-            return
+            return {
+                success: false,
+                error: 'MapView no está listo'
+            }
+            return null
         }
 
-        const view = jimuMapView.view
+        return await execute((signal) =>
+            arcgisService.queryLayer<ArcGisQueryResponse>(
+                urls.Catastro_Nuevo1.BASE,
+                layerId,
+                { where },
+                true,
+                signal
+            )
+        )
+    }
 
-        const params = new URLSearchParams({
-            f: 'json',
-            where,
-            outFields: '*',
-            returnGeometry: 'true',
-            //            outSR: JSON.stringify(jimuMapView.view.spatialReference.toJSON()), // Misma SR del mapa
-            outSR: JSON.stringify(view.spatialReference.toJSON()),
-            spatialRel: 'esriSpatialRelIntersects'
-        });
-
-        const response = await fetch(`${url}?${params.toString()}`);
-
-        if (!response.ok) {
-            throw new Error('Error consultando el servicio catastral');
-        }
-
-        const data = await response.json();
-        return data;
-    };
-
+    /**
+     * Obtiene el layerId configurado según:
+     * - Municipio seleccionado
+     * - Tipo de búsqueda (matrícula o predial)
+     * 
+     * @returns ID de capa o `null` si no está configurado.
+     */
     const obtenerLayerId = (): number | null => {
         const municipio = obtenerMunicipio();
         if (!municipio) return null;
@@ -261,22 +341,97 @@ const Widget = (props: any) => {
             : municipio.layerId_predial;
     };
 
-    // -----------------------------
-    // BUSQUEDAS
-    // -----------------------------
+    /**
+     * Callback ejecutado cuando el widget se cierra.
+     * 
+     * - Cancela peticiones HTTP activas.
+     * - Limpia estado.
+     */
+    const onClose = () => {
+        console.log('Widget cerrado')
+
+        getAppStore().dispatch(
+            appActions.closeWidget(widgetResultId),
+        )
+        getAppStore().dispatch(
+            appActions.widgetStatePropChange(
+                widgetResultId,
+                'results',
+                null
+            )
+        )
+        cancelAll()
+        onLimpiar()
+    }
+
+    const abrirTablaResultados = (features: any[], fields: any[], spatialReference?: __esri.SpatialReference) => {
+
+        getAppStore().dispatch(appActions.openWidget(widgetResultId))
+
+        getAppStore().dispatch(
+            appActions.widgetStatePropChange(
+                widgetResultId,   // id del WidgetResult en el layout desde el widget controller
+                'results',
+                {
+                    sourceWidgetId: props.id,
+                    title: 'Resultados de prueba',
+                    features: features,
+                    fields: fields,
+                    spatialReference: spatialReference
+                }
+            )
+        )
+    }
+    /**
+     * Ejecuta búsqueda por matrícula inmobiliaria.
+     * 
+     * @param layerId - ID de la capa configurada.
+     * 
+     * @remarks
+     * - Construye cláusula WHERE.
+     * - Muestra alerta si no hay resultados.
+     * - Pinta el primer resultado encontrado.
+     * 
+     */
     const buscarPorMatricula = async (layerId: number) => {
         try {
             const where = `MATRICULA_INMOBILIARIA = '${valorBusqueda}'`;
 
-            const resultado = await consultarMapServer(layerId, where);
+            const response = await consultarMapServer(layerId, where);
+
+            // Si hubo error HTTP o servidor → ya se mostró alerta
+            if (!response.success) return
+
+            const resultado = response.data
 
             if (!resultado.features || resultado.features.length === 0) {
-                setMensaje('No se encontraron resultados para la matrícula ingresada');
-                return;
+                alertService.warning(
+                    'Sin resultados',
+                    'No se encontraron resultados para la matrícula ingresada'
+                )
+                return
             }
 
             console.log('Resultado matrícula', resultado);
-            pintarPredio(resultado.features[0])
+            const features = response.data?.features || []
+
+            // porque la aconsulta devuelve dos registros con la misma matrícula
+            const firstFeatureArray = features.length ? [features[0]] : []
+            const spatialReference = response.data?.spatialReference
+
+            const fields = [
+                { name: 'NUMEROPREDIAL', alias: 'Número Predial(20)' },
+                { name: 'NUMEROPREDIAL1', alias: 'Número Predial(30)' },
+                { name: 'MATRICULA_INMOBILIARIA', alias: 'Matrícula Inmobiliaria' },
+                { name: 'TIPO', alias: 'Tipo' },
+                { name: 'NOMBRE', alias: 'Municipio' },
+                { name: 'SHAPE_AREA', alias: 'Área (m²)', type: 'number' },
+                { name: 'SHAPE_PERIMETRO', alias: 'Perímetro (m)', type: 'number' }
+            ]
+
+            abrirTablaResultados(firstFeatureArray, fields, spatialReference as __esri.SpatialReference)
+
+//            pintarPredio(resultado.features[0])  ahora lo pinta WidgetResult
 
         } catch (error) {
             console.error(error);
@@ -284,26 +439,84 @@ const Widget = (props: any) => {
         }
     };
 
+    /**
+     * Ejecuta búsqueda por número predial.
+     * 
+     * @param layerId - ID de la capa configurada.
+     * 
+     * @remarks
+     * - Construye cláusula WHERE.
+     * - Muestra alerta si no hay resultados.
+     * - Pinta el primer resultado encontrado.
+     */
     const buscarPorPredial = async (layerId: number) => {
         try {
-            const where = `NUMEROPREDIAL = '${valorBusqueda}'`;
-
-            const resultado = await consultarMapServer(layerId, where);
-
-            if (!resultado.features || resultado.features.length === 0) {
-                setMensaje('No se encontraron resultados para el predial ingresado');
-                return;
+            let where = ''
+            if (valorBusqueda.length === 15) {
+                where = `NUMEROPREDIAL = '${valorBusqueda}'`
+            } else if (valorBusqueda.length === 25) {
+                where = `(NUMEROPREDIAL1 = '${valorBusqueda}')`
             }
 
-            console.log('Resultado predial', resultado);
-            pintarPredio(resultado.features[0])
+            const response = await consultarMapServer(layerId, where)
+            // Si hubo error HTTP o servidor → ya se mostró alerta
+
+            if (!response.success) return
+
+            const resultado = response.data
+
+            if (!resultado.features || resultado.features.length === 0) {
+                alertService.warning(
+                    'Sin resultados',
+                    'No se encontraron resultados para el predial ingresado...'
+                )
+                return
+            }
+
+            //  pintarPredio(resultado.features[0]), ahora lo pinta WidgetResult
+
+            console.log('Respuesta consulta predial', response)
+            const features = response.data?.features || []
+
+            // porque l aconsulta devuelve dos registros con el mismo número predial 
+            const firstFeatureArray = features.length ? [features[0]] : []
+            const spatialReference = response.data?.spatialReference
+
+            const fields = [
+                { name: 'NUMEROPREDIAL', alias: 'Número Predial(20)' },
+                { name: 'NUMEROPREDIAL1', alias: 'Número Predial(30)' },
+                { name: 'DIRECCION', alias: 'Dirección' },
+                { name: 'TIPO', alias: 'Tipo' },
+                { name: 'NOMBRE', alias: 'Municipio' },
+                { name: 'SHAPE_AREA', alias: 'Área (m²)', type: 'number' },
+                { name: 'SHAPE_PERIMETRO', alias: 'Perímetro (m)', type: 'number' }
+            ]
+
+            abrirTablaResultados(firstFeatureArray, fields, spatialReference as __esri.SpatialReference)
+
 
         } catch (error) {
-            console.error(error);
-            setMensaje('Error consultando el número predial');
-        }
-    };
+            console.error(error)
 
+            // Solo errores inesperados del código
+            alertService.error(
+                'Error inesperado',
+                'Ocurrió un problema consultando el número predial'
+            )
+        }
+    }
+
+    /**
+     * Método principal ejecutado al presionar "Buscar".
+     * 
+     * Validaciones:
+     * - Municipio seleccionado.
+     * - Valor ingresado.
+     * - Formato correcto según tipo de búsqueda.
+     * - Existencia de layer configurado.
+     * 
+     * Maneja estado `loading`.
+     */
     const onBuscar = async () => {
         setMensaje(null);
 
@@ -343,6 +556,13 @@ const Widget = (props: any) => {
         }
     };
 
+    /**
+     * Limpia el formulario y restablece el mapa.
+     * 
+     * - Reinicia estados.
+     * - Elimina gráficos.
+     * - Regresa al extent inicial del mapa.
+     */
     const onLimpiar = () => {
         setMunicipio('');
         setTipoBusqueda('matricula');
@@ -359,6 +579,15 @@ const Widget = (props: any) => {
         }
     };
 
+    /**
+     * Valida el formato del valor de búsqueda.
+     * 
+     * Reglas:
+     * - Predial: exactamente 15 o 25 dígitos numéricos.
+     * - Matrícula: debe contener guion (-).
+     * 
+     * @returns `true` si es válido, `false` si no.
+     */
     const validarBusqueda = (): boolean => {
         if (tipoBusqueda === 'predial') {
             const regexPredial = /^(\d{15}|\d{25})$/;
@@ -386,25 +615,41 @@ const Widget = (props: any) => {
     if (!props.useMapWidgetIds?.length) {
         return (
             <div style={{ padding: 16 }}>
-                ⚠️ Debe seleccionar un Map Widget en la configuración.
+                Debe seleccionar un Map Widget en la configuración.
             </div>
         )
     }
+
+    /**
+     * Hook personalizado que detecta cuando el widget cambia a estado cerrado.
+     *
+     * @param props.id - Identificador único del widget dentro de Experience Builder.
+     * @param onClose - Callback ejecutado automáticamente cuando el estado del widget pasa a `CLOSED`.
+     *
+     * @remarks
+     * - Observa el estado del widget en el store global (`IMState`).
+     * - Permite ejecutar lógica de limpieza al cerrar el widget.
+     * - En este caso:
+     *   - Cancela todas las peticiones HTTP activas (`cancelAll()`).
+     *   - Limpia formulario y gráficos del mapa (`onLimpiar()`).
+     *
+     * @example
+     * useOnWidgetClose(props.id, onClose)
+     */
+    useOnWidgetClose(props.id, onClose)
+
     // -----------------------------
     // UI render
     // -----------------------------
     return (
-        console.log('useMapWidgetIds:', props.useMapWidgetIds),
-
         <div className="widget-consulta-predial" style={{ padding: 12 }}>
 
             {/* CONEXIÓN REAL AL MAPA */}
             <JimuMapViewComponent
                 useMapWidgetId={props.useMapWidgetIds?.[0]}
                 onActiveViewChange={(jmv: JimuMapView) => {
-                    if (!jmv) return
 
-                    console.log('onActiveViewChange')
+                    if (!jmv) return
 
                     jimuMapViewRef.current = jmv
                     setJimuMapView(jmv)
@@ -463,7 +708,7 @@ const Widget = (props: any) => {
                 </Label>
             </div>
 
-            {/* Input búsqueda anterior */}
+            {/* Input búsqueda */}
             <div style={{ marginTop: 12 }}>
                 <TextInput
                     placeholder={
@@ -472,28 +717,30 @@ const Widget = (props: any) => {
                             : 'Ingrese número predial'
                     }
                     value={valorBusqueda}
-                    onChange={e => setValorBusqueda(e.target.value)}
-                />
-            </div>
+                    onChange={e => {
+                        setValorBusqueda(e.target.value);
+                        if (mensaje) {
+                            setMensaje('');
+                        }
+                    }}
 
-            {/* Input búsqueda */}
-            <div style={{ marginTop: 12 }}>
+                />
+
                 {/* Ayuda contextual */}
-                {!valorBusqueda && !mensaje && (
-                    <div style={{ fontSize: 12, color: '#666', marginTop: 4 }}>
-                        {tipoBusqueda === 'matricula'
-                            ? 'Ejemplo Filandia: 0002001001284-4133'
-                            : 'Ejemplo Filandia: 000000030326000'}
+                <div style={{ fontSize: 12, color: '#666', marginTop: 4 }}>
+                    {tipoBusqueda === 'matricula'
+                        ? 'Ejemplo Filandia: 0002001001284-4133'
+                        : 'Ejemplo Filandia: 000000030326000'}
+                </div>
+
+                {/* Mensaje */}
+                {mensaje && (
+                    <div style={{ marginTop: 4, color: 'red', fontSize: 12 }}>
+                        {mensaje}
                     </div>
                 )}
             </div>
 
-            {/* Mensaje */}
-            {mensaje && (
-                <div style={{ marginTop: 8, color: 'red' }}>
-                    {mensaje}
-                </div>
-            )}
 
             {/* Botón */}
             <SearchActionBar
@@ -506,5 +753,4 @@ const Widget = (props: any) => {
         </div>
     );
 };
-
 export default Widget;

@@ -1,8 +1,8 @@
 import { Button } from 'jimu-ui'
 import { loadModules } from 'esri-loader'
 import { useEffect, useState } from "react"
-import { Box } from '@mui/material'
-import { DataGrid } from 'react-data-grid'
+// import { Box } from '@mui/material'
+// import { DataGrid } from 'react-data-grid'
 
 /**
  * Componente TablaResultados
@@ -100,10 +100,10 @@ const TablaResultados = ({
           Exportar
         </Button>
       </div>
-      <Box sx={{ height: 400, width: '100%' }}>
+      {/* <Box sx={{ height: 400, width: '100%' }}>
         <DataGrid columns={columns} rows={rows} onCellClick={zoomToFeatureSelected} />
-      </Box>
-      { isLoading && widgetModules?.OUR_LOADING() }
+      </Box> */}
+      {/* { isLoading && widgetModules?.OUR_LOADING() } */}
     </>
   )
 }

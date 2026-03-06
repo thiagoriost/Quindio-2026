@@ -818,9 +818,9 @@ const ConsultaAvanzada = (props: AllWidgetProps<any>) => {
           })
           : formularioConsulta()
       }
-      {
+      {/* {
         isLoading && widgetModules?.OUR_LOADING()
-      }
+      } */}
       {
         widgetModules?.MODAL(mensajeModal, setMensajeModal)
       }

@@ -3,6 +3,7 @@ client/*
 !client/your-extensions/
 !client/your-extensions/**
 !client/package.json
+!client/package-lock.json
 server/
 soccerPromt.txt
 node_modules/*

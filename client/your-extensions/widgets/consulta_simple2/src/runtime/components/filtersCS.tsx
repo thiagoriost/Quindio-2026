@@ -175,7 +175,7 @@ const FiltersCS = function ({
         //if (utilsModule?.logger()) console.log("Contenido json SERV en petición =>", jsonSERV);
 
         //Invocación al método para obtener la información sobre el campo Temas
-        if (jsonSERV != undefined) {
+        if (jsonSERV !== undefined) {
           setJsonSERV(jsonSERV)
           getTemas(jsonSERV)
         }
@@ -211,13 +211,13 @@ const FiltersCS = function ({
    */
   function getTemas (jsonData) {
     const opcArr = []
-    let tipoRegistro, nodoPadre, urlServ, descrip: string
+    let tipoRegistro, nodoPadre, /* urlServ, */ descrip: string
     let idTema = -1
     for (let cont = 0; cont < jsonData.length; cont++) {
       tipoRegistro = jsonData[cont].type
       nodoPadre = jsonData[cont].parent
       idTema = jsonData[cont].id
-      urlServ = jsonData[cont].url
+      // urlServ = jsonData[cont].url
       descrip = jsonData[cont].text.toUpperCase()
 
       //Cargue de los tipos "tematica" con el nodo padre (nodoPadre) identificados con '#'
@@ -484,15 +484,15 @@ const FiltersCS = function ({
    * @updated 2024-06-19 - Fix seteo de valores de capa y URL
    */
   function getAtributosCapa (capa) {
-    let urlCapa: string
+    // const urlCapa: string
     let JsonAtrCapa: any = ''
     const AtrCapaArr: any = []
-    let urlCapaJson: string
+    // let urlCapaJson: string
 
     if (utilsModule?.logger()) console.log('Capa asociada =>', capa.target.value)
     //Construcción de la URL del servicio, a partir del identificador de capa traido desde el campo Capa
-    urlCapa = getUrlFromCapa(capa.target.value, capas)
-    urlCapaJson = urlCapa + '?f=json'
+    const urlCapa = getUrlFromCapa(capa.target.value, capas)
+    const urlCapaJson = urlCapa + '?f=json'
     if (utilsModule?.logger()) console.log('URL capa =>', urlCapaJson)
 
     //Inicialización controles
@@ -829,7 +829,7 @@ const FiltersCS = function ({
                 <div className="mb-1">
                   <Label size="default"> Valor</Label>
                   <TextInput placeholder="Escriba patrón de búsqueda"
-                  onAcceptValue={function noRefCheck () {}}
+                  onAcceptValue={function noRefCheck () { /* empty */ }}
                   type="search" className="mb-4" required readOnly={txtValorState}
                   value={txtValor} onChange={handleChangevalorTxt}></TextInput>
                 </div>

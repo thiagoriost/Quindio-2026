@@ -36,8 +36,8 @@ import { JimuMapViewComponent, type JimuMapView } from 'jimu-arcgis'
 import DrawMap from './components/drawMap'
 //Componente FiltersCS - 2024-06-24
 import FiltersCS from './components/filtersCS'
-//Componente TablaResultCS - 2024-06-25
-import TablaResultCS from './components/tablaResultCS'
+/* //Componente TablaResultCS - 2024-06-25
+import TablaResultCS from './components/tablaResultCS' */
 //Componente DialogsCS - 2024-06-26
 import DialogsCS from './components/dialogsCS'
 
@@ -76,8 +76,8 @@ const Widget = (props: AllWidgetProps<any>) => {
   const [widgetModules, setWidgetModules] = useState(null) // Módulos utilitarios del widget
 
   // Resultados de la consulta
-  const [rows, setRows] = useState([]) // Filas de la tabla de resultados
-  const [columns, setColumns] = useState([]) // Columnas de la tabla de resultados
+  // const [rows, setRows] = useState([]) // Filas de la tabla de resultados
+  // const [columns, setColumns] = useState([]) // Columnas de la tabla de resultados
   const [utilsModule, setUtilsModule] = useState(null) // Módulo de utilidades
 
   // Estado de carga
@@ -90,7 +90,7 @@ const Widget = (props: AllWidgetProps<any>) => {
 
   // Geometría y referencia espacial
   const [spatialRefer, setSpatialRefer] = useState<any>() // Referencia espacial
-  const [lastGeometriDeployed, setLastGeometriDeployed] = useState() // Última geometría desplegada
+  // const [lastGeometriDeployed, setLastGeometriDeployed] = useState() // Última geometría desplegada
 
   // Respuesta de la consulta
   const [ResponseConsultaSimple, setResponseConsultaSimple] = useState<InterfaceResponseConsultaSimple>()
@@ -130,9 +130,9 @@ const Widget = (props: AllWidgetProps<any>) => {
     if (utilsModule?.logger()) console.log('Data Grid Rows =>', DgridRows)
 
     // Actualiza el estado de la tabla de resultados
-    setColumns(DgridCol)
+    // setColumns(DgridCol)
     setControlForms(true)
-    setRows(DgridRows)
+    // setRows(DgridRows)
     setTimeout(() => {
       setControlForms(true)
       setIsLoading(false)
@@ -195,7 +195,7 @@ const Widget = (props: AllWidgetProps<any>) => {
         : null
       }
       {/* Tabla de resultados o filtros de consulta */}
-      {controlForms && <TablaResultCS
+      {/* {controlForms && <TablaResultCS
         props={props}
         rows={rows}
         columns={columns}
@@ -209,7 +209,7 @@ const Widget = (props: AllWidgetProps<any>) => {
         spatialRefer={spatialRefer}
         setAlertDial={setAlertDial}
         setMensModal={setMensModal}
-      />}
+      />} */}
       {!controlForms && <FiltersCS
         props={props}
         temas={temas}
@@ -245,7 +245,7 @@ const Widget = (props: AllWidgetProps<any>) => {
         view={view}
         setView={setView}
         jimuMapView={jimuMapView}
-        lastGeometriDeployed={lastGeometriDeployed}
+        lastGeometriDeployed={{}}
         condic={cond}
         setCond={setCond}
         setRenderMap={setRenderMap}
@@ -281,7 +281,7 @@ const Widget = (props: AllWidgetProps<any>) => {
         />
       }
       {/* Indicador de carga */}
-      {isLoading && widgetModules?.OUR_LOADING()}
+      {/* {isLoading && widgetModules?.OUR_LOADING()} */}
     </div>
   )
 }

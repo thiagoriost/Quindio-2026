@@ -227,8 +227,9 @@ const Widget = (props: AllWidgetProps<any>) => {
       const projection = (window as any).arcgisProjection
       const PointArcgis = (window as any).arcgisPoint
       const SpatialReference = (window as any).arcgisSpatialReference
+
       // Si los módulos aún no están listos, reintenta hasta 5 veces
-      /* if (!projection || !PointArcgis || !SpatialReference) {
+      if (!projection || !PointArcgis || !SpatialReference) {
         if (retryCount < 5) {
           setTimeout(() => tryProject9377(retryCount + 1), 300)
         } else {
@@ -236,7 +237,7 @@ const Widget = (props: AllWidgetProps<any>) => {
           setPointerGeoCoords9377(null)
         }
         return
-      } */
+      }
       await projection.load?.()
       const targetSR = new SpatialReference({ wkid: 9377 })
       const srcPoint = new PointArcgis({ x: point.x, y: point.y, spatialReference: point.spatialReference })
@@ -351,7 +352,7 @@ const Widget = (props: AllWidgetProps<any>) => {
       {
         freezeCoords &&
           <div className='borderBottom'>
-            <label>
+            <label style={{marginBottom:'0px'}}>
               <input
                 type="checkbox"
                 checked={!freezeCoords}

@@ -4,7 +4,7 @@ import InputSelect from './InputSelect/InputSelect'
 import InputTextArea from './InputTextArea/InputTextArea'
 import ModalComponent from './modal/ModalComponent'
 import TabIndicadores from './TabIndicadores/TabIndicadores'
-import OurLoading from './our_loading/OurLoading'
+// import OurLoading from './our_loading/OurLoading'
 
 const TABLARESULTADOS = ({ rows, columns, jimuMapView, lastGeometriDeployed, LayerSelectedDeployed, graphicsLayerDeployed, setLastGeometriDeployed, setMostrarResultadoFeaturesConsulta }) => (
     <TablaResultados
@@ -49,15 +49,15 @@ const FILTROS_INDICADORES = (dispatch, departamentos, jimuMapView) => (
     <TabIndicadores dispatch={dispatch} departamentos={departamentos} jimuMapView={jimuMapView}/>
 )
 
-const OUR_LOADING = () => (
+/* const OUR_LOADING = () => (
     <OurLoading />
-)
+) */
 
 export {
   TABLARESULTADOS,
   INPUTSELECT,
   INPUT_TEXTAREA,
   MODAL,
-  FILTROS_INDICADORES,
-  OUR_LOADING
+  FILTROS_INDICADORES/* ,
+  OUR_LOADING */
 }
