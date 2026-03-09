@@ -1,4 +1,5 @@
 import { React, type AllWidgetProps } from 'jimu-core'
+import { appActions, getAppStore } from 'jimu-core'
 import { JimuMapViewComponent, type JimuMapView } from 'jimu-arcgis' // The map object can be accessed using the JimuMapViewComponent
 import { Button } from 'jimu-ui' // import components
 import 'react-data-grid/lib/styles.css'
@@ -9,6 +10,7 @@ import '../styles/style.css'
 import FeatureLayer from '@arcgis/core/layers/FeatureLayer'
 import { type InterfaceColumns, type Row, type interfaceMensajeModal, typeMSM } from '../types/interfaces'
 import { loadModules } from 'esri-loader'
+import { WIDGET_IDS } from '../../../shared/constants/widget-ids'
 
 const { useEffect, useState } = React
 // import ModalComponent from './components/ModalComponent'
@@ -51,6 +53,7 @@ const ConsultaAvanzada = (props: AllWidgetProps<any>) => {
   const [widgetModules, setWidgetModules] = useState(null)
   const [utilsModule, setUtilsModule] = useState(null)
   const [servicios, setServicios] = useState(null)
+  const widgetResultId = WIDGET_IDS.RESULT
 
   //To add the layer to the Map, a reference to the Map must be saved into the component state.
   const [jimuMapView, setJimuMapView] = useState<JimuMapView>()
@@ -423,31 +426,45 @@ const ConsultaAvanzada = (props: AllWidgetProps<any>) => {
       })
   }
 
-  /*
-    limpiarFormulario => Método para remover las opciones de los campos Temna, Subtema, Grupo, Capa, Atributo y Valor
-    @date 2024-05-28
-    @author IGAC - DIP
-    @param (Object) evt => Analizador de eventos asociado al control Limpiar
-    @remarks Deseleccionar item en campo Tema en https://stackoverflow.com/questions/48357787/how-to-deselect-option-on-selecting-option-of-another-select-in-react
-  */
-  const limpiarFormulario = (evt) => {
+
+  /**
+   * limpiarCons => Limpia todos los controles del formulario y remueve las capas del mapa.
+   * Reinicia el formulario al estado inicial.
+   * @param {React.MouseEvent<HTMLButtonElement>|{target: {value: string}}} evt - Evento del botón Limpiar
+   * @returns {void} Reinicia todos los estados de los controles
+   * @author IGAC - DIP
+   * @since 2024-05-28
+   * @updated 2026-03-09 - Adaptación desde filtersCS para ConsultaAvanzada
+   */
+  const limpiarCons = (evt) => {
     if (utilsModule?.logger()) console.log('Handle Evt en limpiar =>', evt.target.value)
-    setCapas([])
-    setCondicionBusqueda('')
-    setValores([])
-    setCapaselected(null)
     setselTema(undefined)
+    setTemas(temas)
     setSubtemas([])
     setGrupos([])
+    setCapas([])
     setCapasAttr([])
-    setSubtemaselected(undefined)
+    setValores([])
+    setValorSelected(undefined)
     setCampo(undefined)
-    if (utilsModule?.logger()) console.log(graphicsLayerDeployed)
-    if (utilsModule?.logger()) console.log(featuresLayersDeployed)
-    removeLayer(LayerSelectedDeployed)
+    setCondicionBusqueda('')
+    setCapaselected(null)
+    setselCapas(undefined)
+    setSubtemaselected(undefined)
+    setselGrupo(undefined)
     setLayerSelectedDeployed(null)
-    jimuMapView.view.map.removeAll()
-    goToInitialExtent(jimuMapView, initialExtent)
+    setGraphicsLayerDeployed(null)
+    setFeaturesLayersDeployed([])
+    setResponseConsulta(null)
+    // Limpiar capas del mapa
+    if (jimuMapView && jimuMapView.view) {
+      try {
+        jimuMapView.view.map.removeAll()
+        goToInitialExtent(jimuMapView, initialExtent)
+      } catch (e) {
+        if (utilsModule?.logger()) console.error('Error al limpiar el mapa:', e)
+      }
+    }
   }
 
   const removeLayer = (layer: __esri.Layer) => {
@@ -738,7 +755,7 @@ const ConsultaAvanzada = (props: AllWidgetProps<any>) => {
             </Button>
             <Button
               htmlType='button'
-              onClick={limpiarFormulario}
+              onClick={limpiarCons}
               size='sm'
               type='primary'
             >
@@ -761,13 +778,63 @@ const ConsultaAvanzada = (props: AllWidgetProps<any>) => {
     const filas = features.map(({ attributes, geometry }) => ({ ...attributes, geometry }))
     if (utilsModule?.logger()) console.log(dataGridColumns)
     if (utilsModule?.logger()) console.log(filas)
-    setColumns(dataGridColumns)
-    setRows(filas)
-    setTimeout(() => {
+    // setColumns(dataGridColumns)
+    // setRows(filas)
+    /* setTimeout(() => {
       setMostrarResultadoFeaturesConsulta(true)
-    }, 10)
+    }, 10) */
+
+    const spatialReference = responseConsulta.spatialReference
+    const fields = [
+        { name: 'DEPARTAMEN', alias: 'Departamento' },
+        { name: 'MUNICIPIO', alias: 'Municipio' },
+        { name: 'VEREDA', alias: 'Vereda' },
+        { name: 'PCC', alias: 'PCC' },
+        { name: 'SHAPE.AREA', alias: 'Área (m²)', type: 'number' },        
+        { name: 'AREA_HA', alias: 'Área (HA)', type: 'number' }        
+    ]
+
+    abrirTablaResultados(features, fields, spatialReference as unknown as __esri.SpatialReference)
+
+
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [responseConsulta])
+
+  const abrirTablaResultados = (features: any[], fields: any[], spatialReference?: __esri.SpatialReference) => {
+    
+    getAppStore().dispatch(appActions.openWidget(widgetResultId))
+
+    /**
+     * Actualiza el estado del widget de resultados con los datos de la consulta avanzada.
+     * Envía los resultados (features, campos y referencia espacial) al widget de resultados
+     * para su visualización en la tabla.
+     *
+     * @function
+     * @param {string} widgetResultId - ID del widget de resultados en el layout
+     * @param {Array} features - Arreglo de entidades geoespaciales resultantes de la consulta
+     * @param {Array} fields - Definición de los campos/columnas a mostrar en la tabla
+     * @param {object} spatialReference - Referencia espacial de los datos
+     * @returns {void}
+     * @author IGAC - DIP
+     * @since 2024-05-28
+     * @updated 2026-03-09 - Documentación mejorada y formato JSDoc
+     */
+    getAppStore().dispatch(
+      appActions.widgetStatePropChange(
+        widgetResultId, // ID del widget de resultados
+        'results',
+        {
+          sourceWidgetId: props.id, // ID del widget origen
+          title: 'Resultados de prueba', // Título de la tabla de resultados
+          features: features, // Datos geoespaciales
+          fields: fields, // Definición de columnas
+          spatialReference: spatialReference // Referencia espacial
+        }
+      )
+    )
+  }
+
+
   /**
    * Despues de modificar el valor del campo, realiza la consulta
    */
@@ -788,6 +855,12 @@ const ConsultaAvanzada = (props: AllWidgetProps<any>) => {
   }, [servicios])
 
   useEffect(() => {
+    if (props.state === 'CLOSED') {
+      limpiarCons({ target: { value: '' } })
+    }
+  }, [props.state])
+
+  useEffect(() => {
     // setResponseConsulta(dataPruebaResponse)
     import('../../../commonWidgets/widgetsModule').then(modulo => { setWidgetModules(modulo) })
     import('../../../utils/module').then(modulo => { setUtilsModule(modulo) })
@@ -805,7 +878,7 @@ const ConsultaAvanzada = (props: AllWidgetProps<any>) => {
         <JimuMapViewComponent useMapWidgetId={props.useMapWidgetIds?.[0]} onActiveViewChange={activeViewChangeHandler} />
       )}
       {
-        mostrarResultadoFeaturesConsulta
+        /* mostrarResultadoFeaturesConsulta
           ? widgetModules.TABLARESULTADOS({
             rows,
             columns,
@@ -816,7 +889,7 @@ const ConsultaAvanzada = (props: AllWidgetProps<any>) => {
             setLastGeometriDeployed,
             setMostrarResultadoFeaturesConsulta
           })
-          : formularioConsulta()
+          :  */formularioConsulta()
       }
       {/* {
         isLoading && widgetModules?.OUR_LOADING()

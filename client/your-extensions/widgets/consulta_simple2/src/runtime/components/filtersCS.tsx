@@ -601,7 +601,7 @@ const FiltersCS = function ({
   function limpiarCons (evt) {
     //State del control Tema
     if (utilsModule?.logger()) console.log('Handle Evt en limpiar =>', evt.target.value)
-    setselTema({ selected: evt.target.value })
+    setselTema(undefined) // Mostrar placeholder en Select Tema
     setTemas(temas)
     setSubtemas([])
     setGrupos([])
@@ -612,10 +612,6 @@ const FiltersCS = function ({
     setselAttr(undefined)
 
     //Rutina para limpiar capa del mapa
-    /*  setResponseConsultaSimple(null);
-      if (utilsModule?.logger()) console.log("Obj Geometria =>",view);
-      jimuMapView.view.map.remove(view); */
-
     limpiarCapaMapa()
   }
 
@@ -639,16 +635,16 @@ const FiltersCS = function ({
     let cond = ''
 
     //Cargue valores filtros
-    /* //Tema
-        if (utilsModule?.logger()) console.log("Tema valor =>",selTema);
-        //Subtema
-        if (utilsModule?.logger()) console.log("Subtema valor =>",selSubtema);
-        //Grupo
-        if (utilsModule?.logger()) console.log("Grupo valor =>",selGrupo);
-        //Capa
-        if (utilsModule?.logger()) console.log("Capa valor =>",selCapas);
-        //Atributo
-        if (utilsModule?.logger()) console.log("Atributo valor =>",selAttr);   */
+    //Tema
+    if (utilsModule?.logger()) console.log("Tema valor =>",selTema);
+    //Subtema
+    if (utilsModule?.logger()) console.log("Subtema valor =>",selSubtema);
+    //Grupo
+    if (utilsModule?.logger()) console.log("Grupo valor =>",selGrupo);
+    //Capa
+    if (utilsModule?.logger()) console.log("Capa valor =>",selCapas);
+    //Atributo
+    if (utilsModule?.logger()) console.log("Atributo valor =>",selAttr);  
 
     //Condición campos alfanuméricos
     //const cond = selAttr + "=" +"'"+txtValor+"'";

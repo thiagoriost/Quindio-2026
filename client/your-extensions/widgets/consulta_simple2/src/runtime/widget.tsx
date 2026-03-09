@@ -29,6 +29,8 @@
  * @date 2026-03-05
  */
 import { React, type AllWidgetProps } from 'jimu-core'
+import { appActions, getAppStore } from 'jimu-core'
+import { WIDGET_IDS } from '../../../shared/constants/widget-ids'
 import { JimuMapViewComponent, type JimuMapView } from 'jimu-arcgis'
 
 //Importación componentes personalizados
@@ -114,6 +116,7 @@ const Widget = (props: AllWidgetProps<any>) => {
     subBody: ''
   }) // Estado del modal
 
+  const widgetResultId = WIDGET_IDS.RESULT // ID del widget de resultados en el layout
 
   /**
    * Cuando se actualiza la respuesta de la consulta, procesa los datos para la tabla de resultados.
@@ -130,6 +133,19 @@ const Widget = (props: AllWidgetProps<any>) => {
     if (utilsModule?.logger()) console.log('Data Grid Rows =>', DgridRows)
 
     // Actualiza el estado de la tabla de resultados
+    const firstFeatureArray = features.length ? [features[0]] : []
+    const spatialReference = ResponseConsultaSimple.spatialReference
+
+    const fields = [
+        { name: 'DEPARTAMEN', alias: 'Departamento' },
+        { name: 'MUNICIPIO', alias: 'Municipio' },
+        { name: 'VEREDA', alias: 'Vereda' },
+        { name: 'PCC', alias: 'PCC' },
+        { name: 'SHAPE.AREA', alias: 'Área (m²)', type: 'number' },        
+        { name: 'AREA_HA', alias: 'Área (HA)', type: 'number' }        
+    ]
+
+    abrirTablaResultados(firstFeatureArray, fields, spatialReference as unknown as __esri.SpatialReference)
     // setColumns(DgridCol)
     setControlForms(true)
     // setRows(DgridRows)
@@ -139,6 +155,26 @@ const Widget = (props: AllWidgetProps<any>) => {
     }, 10)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ResponseConsultaSimple])
+
+
+  const abrirTablaResultados = (features: any[], fields: any[], spatialReference?: __esri.SpatialReference) => {
+  
+      getAppStore().dispatch(appActions.openWidget(widgetResultId))
+
+      getAppStore().dispatch(
+          appActions.widgetStatePropChange(
+              widgetResultId,   // id del WidgetResult en el layout desde el widget controller
+              'results', // nombre de la propiedad que se va a actualizar en el estado del widget
+              {
+                  sourceWidgetId: props.id, // id del widget que envía los datos (este widget)
+                  title: 'Resultados de prueba', // título que se mostrará en el widget de resultados
+                  features: features, // datos de las características a mostrar
+                  fields: fields, // campos a mostrar en la tabla de resultados
+                  spatialReference: spatialReference // referencia espacial de los datos
+              }
+          )
+      )
+  }
 
   // Reinicia la condición cuando cambia el control de formularios
   useEffect(() => {
@@ -210,7 +246,7 @@ const Widget = (props: AllWidgetProps<any>) => {
         setAlertDial={setAlertDial}
         setMensModal={setMensModal}
       />} */}
-      {!controlForms && <FiltersCS
+      <FiltersCS
         props={props}
         temas={temas}
         selTema={selTema}
@@ -253,7 +289,7 @@ const Widget = (props: AllWidgetProps<any>) => {
         mensModal={mensModal}
         setMensModal={setMensModal}
         setIsLoading={setIsLoading}
-      />}
+      />
       {/* Herramientas de dibujo en el mapa */}
       {renderMap &&
         <DrawMap jimuMapView={jimuMapView}
