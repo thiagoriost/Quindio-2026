@@ -1,5 +1,6 @@
 import { React} from 'jimu-core'
 import FeatureLayer from '@arcgis/core/layers/FeatureLayer'
+import '../../styles/legendDisplay.css'
 
 /**
  * LegendDisplay - Componente reutilizable para mostrar las leyendas de las capas activas en el mapa.
@@ -23,9 +24,7 @@ const LegendDisplay = ({ activeLayerUrls = [] }) => {
           const layer = new FeatureLayer({ url })
           await layer.load()
           let legendInfo = []
-          try {
-            legendInfo = await layer.fetchLegendInfos()
-          } catch (fetchLegendError) {
+
             // Si fetchLegendInfos falla, intenta obtener la leyenda desde el endpoint REST
             try {
               const legendUrl = url.replace(/\/?$/, '') + '/legend?f=json'
@@ -64,9 +63,16 @@ const LegendDisplay = ({ activeLayerUrls = [] }) => {
                       const symbol = renderer.symbol
                       const colorArr = symbol.color || [0,0,0,0]
                       const color = `rgba(${colorArr[0]},${colorArr[1]},${colorArr[2]},${colorArr[3]/255})`
+                      let outlineStyle = {}
+                      if (symbol.outline && symbol.outline.color) {
+                        const outlineArr = symbol.outline.color
+                        outlineStyle = {
+                          border: `2px solid rgba(${outlineArr[0]},${outlineArr[1]},${outlineArr[2]},${outlineArr[3]/255})`
+                        }
+                      }
                       legendInfo = [{
                         label: dataInfo.name || 'Símbolo',
-                        symbol: { color, style: symbol.style, outline: symbol.outline }
+                        symbol: { color, style: symbol.style, outline: symbol.outline, outlineStyle }
                       }]
                     }
                   }
@@ -74,7 +80,7 @@ const LegendDisplay = ({ activeLayerUrls = [] }) => {
               }
             } catch (restLegendError) {
               // No hacer nada, legendInfo quedará vacío
-            }
+
           }
           if (!legendInfo || legendInfo.length === 0) {
             return {
@@ -102,32 +108,32 @@ const LegendDisplay = ({ activeLayerUrls = [] }) => {
   }, [activeLayerUrls])
 
   return (
-    <div className="legend-display">
+    <div className="legendDisplay" style={{ background: 'var(--color-primary-light)' }}>
       <h3>Leyendas de capas activas</h3>
       {legends.length === 0 && <div>No hay capas activas.</div>}
       {legends.map(({ url, title, legendInfo, error }) => (
-        <div key={url} className="legend-layer">
+        <div key={url} className="legendLayer">
           <strong>{title}</strong>
-          {error && <div style={{ color: 'red' }}>{error}</div>}
+          {error && <div className="errorMsg">{error}</div>}
           {legendInfo && legendInfo.length > 0 ? (
             <ul>
               {legendInfo.map((item, idx) => (
-                <li key={idx} style={{ display: 'flex', alignItems: 'center', marginBottom: 4 }}>
+                <li key={idx} className="legendItem">
+                  {/* Siempre muestra el rectángulo de color si existe color */}
+                  {item.symbol && item.symbol.color && (
+                    <span
+                      className="legendSymbol"
+                      style={{
+                        background: item.symbol.color,
+                        ...((item.symbol.outlineStyle) ? item.symbol.outlineStyle : {})
+                      }}
+                    />
+                  )}
+                  {/* Si hay imagen de símbolo, la muestra a la derecha del color */}
                   {item.symbol && item.symbol.url && (
-                    <img src={item.symbol.url} alt={item.label} style={{ width: 24, height: 24, marginRight: 8 }} />
+                    <img src={item.symbol.url} alt={item.label} className="legendSymbol" style={{ marginLeft: 4 }} />
                   )}
-                  {item.symbol && item.symbol.color && !item.symbol.url && (
-                    <span style={{
-                      display: 'inline-block',
-                      width: 24,
-                      height: 24,
-                      marginRight: 8,
-                      background: item.symbol.color,
-                      border: '1px solid #888',
-                      borderRadius: 4
-                    }} />
-                  )}
-                  <span>{item.label}</span>
+                  <span className="legendLabel">{item.label}</span>
                 </li>
               ))}
             </ul>

@@ -1,0 +1,97 @@
+@import '../../../utils/styles/presetsQundio.css';
+
+.legendDisplay {
+  background: var(--bg-color-white);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-light);
+  padding: var(--spacing-lg);
+  margin: var(--spacing-md) 0;
+  max-width: 100%;
+  min-width: 220px;
+  width: 100%;
+  font-size: var(--font-size-md);
+  color: var(--text-color-primary);
+  transition: box-shadow var(--transition-fast);
+}
+
+.legendDisplay h3 {
+  color: var(--color-primary);
+  font-size: var(--font-size-lg);
+  margin-bottom: var(--spacing-md);
+  font-weight: var(--font-weight-bold);
+}
+
+.legendLayer {
+  margin-bottom: var(--spacing-lg);
+  padding-bottom: var(--spacing-sm);
+  border-bottom: 1px solid var(--border-color-light);
+}
+
+.legendLayer:last-child {
+  border-bottom: none;
+}
+
+.legendLayer strong {
+  font-size: var(--font-size-md);
+  color: var(--color-secondary);
+  margin-bottom: var(--spacing-xs);
+  display: block;
+}
+
+.legendLayer ul {
+  list-style: none;
+  padding-left: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+}
+
+.legendLayer li {
+  display: flex;
+  align-items: center;
+  margin-bottom: var(--spacing-xs);
+  background: var(--bg-color-light);
+  border-radius: var(--border-radius-md);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  min-width: 120px;
+  box-sizing: border-box;
+}
+
+.legendSymbol {
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  margin-right: var(--spacing-sm);
+  border: 1px solid var(--border-color-medium);
+  border-radius: var(--border-radius-sm);
+  background: var(--bg-color-gray);
+  flex-shrink: 0;
+}
+
+.legendLabel {
+  font-size: var(--font-size-sm);
+  color: var(--text-color-primary);
+  word-break: break-word;
+}
+
+@media (max-width: 600px) {
+  .legendDisplay {
+    padding: var(--spacing-md);
+    font-size: var(--font-size-sm);
+  }
+  .legendLayer ul {
+    flex-direction: column;
+    gap: var(--spacing-xs);
+  }
+  .legendLayer li {
+    min-width: 100px;
+    font-size: var(--font-size-xs);
+  }
+}
+
+.errorMsg {
+  color: var(--color-danger);
+  font-size: var(--font-size-sm);
+  margin-top: var(--spacing-xs);
+}
