@@ -15,6 +15,7 @@ import 'rc-slider/assets/index.css'; import 'react-tabs/style/react-tabs.css'
 import '../../styles/style.css'
 import '../../styles/styles_widgetTree.css'
 import { appActions, getAppStore } from 'jimu-core'
+import LegendDisplay from './LegendDisplay'
 
 interface Widget_Tree_Props {
     dataTablaContenido:CapasTematicas[]; // data ordenada
@@ -397,6 +398,7 @@ const WidgetTree: React.FC<Widget_Tree_Props> = ({ dataTablaContenido, varJimuMa
      */
     useEffect(() => {
         const {capasVisibles} = recorreTodasLasCapasTablaContenido(dataTablaContenido)
+        if (utilsModule?.logger()) console.log("Capas visibles al iniciar WidgetTree:",{capasVisibles})
         setCapasSelectd( capasVisibles )
         dibujaCapasSeleccionadas(capasVisibles, varJimuMapView)
 
@@ -429,7 +431,12 @@ const WidgetTree: React.FC<Widget_Tree_Props> = ({ dataTablaContenido, varJimuMa
                 <TabList>
                     <Tab>Lista de Capas</Tab>
                     {
-                        capasSelectd.length>0 && <Tab>Orden de Capas</Tab>
+                        capasSelectd.length>0 && (
+                            <>
+                                <Tab>Orden de Capas</Tab>
+                                <Tab>Leyendas</Tab>
+                            </>
+                        )
                     }
                 </TabList>
 
@@ -464,11 +471,23 @@ const WidgetTree: React.FC<Widget_Tree_Props> = ({ dataTablaContenido, varJimuMa
                 </TabPanel>
                 {
                     capasSelectd.length>0 &&
-                        <TabPanel>
-                            <div className="checked-layers tab-order-capas">
-                                <DragAndDrop items={featuresLayersDeployed} setItems={setFeaturesLayersDeployed} setBanderaRefreshCapas={setBanderaRefreshCapas}/>
-                            </div>
-                        </TabPanel>
+                        (
+                            <>
+                                <TabPanel>
+                                    <div className="checked-layers tab-order-capas">
+                                        <DragAndDrop items={featuresLayersDeployed} setItems={setFeaturesLayersDeployed} setBanderaRefreshCapas={setBanderaRefreshCapas}/>
+                                    </div>
+                                </TabPanel>
+                                <TabPanel>
+                                    <LegendDisplay activeLayerUrls={capasSelectd.map(capa => {
+                                        const url = capa.URL ? capa.URL : capa.capasNietas ? capa.capasNietas[0].URL : '';
+                                        const nombreCapa = capa.NOMBRECAPA ? capa.NOMBRECAPA : capa.capasNietas ? capa.capasNietas[0].NOMBRECAPA : '';
+                                        return url && nombreCapa ? `${url}/${nombreCapa}` : url;
+                                        })}
+                                    />
+                                </TabPanel>
+                            </>
+                        )
                 }
             </Tabs>
             <ContexMenu contextMenu={contextMenu} setContextMenu={setContextMenu} varJimuMapView={varJimuMapView}/>
