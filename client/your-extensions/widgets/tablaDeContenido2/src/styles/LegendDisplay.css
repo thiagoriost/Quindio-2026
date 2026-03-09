@@ -63,7 +63,7 @@
   width: 24px;
   height: 24px;
   margin-right: var(--spacing-sm);
-  border: 1px solid var(--border-color-medium);
+  /* border: 1px solid var(--border-color-medium); */
   border-radius: var(--border-radius-sm);
   background: var(--bg-color-gray);
   flex-shrink: 0;

@@ -53,27 +53,65 @@ const LegendDisplay = ({ activeLayerUrls = [] }) => {
                       legendInfo = renderer.uniqueValueInfos.map(info => {
                         const symbol = info.symbol
                         const colorArr = symbol.color || [0,0,0,0]
-                        const color = `rgba(${colorArr[0]},${colorArr[1]},${colorArr[2]},${colorArr[3]/255})`
+                        const fillColor = `rgba(${colorArr[0]},${colorArr[1]},${colorArr[2]},${colorArr[3]/255})`
+                        let outlineStyle = {}
+                        if (symbol.outline && symbol.outline.color) {
+                          const outlineArr = symbol.outline.color
+                          outlineStyle = {
+                            border: `${symbol.outline.width || 2}px solid rgba(${outlineArr[0]},${outlineArr[1]},${outlineArr[2]},${outlineArr[3]/255})`
+                          }
+                        }
                         return {
                           label: info.label || info.value || 'Símbolo',
-                          symbol: { color, style: symbol.style, outline: symbol.outline }
+                          symbol: { color: fillColor, style: symbol.style, outline: symbol.outline, outlineStyle }
                         }
                       })
+                      console.log({legendInfo})
                     } else if (renderer.type === 'simple' && renderer.symbol) {
                       const symbol = renderer.symbol
-                      const colorArr = symbol.color || [0,0,0,0]
-                      const color = `rgba(${colorArr[0]},${colorArr[1]},${colorArr[2]},${colorArr[3]/255})`
-                      let outlineStyle = {}
-                      if (symbol.outline && symbol.outline.color) {
-                        const outlineArr = symbol.outline.color
-                        outlineStyle = {
-                          border: `2px solid rgba(${outlineArr[0]},${outlineArr[1]},${outlineArr[2]},${outlineArr[3]/255})`
+                      // Soporte para PictureFillSymbol (esriPFS)
+                      if (symbol.type === 'esriPFS' && symbol.imageData) {
+                        // Construir data URL
+                        const imageUrl = `data:${symbol.contentType};base64,${symbol.imageData}`
+                        // Outline
+                        let outlineColor = 'rgba(0,0,0,1)'
+                        let outlineWidth = 1
+                        if (symbol.outline && symbol.outline.color) {
+                          const outlineArr = symbol.outline.color
+                          outlineColor = `rgba(${outlineArr[0]},${outlineArr[1]},${outlineArr[2]},${outlineArr[3]/255})`
+                          outlineWidth = symbol.outline.width || 1
                         }
+                        legendInfo = [{
+                          label: dataInfo.name || 'Símbolo',
+                          symbol: {
+                            svg: (
+                              <svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <defs>
+                                  <pattern id={`patternId-${symbol.url}`} patternUnits="userSpaceOnUse" width="48" height="48">
+                                    <image href={imageUrl} x="0" y="0" width="48" height="48" />
+                                  </pattern>
+                                </defs>
+                                <rect x="2" y="2" width="20" height="20" fill={`url(#patternId-${symbol.url})`} stroke={outlineColor} strokeWidth={outlineWidth} rx="4" />
+                              </svg>
+                            )
+                          }
+                        }]
+                      } else {
+                        // Relleno sólido
+                        const colorArr = symbol.color || [0,0,0,0]
+                        const fillColor = `rgba(${colorArr[0]},${colorArr[1]},${colorArr[2]},${colorArr[3]/255})`
+                        let outlineStyle = {}
+                        if (symbol.outline && symbol.outline.color) {
+                          const outlineArr = symbol.outline.color
+                          outlineStyle = {
+                            border: `${symbol.outline.width || 2}px solid rgba(${outlineArr[0]},${outlineArr[1]},${outlineArr[2]},${outlineArr[3]/255})`
+                          }
+                        }
+                        legendInfo = [{
+                          label: dataInfo.name || 'Símbolo',
+                          symbol: { color: fillColor, style: symbol.style, outline: symbol.outline, outlineStyle }
+                        }]
                       }
-                      legendInfo = [{
-                        label: dataInfo.name || 'Símbolo',
-                        symbol: { color, style: symbol.style, outline: symbol.outline, outlineStyle }
-                      }]
                     }
                   }
                 }
@@ -108,7 +146,14 @@ const LegendDisplay = ({ activeLayerUrls = [] }) => {
   }, [activeLayerUrls])
 
   return (
-    <div className="legendDisplay" style={{ background: 'var(--color-primary-light)' }}>
+    <div
+      className="legendDisplay"
+      style={{
+        maxHeight: '70vh',
+        overflowY: 'auto',
+        paddingRight: '8px' // espacio para el scrollbar
+      }}
+    >
       <h3>Leyendas de capas activas</h3>
       {legends.length === 0 && <div>No hay capas activas.</div>}
       {legends.map(({ url, title, legendInfo, error }) => (
@@ -118,22 +163,26 @@ const LegendDisplay = ({ activeLayerUrls = [] }) => {
           {legendInfo && legendInfo.length > 0 ? (
             <ul>
               {legendInfo.map((item, idx) => (
-                <li key={idx} className="legendItem">
-                  {/* Siempre muestra el rectángulo de color si existe color */}
-                  {item.symbol && item.symbol.color && (
+                <li key={idx} className="legendItem" style={{width:'stretch'}}>
+                  {/* SVG para PictureFillSymbol */}
+                  {item.symbol && item.symbol.svg && (
+                    <span className="legendSymbol" style={{ padding: 0, background: 'none' }}>{item.symbol.svg}</span>
+                  )}
+                  {/* <span className="legendLabel" style={{width:'stretch'}}>{item.label}</span> */}
+                  {/* Relleno sólido */}
+                  {item.symbol && item.symbol.color && !item.symbol.svg && (
                     <span
-                      className="legendSymbol"
                       style={{
+                        display: 'inline-block',
+                        width: '100%',
+                        height: '20px',
                         background: item.symbol.color,
                         ...((item.symbol.outlineStyle) ? item.symbol.outlineStyle : {})
                       }}
-                    />
+                    >
+                      {item.label}
+                      </span>
                   )}
-                  {/* Si hay imagen de símbolo, la muestra a la derecha del color */}
-                  {item.symbol && item.symbol.url && (
-                    <img src={item.symbol.url} alt={item.label} className="legendSymbol" style={{ marginLeft: 4 }} />
-                  )}
-                  <span className="legendLabel">{item.label}</span>
                 </li>
               ))}
             </ul>
