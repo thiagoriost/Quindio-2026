@@ -31,6 +31,8 @@ import { useOnWidgetClose } from '../../../shared/hooks/useOnWidgetClose';
 import { appActions, getAppStore } from 'jimu-core'
 import { WidgetState } from 'jimu-core'
 
+import '../styles/widgetResultFloating.css'
+
 /**
  * WidgetResult
  *
@@ -45,6 +47,8 @@ import { WidgetState } from 'jimu-core'
  * @returns {JSX.Element | null}
  */
 export default function Widget(props: AllWidgetProps<IMConfig>) {
+    // Estado para mostrar/ocultar el panel flotante
+    const [open, setOpen] = React.useState(true)
 
     console.log('WidgetResult ID:', props.id)
     console.log('MapWidgetIds:', props.useMapWidgetIds)
@@ -299,45 +303,74 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
     /**
      * Validación de mapa configurado en el widget.
      */
-    if (!props.useMapWidgetIds?.length) {
+
+        if (!props.useMapWidgetIds?.length) {
+            return (
+                <div>
+                    {!open && (
+                        <button className="widget-result-floating-btn" onClick={() => setOpen(true)} title="Mostrar resultados">
+                            <span>📊</span>
+                        </button>
+                    )}
+                    {open && (
+                        <div className="widget-result-floating-panel">
+                            <div className="widget-result-header">
+                                Resultados
+                                <button className="widget-result-close-btn" onClick={() => setOpen(false)} title="Cerrar">×</button>
+                            </div>
+                            <div className="widget-result-content">
+                                Debe seleccionar un Map Widget en la configuración.
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )
+        }
+
+
         return (
-            <div style={{ padding: 16 }}>
-                Debe seleccionar un Map Widget en la configuración.
+            <div>
+                {!open && (
+                    <button className="widget-result-floating-btn" onClick={() => setOpen(true)} title="Mostrar resultados">
+                        <span>📊</span>
+                    </button>
+                )}
+                {open && (
+                    <div className="widget-result-floating-panel">
+                        <div className="widget-result-header">
+                            Resultados
+                            <button className="widget-result-close-btn" onClick={() => setOpen(false)} title="Cerrar">×</button>
+                        </div>
+                        <div className="widget-result-content">
+                            {/* Componente de acceso al MapView */}
+                            <div style={{ position: 'absolute', width: 0, height: 0 }}>
+                                <JimuMapViewComponent
+                                    useMapWidgetId={props.useMapWidgetIds?.[0]}
+                                    onActiveViewChange={setJimuMapView}
+                                />
+                            </div>
+
+                            <ResultTable
+                                features={pagedFeatures}
+                                fields={data.fields}
+                                onExport={handleExport}
+                                onSelectFeature={handleSelectFeature}
+                            />
+
+                            <ResultFooter
+                                total={total}
+                                page={page}
+                                totalPages={totalPages}
+                                onPrev={() =>
+                                    setPage(prev => Math.max(1, prev - 1))
+                                }
+                                onNext={() =>
+                                    setPage(prev => Math.min(totalPages, prev + 1))
+                                }
+                            />
+                        </div>
+                    </div>
+                )}
             </div>
         )
-    }
-
-
-    return (
-        <div style={{ padding: 16 }}>
-
-            {/* Componente de acceso al MapView */}
-            <div style={{ position: 'absolute', width: 0, height: 0 }}>
-                <JimuMapViewComponent
-                    useMapWidgetId={props.useMapWidgetIds?.[0]}
-                    onActiveViewChange={setJimuMapView}
-                />
-            </div>
-
-            <ResultTable
-                features={pagedFeatures}
-                fields={data.fields}
-                onExport={handleExport}
-                onSelectFeature={handleSelectFeature}
-            />
-
-            <ResultFooter
-                total={total}
-                page={page}
-                totalPages={totalPages}
-                onPrev={() =>
-                    setPage(prev => Math.max(1, prev - 1))
-                }
-                onNext={() =>
-                    setPage(prev => Math.min(totalPages, prev + 1))
-                }
-            />
-
-        </div>
-    )
 }
