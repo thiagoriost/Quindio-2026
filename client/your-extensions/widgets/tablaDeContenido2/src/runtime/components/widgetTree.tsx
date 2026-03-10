@@ -428,13 +428,13 @@ const WidgetTree: React.FC<Widget_Tree_Props> = ({ dataTablaContenido, varJimuMa
         <div style={{height:'inherit'}}>
              {utilsModule?.logger() && <button type="button" onClick={showState}>GetState</button>}
             <Tabs>
-                <TabList>
-                    <Tab>Lista de Capas</Tab>
+                <TabList className="custom-tab-list">
+                    <Tab className="custom-tab" selectedClassName="custom-tab--selected">Lista de Capas</Tab>
                     {
                         capasSelectd.length>0 && (
                             <>
-                                <Tab>Orden de Capas</Tab>
-                                <Tab>Leyendas</Tab>
+                                <Tab className="custom-tab" selectedClassName="custom-tab--selected">Orden de Capas</Tab>
+                                <Tab className="custom-tab" selectedClassName="custom-tab--selected">Leyendas</Tab>
                             </>
                         )
                     }

@@ -1,6 +1,39 @@
 /* Importar variables centralizadas */
 @import '../../../utils/styles/presetsSNRA.css';
 
+/* Tabs personalizados para widgetTree */
+.custom-tab-list {
+    display: flex;
+    background: var(--color-primary);
+    border-radius: 6px 6px 0 0;
+    padding: 0;
+    margin-bottom: 0.5rem;
+    justify-content: space-around;
+}
+.custom-tab {
+    color: var(--color-primary-light);
+    font-weight: 500;
+    font-size: 0.9rem;
+    cursor: pointer;
+    outline: none;
+    display: inline-flex;
+    align-items: center;
+    list-style: none !important;
+    background: none;
+    border: none;
+    margin: 0 0.5rem 0 0;
+    /* padding: 10px 24px; */
+}
+.custom-tab--selected {
+    color: var(--text-color-black);
+    background: var(--bg-color-primary);
+    border-radius: 6px 6px 0 0;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+/* .custom-tab:focus {
+    outline: 2px solid #0078d4;
+} */
+
 .tree-container{
     /* max-height: 332px; */
     height: 100%;
