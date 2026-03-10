@@ -161,9 +161,18 @@ const LegendDisplay = ({ activeLayerUrls = [] }) => {
           <strong>{title}</strong>
           {error && <div className="errorMsg">{error}</div>}
           {legendInfo && legendInfo.length > 0 ? (
-            <ul>
+            <ul
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: '8px',
+                padding: 0,
+                margin: 0,
+                listStyle: 'none'
+              }}
+            >
               {legendInfo.map((item, idx) => (
-                <li key={idx} className="legendItem" style={{width:'stretch'}}>
+                <li key={idx} className="legendItem" style={{ width: '100%', minWidth: 0 }}>
                   {/* SVG para PictureFillSymbol */}
                   {item.symbol && item.symbol.svg && (
                     <span className="legendSymbol" style={{ padding: 0, background: 'none' }}>{item.symbol.svg}</span>
