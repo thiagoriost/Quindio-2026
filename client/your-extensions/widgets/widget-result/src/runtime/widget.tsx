@@ -175,7 +175,10 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
      * Reinicia la paginación cuando llegan nuevos resultados.
      */
     React.useEffect(() => {
-        if (data) setPage(1)
+        if (data){
+            setPage(1)
+            setOpen(true)
+        }
     }, [data])
 
     /**
@@ -295,9 +298,12 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
 
         graphicsLayerRef.current.add(graphic)
 
-        await view.goTo({
-            target: graphic.geometry.extent.expand(2)
-        })
+        // console.log({graphic})
+        if (graphic.geometry.extent) {
+            await view.goTo({
+                target: graphic.geometry.extent.expand(2)
+            })            
+        }
     }
 
     /**
@@ -309,7 +315,15 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
                 <div>
                     {!open && (
                         <button className="widget-result-floating-btn" onClick={() => setOpen(true)} title="Mostrar resultados">
-                            <span>📊</span>
+                                <span style={{display:'flex',alignItems:'center',justifyContent:'center'}}>
+                                    {/* SVG tabla */}
+                                    <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <rect x="4" y="6" width="20" height="16" rx="3" fill="#fff" stroke="#1976d2" strokeWidth="2"/>
+                                        <rect x="4" y="11" width="20" height="1.5" fill="#1976d2"/>
+                                        <rect x="10" y="6" width="1.5" height="16" fill="#1976d2"/>
+                                        <rect x="16.5" y="6" width="1.5" height="16" fill="#1976d2"/>
+                                    </svg>
+                                </span>
                         </button>
                     )}
                     {open && (
@@ -332,7 +346,15 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
             <div>
                 {!open && (
                     <button className="widget-result-floating-btn" onClick={() => setOpen(true)} title="Mostrar resultados">
-                        <span>📊</span>
+                            <span style={{display:'flex',alignItems:'center',justifyContent:'center'}}>
+                                {/* SVG tabla */}
+                                <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <rect x="4" y="6" width="20" height="16" rx="3" fill="#fff" stroke="#1976d2" strokeWidth="2"/>
+                                    <rect x="4" y="11" width="20" height="1.5" fill="#1976d2"/>
+                                    <rect x="10" y="6" width="1.5" height="16" fill="#1976d2"/>
+                                    <rect x="16.5" y="6" width="1.5" height="16" fill="#1976d2"/>
+                                </svg>
+                            </span>
                     </button>
                 )}
                 {open && (

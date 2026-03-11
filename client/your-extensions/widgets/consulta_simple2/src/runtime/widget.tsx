@@ -1,4 +1,6 @@
 
+ 
+
 /**
  * Widget consulta_simple2
  *
@@ -201,12 +203,44 @@ const Widget = (props: AllWidgetProps<any>) => {
     }
   }
 
+
+  // Limpia la data del widget de resultados y lo cierra
+  const limpiarYCerrarWidgetResultados = () => {
+    // Limpia la data enviada al widget de resultados
+    getAppStore().dispatch(
+      appActions.widgetStatePropChange(
+        widgetResultId,
+        'results',
+        null
+      )
+    )
+    // Cierra el widget de resultados
+    getAppStore().dispatch(appActions.closeWidget(widgetResultId))
+  }
+
+  // Detecta el cierre del widget y limpia el widget de resultados
+  // Requiere: widgetState y limpiarYCerrarWidgetResultados definidos
+  // Usa el estado global de Experience Builder para saber si el widget está cerrado
+  // const widgetState = window.jimuConfig?.store?.getState()?.widgetsRuntimeInfo?.[props.id]?.state
+  React.useEffect(() => {   
+   //console.log({props})
+   if (props.state === 'CLOSED') {
+    limpiarYCerrarWidgetResultados()
+   }
+  }, [props])
+
   // Carga módulos utilitarios al montar el componente
   useEffect(() => {
     console.log("consulta Simple")
     import('../../../commonWidgets/widgetsModule').then(modulo => { setWidgetModules(modulo) })
     import('../../../utils/module').then(modulo => { setUtilsModule(modulo) })
   }, [])
+
+
+
+
+
+
   /**
    * Renderiza la interfaz del widget:
    * - Muestra el mapa si está configurado.

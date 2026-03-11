@@ -834,6 +834,31 @@ const ConsultaAvanzada = (props: AllWidgetProps<any>) => {
     )
   }
 
+  // Limpia la data del widget de resultados y lo cierra
+    const limpiarYCerrarWidgetResultados = () => {
+      // Limpia la data enviada al widget de resultados
+      getAppStore().dispatch(
+        appActions.widgetStatePropChange(
+          widgetResultId,
+          'results',
+          null
+        )
+      )
+      // Cierra el widget de resultados
+      getAppStore().dispatch(appActions.closeWidget(widgetResultId))
+    }
+
+  // Detecta el cierre del widget y limpia el widget de resultados
+  // Requiere: widgetState y limpiarYCerrarWidgetResultados definidos
+  // Usa el estado global de Experience Builder para saber si el widget está cerrado
+  // const widgetState = window.jimuConfig?.store?.getState()?.widgetsRuntimeInfo?.[props.id]?.state
+  React.useEffect(() => {   
+    //console.log({props})
+    if (props.state === 'CLOSED') {
+    limpiarYCerrarWidgetResultados()
+    }
+  }, [props])
+
 
   /**
    * Despues de modificar el valor del campo, realiza la consulta
