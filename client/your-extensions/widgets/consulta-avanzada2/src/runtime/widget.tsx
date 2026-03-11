@@ -710,9 +710,9 @@ const ConsultaAvanzada = (props: AllWidgetProps<any>) => {
         }
         {
           campo &&
-          <div className='align-items-center mt-1' style={{ paddingBottom: '5px', paddingTop: '5px' }}>
+          <div className='align-items-center mt-1' style={{ paddingBottom: '1px', paddingTop: '1px' }}>
             {widgetModules?.INPUT_TEXTAREA(condicionBusqueda, handleChangeTextArea, 'Condición de búsqueda')}
-            <div className='w-100 text-center' style={{ backgroundColor: 'rgb(0 0 0 / 70%)', padding: '5px' }}>
+            <div className='w-100 text-center' style={{ backgroundColor: 'rgb(0 0 0 / 70%)', padding: '1px' }}>
               <Button
                 // size='sm'
                 type='primary'
@@ -785,14 +785,16 @@ const ConsultaAvanzada = (props: AllWidgetProps<any>) => {
     }, 10) */
 
     const spatialReference = responseConsulta.spatialReference
-    const fields = [
+    /* const fields = [
         { name: 'DEPARTAMEN', alias: 'Departamento' },
         { name: 'MUNICIPIO', alias: 'Municipio' },
         { name: 'VEREDA', alias: 'Vereda' },
         { name: 'PCC', alias: 'PCC' },
         { name: 'SHAPE.AREA', alias: 'Área (m²)', type: 'number' },        
         { name: 'AREA_HA', alias: 'Área (HA)', type: 'number' }        
-    ]
+    ] */
+
+    const fields = responseConsulta.fields
 
     abrirTablaResultados(features, fields, spatialReference as unknown as __esri.SpatialReference)
 
@@ -898,7 +900,7 @@ const ConsultaAvanzada = (props: AllWidgetProps<any>) => {
   }, [])
 
   return (
-    <div className='w-100 p-3 bg-primary'>
+    <div className='w-100 p-1 bg-primary'>
       {props.useMapWidgetIds && props.useMapWidgetIds.length === 1 && (
         <JimuMapViewComponent useMapWidgetId={props.useMapWidgetIds?.[0]} onActiveViewChange={activeViewChangeHandler} />
       )}

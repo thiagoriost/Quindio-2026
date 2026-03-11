@@ -138,14 +138,16 @@ const Widget = (props: AllWidgetProps<any>) => {
     const firstFeatureArray = features.length ? [features[0]] : []
     const spatialReference = ResponseConsultaSimple.spatialReference
 
-    const fields = [
+    /* const fields = [
         { name: 'DEPARTAMEN', alias: 'Departamento' },
         { name: 'MUNICIPIO', alias: 'Municipio' },
         { name: 'VEREDA', alias: 'Vereda' },
         { name: 'PCC', alias: 'PCC' },
         { name: 'SHAPE.AREA', alias: 'Área (m²)', type: 'number' },        
         { name: 'AREA_HA', alias: 'Área (HA)', type: 'number' }        
-    ]
+    ] */
+
+    const fields = ResponseConsultaSimple.fields
 
     abrirTablaResultados(firstFeatureArray, fields, spatialReference as unknown as __esri.SpatialReference)
     // setColumns(DgridCol)

@@ -13,8 +13,8 @@ const InputSelect = ({
   // console.log({dataArray, campo})
   const data = dataArray.length ? dataArray : dataArray[campo]
   return (
-    <div className='mb-1'>
-        <Label size='sm' style={{ padding: '8px 20px' }}> {label} </Label>
+    <div >
+        <Label size='sm' style={{ padding: '1px' }}> {label} </Label>
         <Select
             onChange={onChange}
             placeholder={placeHolder}

@@ -13,7 +13,7 @@ interface Props {
 
   /**
    * Lista de entidades a mostrar en la tabla.
-   * 
+   *
    * Cada elemento normalmente corresponde a un `Graphic`
    * retornado por una consulta de ArcGIS (por ejemplo un
    * resultado de QueryTask o FeatureLayer).
@@ -23,7 +23,7 @@ interface Props {
   /**
    * Definición de los campos que se mostrarán como columnas
    * en la tabla.
-   * 
+   *
    * Cada objeto de campo debe contener al menos la propiedad
    * `name` y opcionalmente `alias`.
    */
@@ -32,7 +32,7 @@ interface Props {
   /**
    * Función opcional que se ejecuta cuando el usuario presiona
    * el botón **Exportar**.
-   * 
+   *
    * Generalmente se utiliza para exportar los resultados
    * de la tabla a formatos como CSV o Excel.
    */
@@ -41,10 +41,10 @@ interface Props {
   /**
    * Función que se ejecuta cuando el usuario selecciona
    * una fila de la tabla.
-   * 
+   *
    * Recibe como parámetro el `Graphic` correspondiente
    * a la fila seleccionada.
-   * 
+   *
    * Usualmente se utiliza para:
    * - Resaltar la geometría en el mapa.
    * - Hacer zoom a la entidad seleccionada.
@@ -56,11 +56,11 @@ interface Props {
  * Componente React que renderiza una tabla de resultados
  * basada en un conjunto de entidades (`features`) y una
  * definición de campos (`fields`).
- * 
+ *
  * Este componente se utiliza típicamente en widgets de
  * consulta dentro de aplicaciones basadas en
  * **ArcGIS Experience Builder**.
- * 
+ *
  * Funcionalidades principales:
  * - Renderizar dinámicamente las columnas según la
  *   definición de campos.
@@ -88,7 +88,7 @@ export const ResultTable = ({ features, fields, onExport, onSelectFeature }: Pro
 
   /**
    * Índice de la fila actualmente seleccionada.
-   * 
+   *
    * Se utiliza para aplicar resaltado visual
    * en la tabla.
    */

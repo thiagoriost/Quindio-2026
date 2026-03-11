@@ -130,11 +130,9 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
     React.useEffect(() => {
         const view = jimuMapView?.view
         if (!view) return
-
         const layer = new GraphicsLayer({
             id: 'result-selection-layer'
         })
-
         view.map.add(layer)
         graphicsLayerRef.current = layer
 
@@ -143,7 +141,6 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
             layer.destroy()
             graphicsLayerRef.current = null
         }
-
     }, [jimuMapView])
 
     /**
@@ -152,7 +149,6 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
     const restoreInitialExtent = () => {
         const view = jimuMapView?.view
         const extent = initialExtentRef.current
-
         if (view && extent) {
             view.goTo(extent)
         }
@@ -163,12 +159,10 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
      * se limpian los gráficos y se restaura el extent inicial.
      */
     React.useEffect(() => {
-
         if (!data) {
             graphicsLayerRef.current?.removeAll()
             restoreInitialExtent()
         }
-
     }, [data])
 
     /**
@@ -185,13 +179,11 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
      * Evita que el widget permanezca abierto si no hay resultados.
      */
     React.useEffect(() => {
-
         if (widgetState === WidgetState.Opened && !data) {
             getAppStore().dispatch(
                 appActions.closeWidget(props.id)
             )
         }
-
     }, [widgetState, data])
 
 
@@ -207,7 +199,6 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
     const onClose = () => {
 
         graphicsLayerRef.current?.removeAll()
-
         getAppStore().dispatch(
             appActions.widgetStatePropChange(
                 props.id,
@@ -215,17 +206,12 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
                 null
             )
         )
-
         if (initialExtentRef.current && jimuMapView) {
-
             jimuMapView.view.goTo(
                 initialExtentRef.current
             )
-
         }
-
         setPage(1)
-
     }
 
     /**
@@ -315,13 +301,13 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
                 <div>
                     {!open && (
                         <button className="widget-result-floating-btn" onClick={() => setOpen(true)} title="Mostrar resultados">
-                                <span style={{display:'flex',alignItems:'center',justifyContent:'center'}}>
+                                <span className="widget-result-floating-icon">
                                     {/* SVG tabla */}
                                     <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                        <rect x="4" y="6" width="20" height="16" rx="3" fill="#fff" stroke="#1976d2" strokeWidth="2"/>
-                                        <rect x="4" y="11" width="20" height="1.5" fill="#1976d2"/>
-                                        <rect x="10" y="6" width="1.5" height="16" fill="#1976d2"/>
-                                        <rect x="16.5" y="6" width="1.5" height="16" fill="#1976d2"/>
+                                        <rect x="4" y="6" width="20" height="16" rx="3" fill="var(--bg-color-white)" stroke="var(--color-secondary)" strokeWidth="2"/>
+                                        <rect x="4" y="11" width="20" height="1.5" fill="var(--color-secondary)"/>
+                                        <rect x="10" y="6" width="1.5" height="16" fill="var(--color-secondary)"/>
+                                        <rect x="16.5" y="6" width="1.5" height="16" fill="var(--color-secondary)"/>
                                     </svg>
                                 </span>
                         </button>
@@ -349,10 +335,10 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
                             <span style={{display:'flex',alignItems:'center',justifyContent:'center'}}>
                                 {/* SVG tabla */}
                                 <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <rect x="4" y="6" width="20" height="16" rx="3" fill="#fff" stroke="#1976d2" strokeWidth="2"/>
-                                    <rect x="4" y="11" width="20" height="1.5" fill="#1976d2"/>
-                                    <rect x="10" y="6" width="1.5" height="16" fill="#1976d2"/>
-                                    <rect x="16.5" y="6" width="1.5" height="16" fill="#1976d2"/>
+                                    <rect x="4" y="6" width="20" height="16" rx="3" fill="var(--bg-color-white)" stroke="var(--color-secondary)" strokeWidth="2"/>
+                                    <rect x="4" y="11" width="20" height="1.5" fill="var(--color-secondary)"/>
+                                    <rect x="10" y="6" width="1.5" height="16" fill="var(--color-secondary)"/>
+                                    <rect x="16.5" y="6" width="1.5" height="16" fill="var(--color-secondary)"/>
                                 </svg>
                             </span>
                     </button>

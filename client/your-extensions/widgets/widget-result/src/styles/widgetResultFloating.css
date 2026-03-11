@@ -1,18 +1,24 @@
 /* Floating Button & Collapsible Widget Styles for WidgetResult */
 @import '../../../utils/styles/presetsQundio.css';
 
+.widget-result-floating-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .widget-result-floating-btn {
   position: fixed;
   bottom: 270px;
   right: 10px;
   z-index: 9999;
-  background: var(--color-primary);
-  color: #fff;
+  background: var(--color-primary-light);
+  color: var(--color-primary-light);
   border: none;
-  border-radius: 50%;
+  border-radius: 5px;
   width: 40px;
   height: 40px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  box-shadow: 0 2px 8px var(--shadow-light);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -27,14 +33,14 @@
 .widget-result-floating-panel {
   position: fixed;
   bottom: 100px;
-  right: 32px;
+  right: 50px;
   z-index: 10000;
   width: max-content;
-  max-width: 90vw;
-  max-height: 80vh;
-  background: #fff;
-  border-radius: 16px;
-  box-shadow: 0 4px 24px rgba(0,0,0,0.18);
+  max-width: 40vw;
+  max-height: 40vh;
+  background: var(--bg-color-white);
+  border-radius: 5px;
+  box-shadow: 0 4px 24px var(--shadow-light);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -50,7 +56,7 @@
   align-items: center;
   justify-content: space-between;
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-primary-light);
   padding: 12px 20px;
   font-size: 1.1rem;
   font-weight: 600;
@@ -58,7 +64,7 @@
 .widget-result-close-btn {
   background: none;
   border: none;
-  color: #fff;
+  color: var(--color-primary-light);
   font-size: 1.5rem;
   cursor: pointer;
   margin-left: 12px;

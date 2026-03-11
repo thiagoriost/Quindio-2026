@@ -419,7 +419,7 @@ const Widget = (props: any) => {
             const firstFeatureArray = features.length ? [features[0]] : []
             const spatialReference = response.data?.spatialReference
 
-            const fields = [
+            /* const fields = [
                 { name: 'NUMEROPREDIAL', alias: 'Número Predial(20)' },
                 { name: 'NUMEROPREDIAL1', alias: 'Número Predial(30)' },
                 { name: 'MATRICULA_INMOBILIARIA', alias: 'Matrícula Inmobiliaria' },
@@ -427,7 +427,8 @@ const Widget = (props: any) => {
                 { name: 'NOMBRE', alias: 'Municipio' },
                 { name: 'SHAPE_AREA', alias: 'Área (m²)', type: 'number' },
                 { name: 'SHAPE_PERIMETRO', alias: 'Perímetro (m)', type: 'number' }
-            ]
+            ] */
+            const fields = response.data.fields
 
             abrirTablaResultados(firstFeatureArray, fields, spatialReference as __esri.SpatialReference)
 
