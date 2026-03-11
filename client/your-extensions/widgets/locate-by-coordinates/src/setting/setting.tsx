@@ -3,16 +3,15 @@ import type { AllWidgetSettingProps } from "jimu-for-builder"
 import { MapWidgetSelector } from "jimu-ui/advanced/setting-components"
 
 /**
- * Componente de configuración del widget Tabla de Contenido.
- * En ArcGIS Experience Builder puede haber múltiples widgets de mapa.
- * Este componente permite al autor seleccionar con cuál mapa trabajar.
+ * Componente de configuración del widget "Ubicar por coordenadas".
+ * Permite seleccionar el widget de mapa con el que trabajará el widget principal.
  *
  * @component
  * @param {AllWidgetSettingProps<any>} props - Propiedades de configuración del widget
  * @returns {JSX.Element} Panel de configuración con selector de mapa
  *
  * @author IGAC - DIP
- * @since 2024
+ * @since 2026
  */
 const Setting = (props: AllWidgetSettingProps<any>) => {
 

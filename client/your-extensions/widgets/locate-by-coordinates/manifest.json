@@ -4,17 +4,14 @@
   "type": "widget",
   "version": "1.19.0",
   "exbVersion": "1.19.0",
-  "author": "IGAC_rigorios8103@gmail.com",
-  "description": "Empleado en SigQuindio 2026",
-  "copyright": "",
+  "author": "IGAC <rigorios8103@gmail.com>",
+  "description": "Widget para ubicar puntos en el mapa a partir de coordenadas planas (MAGNA SIRGAS) o geográficas (decimales o DMS). Permite ingresar coordenadas y visualizar el punto en el mapa. Empleado en SigQuindio 2026.",
+  "copyright": "Instituto Geográfico Agustín Codazzi (IGAC)",
   "license": "http://www.apache.org/licenses/LICENSE-2.0",
   "properties": {},
   "dependency": "jimu-arcgis",
-  "translatedLocales": [
-    "en"
-  ],
-  "defaultSize": {
+  "translatedLocales": ["es", "en"],
+  "defaultSize": { 
     "width": 800,
-    "height": 500
-  }
+    "height": 500 }
 }

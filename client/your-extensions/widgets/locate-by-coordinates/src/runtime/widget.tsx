@@ -1,3 +1,14 @@
+/**
+ * Widget principal para ubicar puntos en el mapa a partir de coordenadas.
+ * Permite seleccionar el tipo de coordenada, ingresar valores y visualizar el punto en el mapa.
+ *
+ * @component
+ * @param {AllWidgetProps<any>} props - Propiedades del widget proporcionadas por ArcGIS Experience Builder
+ * @returns {JSX.Element} Componente del widget
+ *
+ * @author IGAC - DIP
+ * @since 2026
+ */
 import { React, type AllWidgetProps } from "jimu-core"
 import { JimuMapViewComponent, type JimuMapView } from 'jimu-arcgis'
 import Point from "@arcgis/core/geometry/Point"
@@ -7,73 +18,62 @@ import CoordinateForm from "./CoordinateForm"
 import { drawPoint } from "./mapActions"
 
 export default function Widget(props: AllWidgetProps<any>) {
-
-  /** @type {JimuMapView|undefined} Referencia al mapa de Jimu */
+  /**
+   * Estado para almacenar la referencia a la vista del mapa de Jimu.
+   * @type {[JimuMapView | undefined, Function]}
+   */
   const [varJimuMapView, setJimuMapView] = React.useState<JimuMapView>()
 
   /**
-     * Manejador del cambio de vista activa del mapa.
-     * Guarda la referencia al mapa en el estado del componente.
-     *
-     * @param {JimuMapView} jmv - Vista del mapa de Jimu
-     * @returns {void}
-     */
-    const activeViewChangeHandler = (jmv: JimuMapView) => {
-      if (jmv) {
-        setJimuMapView(jmv)
-      }
+   * Manejador del cambio de vista activa del mapa.
+   * Guarda la referencia al mapa en el estado del componente.
+   *
+   * @param {JimuMapView} jmv - Vista del mapa de Jimu
+   * @returns {void}
+   */
+  const activeViewChangeHandler = (jmv: JimuMapView) => {
+    if (jmv) {
+      setJimuMapView(jmv)
     }
+  }
 
+  /**
+   * Manejador para ubicar el punto en el mapa según el tipo de coordenada.
+   * @param {any} data - Datos de coordenadas ingresados
+   * @param {string} type - Tipo de coordenada (PLANAR, GEOGRAPHIC_DECIMAL, etc.)
+   */
   const handleLocate = (data, type) => {
-
     console.log("handleLocate", data, type)
-
     if (!varJimuMapView) return
-
     let point
-
     if (type === "PLANAR") {
-
       point = new Point({
         x: Number(data.x),
         y: Number(data.y),
         spatialReference: new SpatialReference({ wkid: 9377 })
       })
-
     }
-
     if (type === "GEOGRAPHIC_DECIMAL") {
-
       point = new Point({
         longitude: Number(data.lon),
         latitude: Number(data.lat),
         spatialReference: { wkid: 4326 }
       })
-
     }
-
     drawPoint(varJimuMapView, point)
-
   }
-
   return (
-
     <div>
-
       {props.useMapWidgetIds && props.useMapWidgetIds.length === 1 && (
-            <JimuMapViewComponent useMapWidgetId={props.useMapWidgetIds?.[0]} onActiveViewChange={activeViewChangeHandler} />
-          )}
-
+        <JimuMapViewComponent useMapWidgetId={props.useMapWidgetIds?.[0]} onActiveViewChange={activeViewChangeHandler} />
+      )}
       {/* <JimuMapViewComponent
         useMapWidgetId="map"
         onActiveViewChange={(jmv) => { setView(jmv.view) }}
       /> */}
-
       {
         varJimuMapView && <CoordinateForm onLocate={handleLocate} />
       }
-
     </div>
-
   )
 }

@@ -2,6 +2,13 @@
 import Graphic from "@arcgis/core/Graphic"
 import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer"
 
+/**
+ * Dibuja un punto en el mapa y centra la vista en él.
+ * Si no existe la capa de gráficos, la crea.
+ *
+ * @param {any} view - Vista del mapa de ArcGIS
+ * @param {any} point - Geometría del punto a dibujar
+ */
 export const drawPoint = (view, point) => {
 
   let layer = view.map.findLayerById("coord-layer")
