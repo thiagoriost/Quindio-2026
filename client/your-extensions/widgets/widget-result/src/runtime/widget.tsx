@@ -30,7 +30,8 @@ import GraphicsLayer from '@arcgis/core/layers/GraphicsLayer'
 import { useOnWidgetClose } from '../../../shared/hooks/useOnWidgetClose';
 import { appActions, getAppStore } from 'jimu-core'
 import { WidgetState } from 'jimu-core'
-
+import FeatureLayer from '@arcgis/core/layers/FeatureLayer'
+import GroupLayer from '@arcgis/core/layers/GroupLayer'
 import '../styles/widgetResultFloating.css'
 
 /**
@@ -107,6 +108,12 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
     )
 
     /**
+     * para recordar si la última consulta era temporal antes de que data pase a null.
+     */
+    const temporalLayerRef = React.useRef<boolean>(false)
+
+
+    /**
      * Guarda el extent inicial del mapa cuando la vista
      * del mapa está disponible.
      * 
@@ -161,7 +168,9 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
     React.useEffect(() => {
         if (!data) {
             graphicsLayerRef.current?.removeAll()
-            restoreInitialExtent()
+            if (!temporalLayerRef.current) {
+                restoreInitialExtent()
+            }
         }
     }, [data])
 
@@ -169,11 +178,146 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
      * Reinicia la paginación cuando llegan nuevos resultados.
      */
     React.useEffect(() => {
-        if (data){
-            setPage(1)
-            setOpen(true)
+        if (data) setPage(1)
+    }, [data])
+
+
+    /**
+     * Guarda el valor de temporalLayer cuando llegan los datos
+    */
+    React.useEffect(() => {
+        if (data) {
+            temporalLayerRef.current = data.temporalLayer === true
         }
     }, [data])
+
+    const flashLayer = (layer: __esri.FeatureLayer) => {
+
+        const originalRenderer = layer.renderer
+
+        const flashRenderer = {
+            type: "simple",
+            symbol: {
+                type: "simple-fill",
+                color: [255, 255, 0, 0.6],
+                outline: {
+                    color: [255, 255, 0],
+                    width: 3
+                }
+            }
+        }
+
+        layer.renderer = flashRenderer as any
+
+        setTimeout(() => {
+            layer.renderer = originalRenderer
+        }, 400)
+    }
+
+    const crearCapaTemporal = async (featureData: any) => {
+
+        const view = jimuMapView?.view
+        if (!view) return
+
+        const map = view.map
+
+        const objectId = data?.valorBusqueda || featureData.attributes?.OBJECTID || Date.now() // cef 20260308, usar valorBusqueda como parte del id de la capa para evitar problemas si el feature no tiene OBJECTID. Si no hay valorBusqueda, usar timestamp. 
+        const layerId = `temp_predio_${objectId}`
+
+        const existingLayer = map.findLayerById(layerId) as __esri.FeatureLayer
+
+        if (existingLayer) {
+
+            const graphic = existingLayer.source.getItemAt(0) as __esri.Graphic
+
+            if (graphic?.geometry) {
+                await view.goTo({
+                    target: graphic.geometry // va directamente a la geometría del gráfico para asegurar el zoom correcto aunque el usuario haya movido la vista después de crear la capa
+                })
+            }
+
+            flashLayer(existingLayer)
+
+            return
+        }
+
+        const geometry = new Polygon({
+            rings: featureData.geometry.rings,
+            spatialReference: {
+                wkid: data.spatialReference?.wkid
+            }
+        })
+
+        const graphic = new Graphic({
+            geometry,
+            attributes: {
+                ...featureData.attributes,
+                OBJECTID: objectId
+            }
+        })
+
+        const layer = new FeatureLayer({
+            id: layerId,
+            title: `Predio ${objectId}`,
+            source: [graphic],
+            objectIdField: "OBJECTID",
+            fields: [
+                {
+                    name: "OBJECTID",
+                    alias: "OBJECTID",
+                    type: "oid"
+                }
+            ],
+            geometryType: "polygon",
+            spatialReference: geometry.spatialReference,
+            renderer: {
+                type: "simple",
+                symbol: {
+                    type: "simple-fill",
+                    color: [255, 0, 0, 0.2],
+                    outline: {
+                        color: [255, 0, 0],
+                        width: 2
+                    }
+                }
+            },
+            listMode: "show"
+        })
+
+        let tempGroup = map.findLayerById("capas-temporales") as __esri.GroupLayer
+
+        if (!tempGroup) {
+
+            tempGroup = new GroupLayer({
+                id: "capas-temporales",
+                title: "Capas Temporales",
+                visibilityMode: "independent",
+                listMode: "show"
+            })
+
+            map.add(tempGroup)
+        }
+
+        tempGroup.add(layer)
+
+        await view.goTo({
+            target: geometry.extent.expand(2)
+        })
+    }
+
+    React.useEffect(() => { // cef 20260307
+
+        if (!data) return
+
+        const { features } = data
+
+        if (!features?.length) return
+
+        console.log("Resultados recibidos en WidgetResult:", features)
+        setOpen(true)
+
+    }, [data])
+
 
     /**
      * Evita que el widget permanezca abierto si no hay resultados.
@@ -253,7 +397,14 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
      *
      * @param feature Entidad seleccionada.
      */
+    //  const handleSelectFeature = (feature: __esri.Graphic) => {
     const handleSelectFeature = async (feature: any) => {
+        console.log('feature seleccionada:', feature)
+
+        if (data?.temporalLayer) {
+            await crearCapaTemporal(feature)
+            return
+        }
 
         if (!jimuMapView || !graphicsLayerRef.current) return
 
@@ -304,10 +455,10 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
                                 <span className="widget-result-floating-icon">
                                     {/* SVG tabla */}
                                     <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                        <rect x="4" y="6" width="20" height="16" rx="3" fill="var(--bg-color-white)" stroke="var(--color-secondary)" strokeWidth="2"/>
-                                        <rect x="4" y="11" width="20" height="1.5" fill="var(--color-secondary)"/>
-                                        <rect x="10" y="6" width="1.5" height="16" fill="var(--color-secondary)"/>
-                                        <rect x="16.5" y="6" width="1.5" height="16" fill="var(--color-secondary)"/>
+                                        <rect x="4" y="6" width="20" height="16" rx="3" fill="var(--color-primary-light)" stroke="var(--color-primary-light)" strokeWidth="2"/>
+                                        <rect x="4" y="11" width="20" height="1.5" fill="var(--color-primary-light)"/>
+                                        <rect x="10" y="6" width="1.5" height="16" fill="var(--color-primary-light)"/>
+                                        <rect x="16.5" y="6" width="1.5" height="16" fill="var(--color-primary-light)"/>
                                     </svg>
                                 </span>
                         </button>
@@ -335,10 +486,10 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
                             <span style={{display:'flex',alignItems:'center',justifyContent:'center'}}>
                                 {/* SVG tabla */}
                                 <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <rect x="4" y="6" width="20" height="16" rx="3" fill="var(--bg-color-white)" stroke="var(--color-secondary)" strokeWidth="2"/>
-                                    <rect x="4" y="11" width="20" height="1.5" fill="var(--color-secondary)"/>
-                                    <rect x="10" y="6" width="1.5" height="16" fill="var(--color-secondary)"/>
-                                    <rect x="16.5" y="6" width="1.5" height="16" fill="var(--color-secondary)"/>
+                                    <rect x="4" y="6" width="20" height="16" rx="3" fill="var(--color-primary-light)" stroke="var(--color-primary-light)" strokeWidth="2"/>
+                                    <rect x="4" y="11" width="20" height="1.5" fill="var(--color-primary-light)"/>
+                                    <rect x="10" y="6" width="1.5" height="16" fill="var(--color-primary-light)"/>
+                                    <rect x="16.5" y="6" width="1.5" height="16" fill="var(--color-primary-light)"/>
                                 </svg>
                             </span>
                     </button>
@@ -347,7 +498,7 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
                     <div className="widget-result-floating-panel">
                         <div className="widget-result-header">
                             Resultados
-                            <button className="widget-result-close-btn" onClick={() => setOpen(false)} title="Cerrar">×</button>
+                            <button className="widget-result-close-btn" onClick={() => setOpen(false)} title="Cerrar">-</button>
                         </div>
                         <div className="widget-result-content">
                             {/* Componente de acceso al MapView */}

@@ -24,7 +24,10 @@ const renderTree = (nodes) => {
   };
 
   const handleCheck = (capa: interfCapa) => {
-    const capaTemp = capa.capasNietas ? capa.capasNietas[0].IDCAPA:capa.IDCAPA
+    const capaTemp =  // cef 20260306: 
+      capa.capasNietas && capa.capasNietas.length > 0
+        ? capa.capasNietas[0].IDCAPA
+        : capa.IDCAPA
     setCheckedItems(prevState => ({
       ...prevState,
       [capaTemp]: !prevState[capaTemp],
@@ -36,9 +39,11 @@ const renderTree = (nodes) => {
         const hasChildren = 
             (node.capasHijas?.length >= 1) ||
             (node.capasNietas?.length > 0 && node.IDTEMATICAPADRE > 0) ||
-            (node.capasBisnietos?.length >= 1 );
-          
-        const isChecked = node.capasNietas ? node.capasNietas[0].IDCAPA:node.IDCAPA
+            (node.capasBisnietos?.length >= 1);
+      const isChecked =  // cef 20260306:
+        node.capasNietas && node.capasNietas.length > 0
+          ? node.capasNietas[0].IDCAPA
+          : node.IDCAPA
         return (
           <div style={{ marginLeft: level * 20 + 'px' }}>
             <div>

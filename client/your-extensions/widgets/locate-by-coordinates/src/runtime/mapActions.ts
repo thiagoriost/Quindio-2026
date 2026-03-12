@@ -6,16 +6,22 @@ import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer"
  * Dibuja un punto en el mapa y centra la vista en él.
  * Si no existe la capa de gráficos, la crea.
  *
- * @param {any} view - Vista del mapa de ArcGIS
+ * @param {any} jimuMapView - Vista del mapa de ArcGIS
  * @param {any} point - Geometría del punto a dibujar
  */
-export const drawPoint = (view, point) => {
+export const drawPoint = (jimuMapView, point) => {
 
-  let layer = view.map.findLayerById("coord-layer")
+  // Validación defensiva
+  if (!jimuMapView || !jimuMapView.map) {
+    console.error("drawPoint: 'jimuMapView' o 'jimuMapView.map' es undefined", { jimuMapView })
+    return
+  }
+
+  let layer = jimuMapView.map.findLayerById("coord-layer")
 
   if (!layer) {
     layer = new GraphicsLayer({ id: "coord-layer" })
-    view.map.add(layer)
+    jimuMapView.map.add(layer)
   }
 
   layer.removeAll()
@@ -35,7 +41,7 @@ export const drawPoint = (view, point) => {
 
   layer.add(graphic)
 
-  view.goTo({
+  jimuMapView.goTo({
     center: point,
     zoom: 16
   })

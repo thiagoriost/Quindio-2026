@@ -10,7 +10,7 @@
   "license": "http://www.apache.org/licenses/LICENSE-2.0",
   "properties": {},
   "dependency": "jimu-arcgis",
-  "translatedLocales": ["es", "en"],
+  "translatedLocales": ["es"],
   "defaultSize": { 
     "width": 800,
     "height": 500 }

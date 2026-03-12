@@ -25,10 +25,17 @@ export interface ResultPayload {
 
   /** Texto del botón de retorno */
   returnLabel?: string
+
+/** Indica si la capa es temporal */
+  temporalLayer?: boolean
+
+  /** Indica si la capa es temporal */
+  valorBusqueda?: string
 }
 
 export interface ResultField {
-  name: string        // nombre del atributo
-  alias?: string      // etiqueta visible
-  type?: 'string' | 'number' | 'date'
+  name: string // nombre del atributo
+  alias?: string // etiqueta visible
+//  type?: 'string' | 'number' | 'date'
+   type: __esri.FieldProperties['type'] // obligatorio y compatible con tipos de campo de ArcGIS
 }

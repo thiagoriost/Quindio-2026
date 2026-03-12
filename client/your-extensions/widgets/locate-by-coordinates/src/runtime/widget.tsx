@@ -45,6 +45,9 @@ export default function Widget(props: AllWidgetProps<any>) {
   const handleLocate = (data, type) => {
     console.log("handleLocate", data, type)
     if (!varJimuMapView) return
+    // Log para depuración del estado de la vista y su propiedad map
+    console.log("varJimuMapView:", varJimuMapView)
+    console.log("varJimuMapView.map:", varJimuMapView && varJimuMapView.map)
     let point
     if (type === "PLANAR") {
       point = new Point({
@@ -72,7 +75,14 @@ export default function Widget(props: AllWidgetProps<any>) {
         onActiveViewChange={(jmv) => { setView(jmv.view) }}
       /> */}
       {
-        varJimuMapView && <CoordinateForm onLocate={handleLocate} />
+        varJimuMapView && (
+          <CoordinateForm
+            onLocate={handleLocate}
+            disabled={!varJimuMapView.map}
+            mapReady={!!varJimuMapView.map}
+            key={varJimuMapView.map ? 'ready' : 'not-ready'}
+          />
+        )
       }
     </div>
   )

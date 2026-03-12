@@ -15,9 +15,11 @@ import type { CoordinateType } from "../types"
 
 interface Props {
   onLocate: (coords: any, type: CoordinateType) => void
+  disabled?: boolean
+  mapReady?: boolean
 }
 
-export default function CoordinateForm({ onLocate }: Props) {
+export default function CoordinateForm({ onLocate, disabled, mapReady }: Props) {
   // Estado para el tipo de coordenada
   const [type, setType] = React.useState<CoordinateType>("PLANAR")
   // Estado para coordenadas planas
@@ -29,8 +31,8 @@ export default function CoordinateForm({ onLocate }: Props) {
 
   React.useEffect(() => {
     // Solo para depuración
-    console.log("CoordinateForm")
-  }, [])
+    console.log("CoordinateForm, mapReady:", mapReady)
+  }, [mapReady])
 
   return (
     <div>
@@ -70,9 +72,8 @@ export default function CoordinateForm({ onLocate }: Props) {
         </>
       )}
       <button
-        onClick={() =>
-          { onLocate({ x, y, lat, lon }, type) }
-        }
+        onClick={() => { onLocate({ x, y, lat, lon }, type) }}
+        disabled={disabled}
       >
         Ubicar
       </button>

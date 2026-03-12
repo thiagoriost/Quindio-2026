@@ -18,6 +18,7 @@ import { usePopupManager } from '../../../shared/hooks/usePopupManager';
 import { useCancelableHttp } from '../../../shared/hooks/useCancelableHttp';
 import { appActions, getAppStore } from 'jimu-core'
 import { WIDGET_IDS } from '../../../shared/constants/widget-ids'
+import { Checkbox } from 'jimu-ui'
 import { features } from 'process';
 
 /**
@@ -88,6 +89,7 @@ const Widget = (props: any) => {
     const initializedRef = useRef(false)
     const initialExtentRef = useRef<any>(null)
     const graphicsLayerRef = useRef<GraphicsLayer | null>(null)
+    const [capaTemporal, setCapaTemporal] = React.useState(false) // 20260305
 
     const arcgisService = new ArcgisService()
 
@@ -377,7 +379,9 @@ const Widget = (props: any) => {
                     title: 'Resultados de prueba',
                     features: features,
                     fields: fields,
-                    spatialReference: spatialReference
+                    spatialReference: spatialReference,
+                    temporalLayer: capaTemporal,
+                    valorBusqueda: valorBusqueda
                 }
             )
         )
@@ -483,15 +487,7 @@ const Widget = (props: any) => {
             const firstFeatureArray = features.length ? [features[0]] : []
             const spatialReference = response.data?.spatialReference
 
-            const fields = [
-                { name: 'NUMEROPREDIAL', alias: 'Número Predial(20)' },
-                { name: 'NUMEROPREDIAL1', alias: 'Número Predial(30)' },
-                { name: 'DIRECCION', alias: 'Dirección' },
-                { name: 'TIPO', alias: 'Tipo' },
-                { name: 'NOMBRE', alias: 'Municipio' },
-                { name: 'SHAPE_AREA', alias: 'Área (m²)', type: 'number' },
-                { name: 'SHAPE_PERIMETRO', alias: 'Perímetro (m)', type: 'number' }
-            ]
+            const fields = response.data.fields
 
             abrirTablaResultados(firstFeatureArray, fields, spatialReference as __esri.SpatialReference)
 
@@ -570,7 +566,15 @@ const Widget = (props: any) => {
         setValorBusqueda('');
         setMensaje(null);
         setError('');
+        setCapaTemporal(false);
+//      eliminarGraficos();  // cef20260310
+    };
 
+    /**
+     * - Elimina gráficos.
+     * - Regresa al extent inicial del mapa.
+     */
+    const eliminarGraficos = () => {
         if (graphicsLayerRef.current) {
             graphicsLayerRef.current.removeAll();
         }
@@ -732,6 +736,17 @@ const Widget = (props: any) => {
                     {tipoBusqueda === 'matricula'
                         ? 'Ejemplo Filandia: 0002001001284-4133'
                         : 'Ejemplo Filandia: 000000030326000'}
+                </div>
+
+                {/* Checkbox capa temporal */}
+                <div style={{ marginTop: 8 }}>
+                    <Label>
+                        <Checkbox
+                            checked={capaTemporal}
+                            onChange={(e, checked) => setCapaTemporal(checked)}
+                        />
+                        <span style={{ marginLeft: 6 }}>Capa temporal</span>
+                    </Label>
                 </div>
 
                 {/* Mensaje */}

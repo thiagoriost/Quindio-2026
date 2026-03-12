@@ -1,5 +1,5 @@
 /* Importar variables centralizadas */
-@import '../../../utils/styles/presetsSNRA.css';
+@import '../../../utils/styles/presetsQuindio.css';
 
 /* Tabs personalizados para widgetTree */
 .custom-tab-list {
@@ -98,4 +98,20 @@
 
 .tree-scroll-container::-webkit-scrollbar-thumb:hover {
     background: var(--scrollbar-thumb-hover);
+}
+
+/* Cef 20260309 */
+.btn-remove-layer {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--text-color-primary);
+  font-size: 12px;
+  margin-right: 6px;
+  padding: 0;
+}
+
+/* Cef 20260309 */
+.btn-remove-layer:hover {
+  color: var(--color-secondary);
 }
