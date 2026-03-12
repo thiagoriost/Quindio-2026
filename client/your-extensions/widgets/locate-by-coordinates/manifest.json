@@ -3,15 +3,16 @@
   "label": "Ubicar por coordenadas",
   "type": "widget",
   "version": "1.19.0",
+  "dependency": ["jimu-arcgis"],
   "exbVersion": "1.19.0",
   "author": "IGAC <rigorios8103@gmail.com>",
   "description": "Widget para ubicar puntos en el mapa a partir de coordenadas planas (MAGNA SIRGAS) o geográficas (decimales o DMS). Permite ingresar coordenadas y visualizar el punto en el mapa. Empleado en SigQuindio 2026.",
   "copyright": "Instituto Geográfico Agustín Codazzi (IGAC)",
-  "license": "http://www.apache.org/licenses/LICENSE-2.0",
+  "license": "",
   "properties": {},
-  "dependency": "jimu-arcgis",
   "translatedLocales": ["es"],
   "defaultSize": { 
     "width": 800,
-    "height": 500 }
+    "height": 500
+  }
 }

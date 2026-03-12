@@ -17,7 +17,7 @@ import SpatialReference from "@arcgis/core/geometry/SpatialReference"
 import CoordinateForm from "./CoordinateForm"
 import { drawPoint } from "./mapActions"
 
-export default function Widget(props: AllWidgetProps<any>) {
+const Widget = (props: AllWidgetProps<any>) => {
   /**
    * Estado para almacenar la referencia a la vista del mapa de Jimu.
    * @type {[JimuMapView | undefined, Function]}
@@ -47,7 +47,7 @@ export default function Widget(props: AllWidgetProps<any>) {
     if (!varJimuMapView) return
     // Log para depuración del estado de la vista y su propiedad map
     console.log("varJimuMapView:", varJimuMapView)
-    console.log("varJimuMapView.map:", varJimuMapView && varJimuMapView.map)
+    console.log("varJimuMapView.view.map:", varJimuMapView && varJimuMapView?.view?.map)
     let point
     if (type === "PLANAR") {
       point = new Point({
@@ -78,12 +78,14 @@ export default function Widget(props: AllWidgetProps<any>) {
         varJimuMapView && (
           <CoordinateForm
             onLocate={handleLocate}
-            disabled={!varJimuMapView.map}
-            mapReady={!!varJimuMapView.map}
-            key={varJimuMapView.map ? 'ready' : 'not-ready'}
+            disabled={!varJimuMapView.view.map}
+            mapReady={!!varJimuMapView.view.map}
+            key={varJimuMapView.view.map ? 'ready' : 'not-ready'}
           />
         )
       }
     </div>
   )
 }
+
+export default Widget

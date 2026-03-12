@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react'
 import { JimuMapViewComponent, type JimuMapView } from 'jimu-arcgis' // The map object can be accessed using the JimuMapViewComponent
 import '../styles/style.css'
 import type { CapasTematicas, ItemResponseTablaContenido, TablaDeContenidoInterface, datosBasicosInterface, interfaceCapasNietos } from '../types/interfaces'
-import Widget_Tree from './components/widgetTree'
+import WidgetTree from './components/widgetTree'
 import * as projection from "@arcgis/core/geometry/projection"
 
 interface ServiciosModule {
@@ -291,7 +291,7 @@ const Widget = (props: AllWidgetProps<any>) => {
           </button>
           {!isCollapsed && (
             <div className="w-100 p-3 contenedorTablaContenido" style={{ backgroundColor: 'var(--sys-color-primary)', color: 'var(--sys-color-on-primary)' }}>
-              <Widget_Tree
+              <WidgetTree
                 dataTablaContenido={groupedLayers}
                 setDataTablaContenido={setGroupedLayers}
                 eliminarCapaTemporal={eliminarCapaTemporal} //cef 20260309
