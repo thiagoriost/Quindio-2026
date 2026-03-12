@@ -12,6 +12,10 @@
  */
 import { React } from "jimu-core"
 import type { CoordinateType } from "../types"
+import { Select, Option, /* TextInput, */ Button, Label } from "jimu-ui"
+
+import '../styles/styles.css'
+import FloatingInput from "../../../shared/components/FloatingInput/FloatingInput"
 
 interface Props {
   onLocate: (coords: any, type: CoordinateType) => void
@@ -35,48 +39,88 @@ export default function CoordinateForm({ onLocate, disabled, mapReady }: Props) 
   }, [mapReady])
 
   return (
-    <div>
-      <select
-        value={type}
-        onChange={(e)=>{ setType(e.target.value as CoordinateType) }}
-      >
-        <option value="PLANAR">Planas MAGNA SIRGAS</option>
-        <option value="GEOGRAPHIC_DECIMAL">Geográficas Decimal</option>
-      </select>
+    <div className="coord-widget">
+      <div className="section">
+        <Label className="label">Tipo de coordenadas</Label>
+
+        <Select
+          value={type}
+          onChange={(e) => {
+            setType(e.target.value as CoordinateType)
+          }}
+        >
+          <Option value="PLANAR">Planas MAGNA SIRGAS (9377)</Option>
+          <Option value="GEOGRAPHIC_DECIMAL">Geográficas (Decimal)</Option>
+        </Select>
+      </div>
+
       {type === "PLANAR" && (
-        <>
-          <input
-            placeholder="X"
-            value={x}
-            onChange={(e)=>{ setX(e.target.value) }}
-          />
-          <input
-            placeholder="Y"
-            value={y}
-            onChange={(e)=>{ setY(e.target.value) }}
-          />
-        </>
+        <div className="section">
+          <Label className="label">Coordenadas Planas</Label>
+
+          <div className="grid">
+            <FloatingInput
+              label="X (Este)"
+              // placeholder="X (Este)"
+              value={x}
+              onChange={(value)=>{ setX(value) }}
+            />
+
+            <FloatingInput
+              label="Y (Norte)"
+              // placeholder="Y (Norte)"
+              value={y}
+              onChange={(value)=>{ setY(value) }}
+            />
+          </div>
+        </div>
       )}
+
       {type === "GEOGRAPHIC_DECIMAL" && (
-        <>
-          <input
-            placeholder="Latitud"
-            value={lat}
-            onChange={(e)=>{ setLat(e.target.value) }}
-          />
-          <input
-            placeholder="Longitud"
-            value={lon}
-            onChange={(e)=>{ setLon(e.target.value) }}
-          />
-        </>
+        <div className="section">
+          <Label className="label">Coordenadas Geográficas</Label>
+
+          <div className="grid">
+            <FloatingInput
+              label="Latitud"
+              // placeholder="Latitud"
+              value={lat}
+              onChange={(value)=>{ setLat(value) }}
+            />
+
+            <FloatingInput
+              label="Longitud"
+              // placeholder="Longitud"
+              value={lon}
+              onChange={(value)=>{ setLon(value) }}
+            />
+          </div>
+        </div>
       )}
-      <button
-        onClick={() => { onLocate({ x, y, lat, lon }, type) }}
-        disabled={disabled}
-      >
-        Ubicar
-      </button>
+
+      <div className="actions">
+        <Button
+          type="default"
+          onClick={() => {
+            setX("")
+            setY("")
+            setLat("")
+            setLon("")
+          }}
+        >
+          Limpiar
+        </Button>
+
+        <Button
+          type="primary"
+          onClick={() => {
+            onLocate({ x, y, lat, lon }, type)
+          }}
+          disabled={disabled}
+        >
+          Ubicar
+        </Button>
+      </div>
     </div>
   )
 }
