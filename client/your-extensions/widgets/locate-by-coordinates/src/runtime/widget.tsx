@@ -15,7 +15,7 @@ import Point from "@arcgis/core/geometry/Point"
 import SpatialReference from "@arcgis/core/geometry/SpatialReference"
 
 import CoordinateForm from "./CoordinateForm"
-import { drawPoint } from "./mapActions"
+import { clearPoint, drawPoint } from "./mapActions"
 
 const Widget = (props: AllWidgetProps<any>) => {
   /**
@@ -65,6 +65,12 @@ const Widget = (props: AllWidgetProps<any>) => {
     }
     drawPoint(varJimuMapView, point)
   }
+
+  const handleClear = () => {
+    if (!varJimuMapView) return
+    clearPoint(varJimuMapView)
+  }
+
   return (
     <div>
       {props.useMapWidgetIds && props.useMapWidgetIds.length === 1 && (
@@ -81,6 +87,7 @@ const Widget = (props: AllWidgetProps<any>) => {
             disabled={!varJimuMapView.view.map}
             mapReady={!!varJimuMapView.view.map}
             key={varJimuMapView.view.map ? 'ready' : 'not-ready'}
+            onClear={handleClear}
           />
         )
       }

@@ -46,3 +46,20 @@ export const drawPoint = (varJimuMapView, point) => {
     zoom: 16
   })
 }
+
+export const clearPoint = (varJimuMapView) => {
+
+  if (!varJimuMapView || !varJimuMapView.view) {
+    console.error("clearPoint: vista del mapa no disponible")
+    return
+  }
+
+  const layer = varJimuMapView.view.map.findLayerById("coord-layer")
+
+  if (layer) {
+    layer.removeAll()
+    varJimuMapView.view.goTo({
+      zoom: 10
+    })
+  }
+}
