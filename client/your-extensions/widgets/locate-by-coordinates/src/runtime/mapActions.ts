@@ -8,8 +8,10 @@ import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer"
  *
  * @param {any} varJimuMapView - Vista del mapa de ArcGIS
  * @param {any} point - Geometría del punto a dibujar
+ * @param {string} typeCoordeninate - Tipo de coordenada (PLANAR, GEOGRAPHIC_DECIMAL, GEOGRAPHIC_DMS)
+ * @param {string} textoGeographicDMS - Texto de coordenadas en formato DMS
  */
-export const drawPoint = (varJimuMapView, point) => {
+export const drawPoint = (varJimuMapView, point, typeCoordeninate, textoGeographicDMS) => {
 
   // Validación defensiva
   if (!varJimuMapView || !varJimuMapView.view) {
@@ -26,7 +28,25 @@ export const drawPoint = (varJimuMapView, point) => {
 
   layer.removeAll()
 
-  const graphic = new Graphic({
+  // -------------------------
+  // TEXTO DE COORDENADAS
+  // -------------------------
+
+  let coordText = ""
+
+  if(typeCoordeninate === "GEOGRAPHIC_DMS") {
+    coordText = textoGeographicDMS
+  } else if (point.longitude && point.latitude) {
+    coordText = `Lat: ${point.latitude.toFixed(6)}, Lon:${point.longitude.toFixed(6)}`
+  } else {
+    coordText = `X: ${point.x.toFixed(2)}, Y:${point.y.toFixed(2)}`
+  }
+
+  // -------------------------
+  // PUNTO
+  // -------------------------
+
+  const pointGraphic = new Graphic({
     geometry: point,
     symbol: {
       type: "simple-marker",
@@ -39,7 +59,28 @@ export const drawPoint = (varJimuMapView, point) => {
     }
   })
 
-  layer.add(graphic)
+  // -------------------------
+  // TEXTO SOBRE EL PUNTO
+  // -------------------------
+
+  const textGraphic = new Graphic({
+    geometry: point,
+    symbol: {
+      type: "text",
+      text: coordText,
+      color: "black",
+      haloColor: "white",
+      haloSize: 1.5,
+      font: {
+        size: 10,
+        family: "Arial"
+      },
+      yoffset: 15
+    }
+  })
+
+  layer.add(pointGraphic)
+  layer.add(textGraphic)
 
   varJimuMapView.view.goTo({
     center: point,

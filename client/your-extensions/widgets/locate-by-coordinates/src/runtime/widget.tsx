@@ -16,6 +16,7 @@ import SpatialReference from "@arcgis/core/geometry/SpatialReference"
 
 import CoordinateForm from "./CoordinateForm"
 import { clearPoint, drawPoint } from "./mapActions"
+import { dmsToDecimal } from "./coordinateUtils"
 
 const Widget = (props: AllWidgetProps<any>) => {
   /**
@@ -63,7 +64,28 @@ const Widget = (props: AllWidgetProps<any>) => {
         spatialReference: { wkid: 4326 }
       })
     }
-    drawPoint(varJimuMapView, point)
+    let textoGeographicDMS = ''
+    if (type === "GEOGRAPHIC_DMS") {
+      textoGeographicDMS = `Lat: ${data.latDeg}° ${data.latMin}' ${data.latSec}'', Lon: ${data.lonDeg}° ${data.lonMin}' ${data.lonSec}''`
+      const latDecimal = dmsToDecimal(
+        Number(data.latDeg),
+        Number(data.latMin),
+        Number(data.latSec)
+      )
+
+      const lonDecimal = dmsToDecimal(
+        Number(data.lonDeg),
+        Number(data.lonMin),
+        Number(data.lonSec)
+      )
+
+      point = new Point({
+        longitude: lonDecimal,
+        latitude: latDecimal,
+        spatialReference: { wkid: 4326 }
+      })
+    }
+    drawPoint(varJimuMapView, point, type, textoGeographicDMS)
   }
 
   const handleClear = () => {

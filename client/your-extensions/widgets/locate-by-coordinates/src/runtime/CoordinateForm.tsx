@@ -16,7 +16,7 @@ import { Select, Option, /* TextInput, */ Button, Label } from "jimu-ui"
 
 import '../styles/styles.css'
 import FloatingInput from "../../../shared/components/FloatingInput/FloatingInput"
-import { validateGeographic, validatePlanar } from "./coordinateUtils"
+import { validateDMS, validateGeographic, validatePlanar } from "./coordinateUtils"
 
 interface Props {
   onLocate: (coords: any, type: CoordinateType) => void
@@ -34,6 +34,15 @@ export default function CoordinateForm({ onLocate, disabled, mapReady, onClear }
   // Estado para coordenadas geográficas decimales
   const [lat, setLat] = React.useState("")
   const [lon, setLon] = React.useState("")
+
+
+  const [latDeg, setLatDeg] = React.useState("")
+  const [latMin, setLatMin] = React.useState("")
+  const [latSec, setLatSec] = React.useState("")
+
+  const [lonDeg, setLonDeg] = React.useState("")
+  const [lonMin, setLonMin] = React.useState("")
+  const [lonSec, setLonSec] = React.useState("")
 
   const [error, setError] = React.useState("")
 
@@ -71,8 +80,24 @@ export default function CoordinateForm({ onLocate, disabled, mapReady, onClear }
     return true
   }
 
+  if (type === "GEOGRAPHIC_DMS") {
+
+  if (!latDeg || !latMin || !latSec || !lonDeg || !lonMin || !lonSec) {
+    setError("")
+    return false
+  }
+
+  if (!validateDMS(latDeg, latMin, latSec, lonDeg, lonMin, lonSec)) {
+    setError("Formato DMS inválido.")
+    return false
+  }
+
+  setError("")
+  return true
+}
+
   return false
-  }, [type, x, y, lat, lon])
+  }, [type, x, y, lat, lon, latDeg, latMin, latSec, lonDeg, lonMin, lonSec])
 
 
   React.useEffect(() => {
@@ -92,7 +117,8 @@ export default function CoordinateForm({ onLocate, disabled, mapReady, onClear }
           }}
         >
           <Option value="PLANAR">Planas MAGNA SIRGAS (9377)</Option>
-          <Option value="GEOGRAPHIC_DECIMAL">Geográficas (Decimal)</Option>
+          <Option value="GEOGRAPHIC_DECIMAL">Geográficas (Decimal - 4326)</Option>
+          <Option value="GEOGRAPHIC_DMS">Geográficas (DMS - 4326)</Option>
         </Select>
       </div>
 
@@ -151,16 +177,44 @@ export default function CoordinateForm({ onLocate, disabled, mapReady, onClear }
         </div>
       )}
 
+      {type === "GEOGRAPHIC_DMS" && (
+        <div className="section">
+
+          <Label className="label">Latitud (DMS)</Label>
+
+          <div className="grid">
+            <FloatingInput label="Grados" value={latDeg} onChange={setLatDeg}/>
+            <FloatingInput label="Minutos" value={latMin} onChange={setLatMin}/>
+            <FloatingInput label="Segundos" value={latSec} onChange={setLatSec}/>
+          </div>
+
+          <Label className="label">Longitud (DMS)</Label>
+
+          <div className="grid">
+            <FloatingInput label="Grados" value={lonDeg} onChange={setLonDeg}/>
+            <FloatingInput label="Minutos" value={lonMin} onChange={setLonMin}/>
+            <FloatingInput label="Segundos" value={lonSec} onChange={setLonSec}/>
+          </div>
+
+        </div>
+      )}
+
       <div className="actions">
         <Button
           type="default"
           onClick={() => {
+            onClear()
             setX("")
             setY("")
             setLat("")
             setLon("")
             setError("")
-            onClear()
+            setLatDeg("")
+            setLatMin("")
+            setLatSec("")
+            setLonDeg("")
+            setLonMin("")
+            setLonSec("")
           }}
         >
           Limpiar
@@ -169,7 +223,7 @@ export default function CoordinateForm({ onLocate, disabled, mapReady, onClear }
         <Button
           type="primary"
           onClick={() => {
-            onLocate({ x, y, lat, lon }, type)
+            onLocate({ x, y, lat, lon, latDeg, latMin, latSec, lonDeg, lonMin, lonSec }, type)
           }}
           disabled={disabled || !isValid}
         >

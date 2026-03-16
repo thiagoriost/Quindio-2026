@@ -38,3 +38,43 @@ export const validateGeographic = (lat: string, lon: string) => {
 
   return true
 }
+
+export const validateDMS = (
+  latDeg: string,
+  latMin: string,
+  latSec: string,
+  lonDeg: string,
+  lonMin: string,
+  lonSec: string
+) => {
+
+  const numeric = /^-?\d+(\.\d+)?$/
+
+  if (
+    !numeric.test(latDeg) ||
+    !numeric.test(latMin) ||
+    !numeric.test(latSec) ||
+    !numeric.test(lonDeg) ||
+    !numeric.test(lonMin) ||
+    !numeric.test(lonSec)
+  ) return false
+
+  const latD = Number(latDeg)
+  const latM = Number(latMin)
+  const latS = Number(latSec)
+
+  const lonD = Number(lonDeg)
+  const lonM = Number(lonMin)
+  const lonS = Number(lonSec)
+
+  if (latD < -90 || latD > 90) return false
+  if (lonD < -180 || lonD > 180) return false
+
+  if (latM < 0 || latM >= 60) return false
+  if (lonM < 0 || lonM >= 60) return false
+
+  if (latS < 0 || latS >= 60) return false
+  if (lonS < 0 || lonS >= 60) return false
+
+  return true
+}

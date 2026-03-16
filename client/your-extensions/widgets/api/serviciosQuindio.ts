@@ -1,5 +1,5 @@
 const urls = {
- 
+
   SERVICIO_GEOMETRIA      : "https://sigquindio.gov.co/arcgis/rest/services/Utilities/Geometry/GeometryServer",
   //SERVICIO_GEOMETRIA      : "https://sigquindio.gov.co/arcgis/rest/services/Utilities/Geometry/GeometryServer",
   SERVICIO_SOCIOECONOMICO : "https://sigquindio.gov.co/arcgis/rest/services/QUINDIO_III/Socioeconomico_T/MapServer",
@@ -16,7 +16,7 @@ const urls = {
   SERVICIO_ORDENAMIENTO_TERRITORIAL : "https://sigquindio.gov.co/arcgis/rest/services/QUINDIO_III/OrdenamientoTerritorial_T/MapServer",
   SERVICIO_INDUSTRIA_COMERCIO     : "https://sigquindio.gov.co/arcgis/rest/services/QUINDIO_III/Industria_Y_Comercio/MapServer",
   //SERVICIO_RIESGO :> SERVICIO_RIESGO_CONSULTA en ambiente productivo
-  
+
   // ** Falla y se desconoce su uso (Octubre2019)
   //URL_ARCHIVOS_QUINDIO : "http://181.57.208.251/ArchivosQuindioII/",
   //URL_ARCHIVOS_QUINDIO : "http://181.57.208.251/ArchivosQuindioII/",
