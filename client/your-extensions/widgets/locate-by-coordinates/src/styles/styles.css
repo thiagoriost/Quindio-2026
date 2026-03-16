@@ -1,10 +1,12 @@
 /* @import '../../../utils/styles/presetsQuindio.css'; */
 
 .coord-widget{
-  padding:16px;
-  display:flex;
-  flex-direction:column;
-  gap:16px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  justify-content: center;
+  height: 100%;
 }
 
 .section{
@@ -21,7 +23,7 @@
 
 .grid{
   display:grid;
-  grid-template-columns:1fr 1fr;
+  grid-template-columns:1fr 1fr 1fr;
   gap:10px;
 }
 

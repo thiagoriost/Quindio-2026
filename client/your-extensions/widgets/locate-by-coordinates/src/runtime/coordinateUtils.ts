@@ -10,7 +10,8 @@ export const dmsToDecimal = (
   min: number,
   sec: number
 ): number => {
-  return deg + min / 60 + sec / 3600
+  const sign = deg < 0 ? -1 : 1
+  return sign * (Math.abs(deg) + min / 60 + sec / 3600)
 }
 
 export const isNumeric = (value: string) => {

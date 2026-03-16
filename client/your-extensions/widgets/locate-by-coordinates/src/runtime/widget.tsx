@@ -13,6 +13,7 @@ import { React, type AllWidgetProps } from "jimu-core"
 import { JimuMapViewComponent, type JimuMapView } from 'jimu-arcgis'
 import Point from "@arcgis/core/geometry/Point"
 import SpatialReference from "@arcgis/core/geometry/SpatialReference"
+import * as projection from "@arcgis/core/geometry/projection"
 
 import CoordinateForm from "./CoordinateForm"
 import { clearPoint, drawPoint } from "./mapActions"
@@ -24,6 +25,8 @@ const Widget = (props: AllWidgetProps<any>) => {
    * @type {[JimuMapView | undefined, Function]}
    */
   const [varJimuMapView, setJimuMapView] = React.useState<JimuMapView>()
+  const [initialExtent, setInitialExtent] = React.useState(null)
+  const [initialZoom, setInitialZoom] = React.useState<number | null>(null)
 
   /**
    * Manejador del cambio de vista activa del mapa.
@@ -35,7 +38,22 @@ const Widget = (props: AllWidgetProps<any>) => {
   const activeViewChangeHandler = (jmv: JimuMapView) => {
     if (jmv) {
       setJimuMapView(jmv)
+      if (!initialExtent) {
+        setInitialExtent(jmv.view.extent.clone())
+        setInitialZoom(jmv.view.zoom)
+      }
     }
+  }
+
+  const goToInitialExtent = () => {
+
+    if (!varJimuMapView || !initialExtent) return
+
+    varJimuMapView.view.goTo({
+      target: initialExtent,
+      zoom: initialZoom
+    })
+    
   }
 
   /**
@@ -43,7 +61,7 @@ const Widget = (props: AllWidgetProps<any>) => {
    * @param {any} data - Datos de coordenadas ingresados
    * @param {string} type - Tipo de coordenada (PLANAR, GEOGRAPHIC_DECIMAL, etc.)
    */
-  const handleLocate = (data, type) => {
+  const handleLocate = async (data, type) => {
     console.log("handleLocate", data, type)
     if (!varJimuMapView) return
     // Log para depuración del estado de la vista y su propiedad map
@@ -67,6 +85,7 @@ const Widget = (props: AllWidgetProps<any>) => {
     let textoGeographicDMS = ''
     if (type === "GEOGRAPHIC_DMS") {
       textoGeographicDMS = `Lat: ${data.latDeg}° ${data.latMin}' ${data.latSec}'', Lon: ${data.lonDeg}° ${data.lonMin}' ${data.lonSec}''`
+      const mapSR = varJimuMapView.view.spatialReference
       const latDecimal = dmsToDecimal(
         Number(data.latDeg),
         Number(data.latMin),
@@ -79,11 +98,20 @@ const Widget = (props: AllWidgetProps<any>) => {
         Number(data.lonSec)
       )
 
-      point = new Point({
+      let point4326 = new Point({
         longitude: lonDecimal,
         latitude: latDecimal,
         spatialReference: { wkid: 4326 }
       })
+
+      if (mapSR.wkid !== 4326) {
+
+        await projection.load()
+
+        point4326 = projection.project(point4326, mapSR) as Point
+      }
+
+      point = point4326
     }
     drawPoint(varJimuMapView, point, type, textoGeographicDMS)
   }
@@ -93,8 +121,17 @@ const Widget = (props: AllWidgetProps<any>) => {
     clearPoint(varJimuMapView)
   }
 
+  React.useEffect(() => {
+    if (props.state === 'CLOSED') {
+      handleClear()
+      goToInitialExtent()
+    }  
+    
+  }, [props])
+  
+
   return (
-    <div>
+    <div style={{height:'100%'}}>
       {props.useMapWidgetIds && props.useMapWidgetIds.length === 1 && (
         <JimuMapViewComponent useMapWidgetId={props.useMapWidgetIds?.[0]} onActiveViewChange={activeViewChangeHandler} />
       )}

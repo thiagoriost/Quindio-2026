@@ -12,11 +12,12 @@
  */
 import { React } from "jimu-core"
 import type { CoordinateType } from "../types"
-import { Select, Option, /* TextInput, */ Button, Label } from "jimu-ui"
+import { Select, Option, /* TextInput, Button, */ Label } from "jimu-ui"
 
 import '../styles/styles.css'
 import FloatingInput from "../../../shared/components/FloatingInput/FloatingInput"
 import { validateDMS, validateGeographic, validatePlanar } from "./coordinateUtils"
+import { SearchActionBar } from "../../../../widgets/shared/components/search-action-bar"
 
 interface Props {
   onLocate: (coords: any, type: CoordinateType) => void
@@ -48,53 +49,53 @@ export default function CoordinateForm({ onLocate, disabled, mapReady, onClear }
 
   const isValid = React.useMemo(() => {
 
-  if (type === "PLANAR") {
+    if (type === "PLANAR") {
 
-    if (!x || !y) {
+      if (!x || !y) {
+        setError("")
+        return false
+      }
+
+      if (!validatePlanar(x, y)) {
+        setError("Las coordenadas planas solo permiten números.")
+        return false
+      }
+
+      setError("")
+      return true
+    }
+
+    if (type === "GEOGRAPHIC_DECIMAL") {
+
+      if (!lat || !lon) {
+        setError("")
+        return false
+      }
+
+      if (!validateGeographic(lat, lon)) {
+        setError("Latitud debe estar entre -90 y 90, Longitud entre -180 y 180.")
+        return false
+      }
+
+      setError("")
+      return true
+    }
+
+    if (type === "GEOGRAPHIC_DMS") {
+
+    if (!latDeg || !latMin || !latSec || !lonDeg || !lonMin || !lonSec) {
       setError("")
       return false
     }
 
-    if (!validatePlanar(x, y)) {
-      setError("Las coordenadas planas solo permiten números.")
+    if (!validateDMS(latDeg, latMin, latSec, lonDeg, lonMin, lonSec)) {
+      setError("Formato DMS inválido.")
       return false
     }
 
     setError("")
     return true
   }
-
-  if (type === "GEOGRAPHIC_DECIMAL") {
-
-    if (!lat || !lon) {
-      setError("")
-      return false
-    }
-
-    if (!validateGeographic(lat, lon)) {
-      setError("Latitud debe estar entre -90 y 90, Longitud entre -180 y 180.")
-      return false
-    }
-
-    setError("")
-    return true
-  }
-
-  if (type === "GEOGRAPHIC_DMS") {
-
-  if (!latDeg || !latMin || !latSec || !lonDeg || !lonMin || !lonSec) {
-    setError("")
-    return false
-  }
-
-  if (!validateDMS(latDeg, latMin, latSec, lonDeg, lonMin, lonSec)) {
-    setError("Formato DMS inválido.")
-    return false
-  }
-
-  setError("")
-  return true
-}
 
   return false
   }, [type, x, y, lat, lon, latDeg, latMin, latSec, lonDeg, lonMin, lonSec])
@@ -104,6 +105,21 @@ export default function CoordinateForm({ onLocate, disabled, mapReady, onClear }
     // Solo para depuración
     console.log("CoordinateForm, mapReady:", mapReady)
   }, [mapReady])
+
+  const onLimpiar = (): void => {
+    onClear()
+    setX("")
+    setY("")
+    setLat("")
+    setLon("")
+    setError("")
+    setLatDeg("")
+    setLatMin("")
+    setLatSec("")
+    setLonDeg("")
+    setLonMin("")
+    setLonSec("")
+  }
 
   return (
     <div className="coord-widget">
@@ -199,42 +215,17 @@ export default function CoordinateForm({ onLocate, disabled, mapReady, onClear }
         </div>
       )}
 
-      <div className="actions">
-        <Button
-          type="default"
-          onClick={() => {
-            onClear()
-            setX("")
-            setY("")
-            setLat("")
-            setLon("")
-            setError("")
-            setLatDeg("")
-            setLatMin("")
-            setLatSec("")
-            setLonDeg("")
-            setLonMin("")
-            setLonSec("")
-          }}
-        >
-          Limpiar
-        </Button>
-
-        <Button
-          type="primary"
-          onClick={() => {
+      <SearchActionBar
+          onSearch={() => {
             onLocate({ x, y, lat, lon, latDeg, latMin, latSec, lonDeg, lonMin, lonSec }, type)
           }}
-          disabled={disabled || !isValid}
-        >
-          Ubicar
-        </Button>
-      </div>
-      {error && (
-        <div className="coord-error">
-          {error}
-        </div>
-      )}
+          onClear={onLimpiar}
+          // loading={loading}
+          disableSearch={!isValid || disabled}
+          helpText="Esta funcionalidad permite ingresar coordenadas en diferentes formatos para ubicar un punto en el mapa. Selecciona el tipo de coordenada, ingresa los valores correspondientes y haz clic en 'Ubicar' para visualizar el punto en el mapa."
+          searchLabel="Ubicar"
+          error={error}
+      />
     </div>
   )
 }

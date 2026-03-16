@@ -1,6 +1,6 @@
 /** @jsx jsx */
 import { React, jsx } from 'jimu-core'
-import { Button, Loading, Tooltip, Icon } from 'jimu-ui'
+import { Button, /* Loading, */ Tooltip, Icon } from 'jimu-ui'
 import HelpOutlined from 'jimu-icons/svg/outlined/suggested/help.svg'
 import './style.scss'
 
@@ -55,6 +55,12 @@ export interface SearchActionBarProps {
    * @default ""
    */
   helpText?: string
+  /**
+   * Texto de error mostrado debajo de los botones.
+   * Si está vacío, no se renderiza ningún mensaje de error.
+   * @default ""
+   */
+  error?: string
 }
 
 /**
@@ -87,10 +93,10 @@ export interface SearchActionBarProps {
 /**
  * @date 2026-02-13
  * @author Ing.CEF
- * @param param0 
+ * @param param0
  * @dateUpdated 2026-02-17
  * @changes inclusión clase estilo btnsContner, desde style.scss por medio de un div contenedor
- * @returns {Object} HTML 
+ * @returns {Object} HTML
  */
 export const SearchActionBar: React.FC<SearchActionBarProps> = ({
   onSearch,
@@ -100,7 +106,8 @@ export const SearchActionBar: React.FC<SearchActionBarProps> = ({
   disableClear = false,
   searchLabel = 'Buscar',
   clearLabel = 'Limpiar',
-  helpText = ''
+  helpText = '',
+  error = ''
 }) => {
 
   /**
@@ -113,7 +120,7 @@ export const SearchActionBar: React.FC<SearchActionBarProps> = ({
       onSearch?.()
     }
   }
-  
+
   /**
    * Maneja la acción de limpiar.
    * Evita la ejecución si el botón está deshabilitado.
@@ -154,6 +161,11 @@ export const SearchActionBar: React.FC<SearchActionBarProps> = ({
 	      </Button>
 
 	    </div>
+      {disableSearch && (
+        <div>
+          {error}
+        </div>
+      )}
 	</div>
   )
 }
