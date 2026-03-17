@@ -1,0 +1,45 @@
+.consulta-widget {
+
+  padding: 10px;
+  /* width: 280px; */
+  font-family: Arial;
+}
+
+.select {
+
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+.valuesBox {
+
+  width: 100%;
+  height: 80px;
+}
+
+textarea {
+
+  width: 100%;
+  height: 40px;
+}
+
+.operators {
+
+  display: grid;
+  grid-template-columns: repeat(4,1fr);
+  gap: 4px;
+  margin: 10px 0;
+}
+
+.operators button {
+
+  border-radius: 10px;
+  border: 1px solid #888;
+  background: #eee;
+}
+
+.actions {
+
+  display: flex;
+  justify-content: space-between;
+}

@@ -15,6 +15,11 @@ import Point from "@arcgis/core/geometry/Point"
 import SpatialReference from "@arcgis/core/geometry/SpatialReference"
 import * as projection from "@arcgis/core/geometry/projection"
 import { clearPoint } from "../../../../widgets/utils/module"
+import { LayerInfo } from "widgets/shared/types/types_consultaAvanzadaAlfanumerica"
+import { urls} from "../../../api/serviciosQuindio"
+import { loadLayers } from "../../../shared/services/queryMapServer.service"
+
+import '../styles/styles.css'
 
 
 
@@ -79,10 +84,97 @@ const Widget = (props: AllWidgetProps<any>) => {
     }  
     
   }, [props])
+
+  const [layers, setLayers] = React.useState<LayerInfo[]>([])
+  const [selectedLayer, setSelectedLayer] = React.useState<number | null>(null)
+
+  const [fields, setFields] = React.useState<string[]>([])
+  const [values, setValues] = React.useState<string[]>([])
+  const [condition, setCondition] = React.useState("")
+
+  const [loading, setLoading] = React.useState(false)
+
+  /*
+  ==========================
+  LOAD LAYERS ON WIDGET OPEN
+  ==========================
+  */
+
+  React.useEffect(() => {
+
+    async function fetchLayers() {
+
+      setLoading(true)
+
+      try {
+
+        const response = await loadLayers(urls.SERVICIO_CONSULTA_AVANZADA_ALFANUMERICA)
+        console.log({response})
+        setLayers(response.layers)
+
+      } catch (error) {
+
+        console.error("Error cargando servicio", error)
+
+      } finally {
+
+        setLoading(false)
+
+      }
+
+    }
+
+    fetchLayers()
+
+  }, [])
+
+  /*
+  ==========================
+  LOAD FIELDS OF LAYER
+  ==========================
+  */
+
+  async function loadFields(layerId: number) {
+
+    const url = `${urls.SERVICIO_CONSULTA_AVANZADA_ALFANUMERICA}/${layerId}`
+
+    const response = await fetch(`${url}?f=json`)
+    const data = await response.json()
+
+    const validFields = data.fields
+      .filter((f) => f.name !== "OBJECTID" && f.name !== "SHAPE")
+      .map((f) => f.name)
+
+    setFields(validFields)
+
+  }
+
+  /*
+  ==========================
+  EVENT HANDLERS
+  ==========================
+  */
+
+  const handleLayerChange = (e) => {
+
+    const id = Number(e.target.value)
+
+    setSelectedLayer(id)
+
+    loadFields(id)
+
+  }
+
+  const appendCondition = (text: string) => {
+
+    setCondition(prev => `${prev} ${text}`)
+
+  }
+
   
 
   return (
-    <div style={{height:'100%'}}>
+    <div style={{height:'100%', backgroundColor: 'antiquewhite', padding: '10px', boxSizing: 'border-box'}}>
       {props.useMapWidgetIds && props.useMapWidgetIds.length === 1 && (
         <JimuMapViewComponent useMapWidgetId={props.useMapWidgetIds?.[0]} onActiveViewChange={activeViewChangeHandler} />
       )}
@@ -91,7 +183,102 @@ const Widget = (props: AllWidgetProps<any>) => {
         onActiveViewChange={(jmv) => { setView(jmv.view) }}
       /> */}      {
         varJimuMapView && (
-          <h1>consultaAvanzadaAlfanumerica</h1>
+          
+          <div className="consulta-widget">
+
+      <h3>Consulta Avanzada Alfanumérica</h3>
+
+      {/* TEMA */}
+
+      <label>Tema</label>
+
+      <select
+        className="select"
+        onChange={handleLayerChange}
+      >
+
+        <option>Seleccione...</option>
+
+        {layers.map(layer => (
+
+          <option key={layer.id} value={layer.id}>
+            {layer.name}
+          </option>
+
+        ))}
+
+      </select>
+
+      {/* CAMPOS */}
+
+      <label>Campos</label>
+
+      <select
+        className="select"
+        onChange={(e) => appendCondition(e.target.value)}
+      >
+
+        <option>Seleccione...</option>
+
+        {fields.map(field => (
+
+          <option key={field}>
+            {field}
+          </option>
+
+        ))}
+
+      </select>
+
+      {/* VALORES */}
+
+      <label>Valores</label>
+
+      <textarea className="valuesBox" />
+
+      {/* OPERADORES */}
+
+      <div className="operators">
+
+        {["LIKE","AND","OR","NOT","IS","NULL","=","<>",">","<",">=","<="].map(op => (
+
+          <button
+            key={op}
+            onClick={() => appendCondition(op)}
+          >
+            {op}
+          </button>
+
+        ))}
+
+      </div>
+
+      {/* CONDICION */}
+
+      <label>Condición de Búsqueda</label>
+
+      <textarea
+        value={condition}
+        readOnly
+      />
+
+      {/* BOTONES */}
+
+      <div className="actions">
+
+        <button
+          onClick={() => setCondition("")}
+        >
+          Limpiar
+        </button>
+
+        <button>
+          Buscar
+        </button>
+
+      </div>
+
+    </div>
         )
       }
     </div>
