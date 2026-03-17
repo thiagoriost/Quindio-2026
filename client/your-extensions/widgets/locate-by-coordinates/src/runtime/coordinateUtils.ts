@@ -14,10 +14,21 @@ export const dmsToDecimal = (
   return sign * (Math.abs(deg) + min / 60 + sec / 3600)
 }
 
+/**
+ * Verifica si una cadena representa un valor numérico válido (entero o decimal, positivo o negativo).
+ * @param {string} value - Cadena a evaluar
+ * @returns {boolean} `true` si la cadena es un número válido
+ */
 export const isNumeric = (value: string) => {
   return /^-?\d+(\.\d+)?$/.test(value)
 }
 
+/**
+ * Valida que las coordenadas planas (X, Y) sean valores numéricos.
+ * @param {string} x - Coordenada X (Este)
+ * @param {string} y - Coordenada Y (Norte)
+ * @returns {boolean} `true` si ambas coordenadas son numéricas
+ */
 export const validatePlanar = (x: string, y: string) => {
   if (!x || !y) return false
 
@@ -26,6 +37,13 @@ export const validatePlanar = (x: string, y: string) => {
   return true
 }
 
+/**
+ * Valida coordenadas geográficas en formato decimal.
+ * Latitud debe estar entre -90 y 90, longitud entre -180 y 180.
+ * @param {string} lat - Latitud en formato decimal
+ * @param {string} lon - Longitud en formato decimal
+ * @returns {boolean} `true` si las coordenadas son válidas
+ */
 export const validateGeographic = (lat: string, lon: string) => {
   if (!lat || !lon) return false
 
@@ -40,6 +58,18 @@ export const validateGeographic = (lat: string, lon: string) => {
   return true
 }
 
+/**
+ * Valida coordenadas geográficas en formato Grados, Minutos y Segundos (DMS).
+ * Los grados de latitud deben estar entre -90 y 90, los de longitud entre -180 y 180.
+ * Minutos y segundos deben estar entre 0 y 59.999...
+ * @param {string} latDeg - Grados de latitud
+ * @param {string} latMin - Minutos de latitud
+ * @param {string} latSec - Segundos de latitud
+ * @param {string} lonDeg - Grados de longitud
+ * @param {string} lonMin - Minutos de longitud
+ * @param {string} lonSec - Segundos de longitud
+ * @returns {boolean} `true` si todas las componentes son válidas
+ */
 export const validateDMS = (
   latDeg: string,
   latMin: string,

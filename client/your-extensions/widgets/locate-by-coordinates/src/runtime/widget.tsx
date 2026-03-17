@@ -45,6 +45,10 @@ const Widget = (props: AllWidgetProps<any>) => {
     }
   }
 
+  /**
+   * Restaura la vista del mapa a la extensión y zoom iniciales.
+   * @returns {void}
+   */
   const goToInitialExtent = () => {
 
     if (!varJimuMapView || !initialExtent) return
@@ -58,8 +62,11 @@ const Widget = (props: AllWidgetProps<any>) => {
 
   /**
    * Manejador para ubicar el punto en el mapa según el tipo de coordenada.
-   * @param {any} data - Datos de coordenadas ingresados
-   * @param {string} type - Tipo de coordenada (PLANAR, GEOGRAPHIC_DECIMAL, etc.)
+   * Crea un punto con la referencia espacial correspondiente y lo dibuja en el mapa.
+   *
+   * @param {PlanarCoordinates | GeographicDecimal | GeographicDMS} data - Datos de coordenadas ingresados por el usuario
+   * @param {CoordinateType} type - Tipo de coordenada: "PLANAR", "GEOGRAPHIC_DECIMAL" o "GEOGRAPHIC_DMS"
+   * @returns {Promise<void>}
    */
   const handleLocate = async (data, type) => {
     console.log("handleLocate", data, type)
@@ -116,11 +123,18 @@ const Widget = (props: AllWidgetProps<any>) => {
     drawPoint(varJimuMapView, point, type, textoGeographicDMS)
   }
 
+  /**
+   * Limpia el punto dibujado en el mapa.
+   * @returns {void}
+   */
   const handleClear = () => {
     if (!varJimuMapView) return
     clearPoint(varJimuMapView)
   }
 
+  /**
+   * Efecto que limpia el punto y restaura la vista inicial cuando el widget se cierra.
+   */
   React.useEffect(() => {
     if (props.state === 'CLOSED') {
       handleClear()

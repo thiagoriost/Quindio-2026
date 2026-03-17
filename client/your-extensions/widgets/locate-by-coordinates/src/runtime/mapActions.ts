@@ -4,12 +4,14 @@ import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer"
 
 /**
  * Dibuja un punto en el mapa y centra la vista en él.
- * Si no existe la capa de gráficos, la crea.
+ * Si no existe la capa de gráficos ("coord-layer"), la crea automáticamente.
+ * Muestra el punto con un marcador rojo y una etiqueta de texto con las coordenadas.
  *
- * @param {any} varJimuMapView - Vista del mapa de ArcGIS
- * @param {any} point - Geometría del punto a dibujar
- * @param {string} typeCoordeninate - Tipo de coordenada (PLANAR, GEOGRAPHIC_DECIMAL, GEOGRAPHIC_DMS)
- * @param {string} textoGeographicDMS - Texto de coordenadas en formato DMS
+ * @param {JimuMapView} varJimuMapView - Vista del mapa de Jimu (ArcGIS Experience Builder)
+ * @param {Point} point - Geometría del punto a dibujar
+ * @param {CoordinateType} typeCoordinate - Tipo de coordenada: "PLANAR", "GEOGRAPHIC_DECIMAL" o "GEOGRAPHIC_DMS"
+ * @param {string} textoGeographicDMS - Texto formateado de coordenadas DMS (solo aplica si typeCoordinate es "GEOGRAPHIC_DMS")
+ * @returns {void}
  */
 export const drawPoint = (varJimuMapView, point, typeCoordeninate, textoGeographicDMS) => {
 
@@ -88,6 +90,12 @@ export const drawPoint = (varJimuMapView, point, typeCoordeninate, textoGeograph
   })
 }
 
+/**
+ * Limpia todos los gráficos de la capa "coord-layer" del mapa.
+ *
+ * @param {JimuMapView} varJimuMapView - Vista del mapa de Jimu (ArcGIS Experience Builder)
+ * @returns {void}
+ */
 export const clearPoint = (varJimuMapView) => {
 
   if (!varJimuMapView || !varJimuMapView.view) {

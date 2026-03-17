@@ -27,6 +27,12 @@
   gap:10px;
 }
 
+.grid-two-columns{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+}
+
 .actions{
   display:flex;
   justify-content:flex-end;

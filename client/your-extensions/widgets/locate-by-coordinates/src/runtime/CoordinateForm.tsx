@@ -4,7 +4,10 @@
  *
  * @component
  * @param {Object} props
- * @param {(coords: any, type: CoordinateType) => void} props.onLocate - Función para ubicar el punto
+ * @param {(coords: any, type: CoordinateType) => void} props.onLocate - Callback para ubicar el punto en el mapa con las coordenadas ingresadas
+ * @param {boolean} [props.disabled] - Indica si el formulario está deshabilitado (ej. cuando el mapa no está listo)
+ * @param {boolean} [props.mapReady] - Indica si el widget de mapa está disponible y listo para operar
+ * @param {() => void} [props.onClear] - Callback para limpiar el punto dibujado y reiniciar el formulario
  * @returns {JSX.Element} Formulario de coordenadas
  *
  * @author IGAC - DIP
@@ -142,7 +145,7 @@ export default function CoordinateForm({ onLocate, disabled, mapReady, onClear }
         <div className="section">
           <Label className="label">Coordenadas Planas</Label>
 
-          <div className="grid">
+          <div className="grid-two-columns">
             <FloatingInput
               label="X (Este)"
               // placeholder="X (Este)"
@@ -170,7 +173,7 @@ export default function CoordinateForm({ onLocate, disabled, mapReady, onClear }
         <div className="section">
           <Label className="label">Coordenadas Geográficas</Label>
 
-          <div className="grid">
+          <div className="grid-two-columns">
             <FloatingInput
               label="Latitud"
               // placeholder="Latitud"
