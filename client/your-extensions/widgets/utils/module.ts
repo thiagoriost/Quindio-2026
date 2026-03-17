@@ -4,6 +4,8 @@ import { exportToCSV } from './exportToCSV'
 import { type JimuMapView, loadArcGISJSAPIModules } from 'jimu-arcgis'
 import Polygon from '@arcgis/core/geometry/Polygon'
 import { coloresMapaCoropletico } from './constantes'
+import Graphic from "@arcgis/core/Graphic"
+import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer"
 
 
 let consecutivoConsultas = 0
@@ -551,7 +553,7 @@ const ajustarDataToRender = (data: any, valueField, labelField) => {
  * Dibija poligonos segun los features obtenidos
  * @param param0
  */
-const dibujarPoligono = async (
+const dibujarPoligono = (
   {
     features,
     jimuMapView,
@@ -823,6 +825,229 @@ const discriminarRepetidos = (data, campo) => {
   return filteredData
 }
 
+/**
+ * Dibuja un punto en el mapa y centra la vista en él.
+ * Si no existe la capa de gráficos ("coord-layer"), la crea automáticamente.
+ * Muestra el punto con un marcador rojo y una etiqueta de texto con las coordenadas.
+ *
+ * @param {JimuMapView} varJimuMapView - Vista del mapa de Jimu (ArcGIS Experience Builder)
+ * @param {Point} point - Geometría del punto a dibujar
+ * @param {CoordinateType} typeCoordinate - Tipo de coordenada: "PLANAR", "GEOGRAPHIC_DECIMAL" o "GEOGRAPHIC_DMS"
+ * @param {string} textoGeographicDMS - Texto formateado de coordenadas DMS (solo aplica si typeCoordinate es "GEOGRAPHIC_DMS")
+ * @returns {void}
+ */
+const drawPoint = (varJimuMapView, point, typeCoordeninate, textoGeographicDMS) => {
+
+  // Validación defensiva
+  if (!varJimuMapView || !varJimuMapView.view) {
+    console.error("drawPoint: 'varJimuMapView' o 'varJimuMapView.view' es undefined", { varJimuMapView })
+    return
+  }
+
+  let layer = varJimuMapView.view.map.findLayerById("coord-layer")
+
+  if (!layer) {
+    layer = new GraphicsLayer({ id: "coord-layer" })
+    varJimuMapView.view.map.add(layer)
+  }
+
+  layer.removeAll()
+
+  // -------------------------
+  // TEXTO DE COORDENADAS
+  // -------------------------
+
+  let coordText = ""
+
+  if(typeCoordeninate === "GEOGRAPHIC_DMS") {
+    coordText = textoGeographicDMS
+  } else if (point.longitude && point.latitude) {
+    coordText = `Lat: ${point.latitude.toFixed(6)}, Lon:${point.longitude.toFixed(6)}`
+  } else {
+    coordText = `X: ${point.x.toFixed(2)}, Y:${point.y.toFixed(2)}`
+  }
+
+  // -------------------------
+  // PUNTO
+  // -------------------------
+
+  const pointGraphic = new Graphic({
+    geometry: point,
+    symbol: {
+      type: "simple-marker",
+      color: "red",
+      size: 10,
+      outline: {
+        color: "white",
+        width: 1
+      }
+    }
+  })
+
+  // -------------------------
+  // TEXTO SOBRE EL PUNTO
+  // -------------------------
+
+  const textGraphic = new Graphic({
+    geometry: point,
+    symbol: {
+      type: "text",
+      text: coordText,
+      color: "black",
+      haloColor: "white",
+      haloSize: 1.5,
+      font: {
+        size: 10,
+        family: "Arial"
+      },
+      yoffset: 15
+    }
+  })
+
+  layer.add(pointGraphic)
+  layer.add(textGraphic)
+
+  varJimuMapView.view.goTo({
+    center: point,
+    zoom: 16
+  })
+}
+
+/**
+ * Limpia todos los gráficos de la capa "coord-layer" del mapa.
+ *
+ * @param {JimuMapView} varJimuMapView - Vista del mapa de Jimu (ArcGIS Experience Builder)
+ * @returns {void}
+ */
+export const clearPoint = (varJimuMapView) => {
+
+  if (!varJimuMapView || !varJimuMapView.view) {
+    console.error("clearPoint: vista del mapa no disponible")
+    return
+  }
+
+  const layer = varJimuMapView.view.map.findLayerById("coord-layer")
+
+  if (layer) {
+    layer.removeAll()
+    varJimuMapView.view.goTo({
+      zoom: 10
+    })
+  }
+}
+
+/**
+ * Convierte coordenadas en formato grados, minutos y segundos (DMS) a decimal.
+ * @param {number} deg - Grados
+ * @param {number} min - Minutos
+ * @param {number} sec - Segundos
+ * @returns {number} Valor decimal
+ */
+export const dmsToDecimal = (
+  deg: number,
+  min: number,
+  sec: number
+): number => {
+  const sign = deg < 0 ? -1 : 1
+  return sign * (Math.abs(deg) + min / 60 + sec / 3600)
+}
+
+/**
+ * Verifica si una cadena representa un valor numérico válido (entero o decimal, positivo o negativo).
+ * @param {string} value - Cadena a evaluar
+ * @returns {boolean} `true` si la cadena es un número válido
+ */
+export const isNumeric = (value: string) => {
+  return /^-?\d+(\.\d+)?$/.test(value)
+}
+
+/**
+ * Valida que las coordenadas planas (X, Y) sean valores numéricos.
+ * @param {string} x - Coordenada X (Este)
+ * @param {string} y - Coordenada Y (Norte)
+ * @returns {boolean} `true` si ambas coordenadas son numéricas
+ */
+export const validatePlanar = (x: string, y: string) => {
+  if (!x || !y) return false
+
+  if (!isNumeric(x) || !isNumeric(y)) return false
+
+  return true
+}
+
+/**
+ * Valida coordenadas geográficas en formato decimal.
+ * Latitud debe estar entre -90 y 90, longitud entre -180 y 180.
+ * @param {string} lat - Latitud en formato decimal
+ * @param {string} lon - Longitud en formato decimal
+ * @returns {boolean} `true` si las coordenadas son válidas
+ */
+export const validateGeographic = (lat: string, lon: string) => {
+  if (!lat || !lon) return false
+
+  if (!isNumeric(lat) || !isNumeric(lon)) return false
+
+  const latNum = Number(lat)
+  const lonNum = Number(lon)
+
+  if (latNum < -90 || latNum > 90) return false
+  if (lonNum < -180 || lonNum > 180) return false
+
+  return true
+}
+
+/**
+ * Valida coordenadas geográficas en formato Grados, Minutos y Segundos (DMS).
+ * Los grados de latitud deben estar entre -90 y 90, los de longitud entre -180 y 180.
+ * Minutos y segundos deben estar entre 0 y 59.999...
+ * @param {string} latDeg - Grados de latitud
+ * @param {string} latMin - Minutos de latitud
+ * @param {string} latSec - Segundos de latitud
+ * @param {string} lonDeg - Grados de longitud
+ * @param {string} lonMin - Minutos de longitud
+ * @param {string} lonSec - Segundos de longitud
+ * @returns {boolean} `true` si todas las componentes son válidas
+ */
+export const validateDMS = (
+  latDeg: string,
+  latMin: string,
+  latSec: string,
+  lonDeg: string,
+  lonMin: string,
+  lonSec: string
+) => {
+
+  const numeric = /^-?\d+(\.\d+)?$/
+
+  if (
+    !numeric.test(latDeg) ||
+    !numeric.test(latMin) ||
+    !numeric.test(latSec) ||
+    !numeric.test(lonDeg) ||
+    !numeric.test(lonMin) ||
+    !numeric.test(lonSec)
+  ) return false
+
+  const latD = Number(latDeg)
+  const latM = Number(latMin)
+  const latS = Number(latSec)
+
+  const lonD = Number(lonDeg)
+  const lonM = Number(lonMin)
+  const lonS = Number(lonSec)
+
+  if (latD < -90 || latD > 90) return false
+  if (lonD < -180 || lonD > 180) return false
+
+  if (latM < 0 || latM >= 60) return false
+  if (lonM < 0 || lonM >= 60) return false
+
+  if (latS < 0 || latS >= 60) return false
+  if (lonS < 0 || lonS >= 60) return false
+
+  return true
+}
+
 export {
   moduleExportToCSV,
   loadEsriModules,
@@ -840,6 +1065,7 @@ export {
   dibujarPoligonoToResaltar,
   dibujarPoligono,
   getRandomRGBA,
-  discriminarRepetidos
+  discriminarRepetidos,
+  drawPoint
   // rangosCoropleticos
 }
