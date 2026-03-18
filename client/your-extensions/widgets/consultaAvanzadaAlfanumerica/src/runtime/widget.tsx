@@ -13,6 +13,7 @@ import { React, type AllWidgetProps } from "jimu-core"
 import { JimuMapViewComponent, type JimuMapView } from 'jimu-arcgis'
 import Query from "@arcgis/core/rest/support/Query";
 import { executeQueryJSON } from "@arcgis/core/rest/query";
+import Polygon from "@arcgis/core/geometry/Polygon"
 import MapView from "@arcgis/core/views/MapView"
 import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer"
 import Graphic from "@arcgis/core/Graphic"
@@ -31,7 +32,9 @@ import { loadLayers } from "../../../shared/services/queryMapServer.service"
 
 import '../styles/styles.css'
 import { view } from "motion/dist/react-m";
-import { drawFeaturesOnMap } from "../../../shared/utils/export.utils";
+import { drawFeaturesOnMap, goToInitialExtent} from "../../../shared/utils/export.utils";
+import { WIDGET_IDS } from "../../../shared/constants/widget-ids";
+import { abrirTablaResultados, limpiarYCerrarWidgetResultados } from "../../../widget-result/src/runtime/widget";
 
 
 
@@ -44,6 +47,20 @@ const Widget = (props: AllWidgetProps<any>) => {
   const [varJimuMapView, setJimuMapView] = React.useState<JimuMapView>()
   const [initialExtent, setInitialExtent] = React.useState(null)
   const [initialZoom, setInitialZoom] = React.useState<number | null>(null)
+
+  const [layers, setLayers] = React.useState<LayerInfo[]>([])
+  const [selectedLayer, setSelectedLayer] = React.useState<number | null>(null)
+
+  const [fields, setFields] = React.useState<string[]>([])
+  const [fieldSelected, setFieldSelected] = React.useState("")
+  const [values, setValues] = React.useState<string[]>([])
+  const [condition, setCondition] = React.useState("")
+
+  const [loading, setLoading] = React.useState(false)
+  const [urlLayer, setUrlLayer] = React.useState("")
+  const [graphicsLayer, setGraphicsLayer] = React.useState<GraphicsLayer | null>(null)
+
+  const widgetResultId = WIDGET_IDS.RESULT // ID del widget de resultados en el layout
 
   /**
    * Manejador del cambio de vista activa del mapa.
@@ -62,28 +79,16 @@ const Widget = (props: AllWidgetProps<any>) => {
     }
   }
 
-  /**
-   * Restaura la vista del mapa a la extensión y zoom iniciales.
-   * @returns {void}
-   */
-  const goToInitialExtent = () => {
-
-    if (!varJimuMapView || !initialExtent) return
-
-    varJimuMapView.view.goTo({
-      target: initialExtent,
-      zoom: initialZoom
-    })
-    
-  }
-
-  /**
+    /**
    * Limpia el punto dibujado en el mapa.
    * @returns {void}
    */
   const handleClear = () => {
     if (!varJimuMapView) return
-    clearPoint(varJimuMapView)
+    clearPoint(varJimuMapView, graphicsLayer)
+    setGraphicsLayer(null)
+    setValues([])
+    setCondition("")
   }
 
   /**
@@ -92,21 +97,13 @@ const Widget = (props: AllWidgetProps<any>) => {
   React.useEffect(() => {
     if (props.state === 'CLOSED') {
       handleClear()
-      goToInitialExtent()
+      goToInitialExtent(varJimuMapView, initialExtent, initialZoom)
+      limpiarYCerrarWidgetResultados(widgetResultId)
     }  
     
   }, [props])
 
-  const [layers, setLayers] = React.useState<LayerInfo[]>([])
-  const [selectedLayer, setSelectedLayer] = React.useState<number | null>(null)
-
-  const [fields, setFields] = React.useState<string[]>([])
-  const [fieldSelected, setFieldSelected] = React.useState("")
-  const [values, setValues] = React.useState<string[]>([])
-  const [condition, setCondition] = React.useState("")
-
-  const [loading, setLoading] = React.useState(false)
-  const [urlLayer, setUrlLayer] = React.useState("")
+ 
 
   /*
   ==========================
@@ -166,12 +163,12 @@ const Widget = (props: AllWidgetProps<any>) => {
     const data = await response.json()
 
     const validFields = data.fields
-      .filter((f) => f.name !== "OBJECTID" && f.name !== "SHAPE")
+      .filter((f) => f.name !== "ESRI_OID" && f.name !== "SHAPE")
       .map((f) => f.name)
 
     setFields(validFields)
     setUrlLayer(url)
-
+    return validFields
   }
 
   /*
@@ -180,14 +177,14 @@ const Widget = (props: AllWidgetProps<any>) => {
   ==========================
   */
 
-  const handleLayerChange = (e) => {
+  const handleLayerChange = async (e) => {
 
     const id = Number(e.target.value)
 
     setSelectedLayer(id)
 
-    loadFields(id)
-
+    const validFields = await loadFields(id)
+    setFields(validFields)
   }
 
   const appendCondition = (text: string) => {
@@ -198,14 +195,37 @@ const Widget = (props: AllWidgetProps<any>) => {
 
   const obtenerValores = async () => {
     var where = "1=1", returnGeometry = true;
-    const features = await consultarCapaCAA({returnGeometry, campos: fieldSelected, url: urlLayer, where})
-    console.log({features})
+    const features = await consultarCapaCAA({returnGeometry, campos: fields, url: urlLayer, where})
+    console.log({features, fields})
     const uniqueValues = Array.from(new Set(features.map(f => f.attributes[fieldSelected])))
     setValues(uniqueValues)
     console.log({features,uniqueValues})
     mostrarConsultaCAA({ features })
     
     // drawFeaturesOnMap({ features, spatialReference: varJimuMapView.view.spatialReference }, varJimuMapView, 15)
+  }
+
+  const buscar = async () => {
+    if (!condition || !urlLayer) return
+    setLoading(true)
+    try {
+      const features = await consultarCapaCAA({ returnGeometry: true, campos: fields, url: urlLayer, where: condition.trim() })
+      console.log("Resultados búsqueda:", features)
+      const graphicsLayer = await drawFeaturesOnMap({ features, spatialReference: varJimuMapView.view.spatialReference }, varJimuMapView, 16)
+      setGraphicsLayer(graphicsLayer)
+      const fieldsToShow = fields.map(f => ({ name: f, alias: f }))
+      const featuresFixed = []
+      features.forEach(e=>{
+        const geometry = e.geometry as Polygon
+        featuresFixed.push({ attributes: e.attributes, geometry: { rings: geometry.rings } })
+      })      
+      console.log({fieldsToShow, featuresFixed})
+      abrirTablaResultados(featuresFixed, fieldsToShow, props, varJimuMapView.view.spatialReference, widgetResultId)
+    } catch (error) {
+      console.error("Error en búsqueda:", error)
+    } finally {
+      setLoading(false)
+    }
   }
 
   interface FeatureSet {
@@ -225,21 +245,6 @@ const Widget = (props: AllWidgetProps<any>) => {
       return;
     }
 
-    // const state = consultaAvanzadaAlfanumerica;
-
-    // state.featureSet = featureSet;
-
-    // if (!state.valoresObtenidos) {
-
-    //   state.valoresObtenidos = features;
-
-    //   console.log("cargarValoresCAA", features);
-
-    //   return;
-    // }
-
-    console.log("dibujarFeaturesCAA",features)
-    console.log("mostrarResultadosEnTablaCAA",featureSet)
   }
 
   
@@ -247,7 +252,7 @@ const Widget = (props: AllWidgetProps<any>) => {
   interface QueryOptions {
     url?: string;
     where?: string;
-    campos?: string;
+    campos?: string[];
     returnGeometry?: boolean;
     spatialReference?: __esri.SpatialReference;
   }
@@ -268,15 +273,20 @@ const Widget = (props: AllWidgetProps<any>) => {
 
       const query = new Query({
         where,
-        outFields: [campos],
+        outFields: campos?.length ? campos : ["*"],
         returnGeometry,
         outSpatialReference: spatialReference,
         spatialRelationship: "intersects"
       });
 
       const response = await executeQueryJSON(url, query) as __esri.FeatureSet;
+      /* const nameAliasByField = []
+      response.fields.forEach( e => {
+          nameAliasByField.push({name: e.name, alias: e.alias})    
+      })
+      console.log({nameAliasByField})
       console.log({response})
-      console.log(response)
+      console.log(response) */
       return response.features;
 
     } catch (error) {
@@ -360,12 +370,24 @@ const Widget = (props: AllWidgetProps<any>) => {
                 Obtener
               </button>
 
-              <button>
+              <button
+                onClick={handleClear}
+              >
                 Borrar
               </button>
 
             </div>
-            <textarea className="valuesBox" value={values.join("\n")} readOnly />
+            <select
+              className="valuesBox"
+              size={6}
+              onChange={(e) => {
+                setCondition(prev => `${prev} '${e.target.value}'`)
+              }}
+            >
+              {values.map((val, i) => (
+                <option key={i} value={val}>{val}</option>
+              ))}
+            </select>
 
             {/* OPERADORES */}
 
@@ -390,7 +412,7 @@ const Widget = (props: AllWidgetProps<any>) => {
 
             <textarea
               value={condition}
-              readOnly
+              onChange={(e) => setCondition(e.target.value)}
             />
 
             {/* BOTONES */}
@@ -398,12 +420,14 @@ const Widget = (props: AllWidgetProps<any>) => {
             <div className="actions">
 
               <button
-                onClick={() => setCondition("")}
+                onClick={handleClear}
               >
                 Limpiar
               </button>
 
-              <button>
+              <button
+                onClick={buscar}
+              >
                 Buscar
               </button>
 
