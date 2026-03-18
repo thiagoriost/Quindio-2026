@@ -337,7 +337,7 @@ import { InterfaceResponseConsultaSimple, InterfaceMensajeModal, typeMSM  } from
       
         //Extent y zoom de la geometría en el mapa
         jimuMapView.view.goTo({
-          target: graphicsLayer.graphics.items[0].geometry,
+          target: graphicsLayer.graphics.getItemAt(0).geometry,
           zoom: zoom // Ajusta el nivel de zoom según sea necesario
         });
 

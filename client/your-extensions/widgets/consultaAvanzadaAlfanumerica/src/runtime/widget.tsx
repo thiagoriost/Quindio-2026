@@ -11,6 +11,16 @@
  */
 import { React, type AllWidgetProps } from "jimu-core"
 import { JimuMapViewComponent, type JimuMapView } from 'jimu-arcgis'
+import Query from "@arcgis/core/rest/support/Query";
+import { executeQueryJSON } from "@arcgis/core/rest/query";
+import MapView from "@arcgis/core/views/MapView"
+import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer"
+import Graphic from "@arcgis/core/Graphic"
+import Polyline from "@arcgis/core/geometry/Polyline"
+import SimpleMarkerSymbol from "@arcgis/core/symbols/SimpleMarkerSymbol"
+import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol"
+import SimpleFillSymbol from "@arcgis/core/symbols/SimpleFillSymbol"
+import Color from "@arcgis/core/Color"
 import Point from "@arcgis/core/geometry/Point"
 import SpatialReference from "@arcgis/core/geometry/SpatialReference"
 import * as projection from "@arcgis/core/geometry/projection"
@@ -20,6 +30,8 @@ import { urls} from "../../../api/serviciosQuindio"
 import { loadLayers } from "../../../shared/services/queryMapServer.service"
 
 import '../styles/styles.css'
+import { view } from "motion/dist/react-m";
+import { drawFeaturesOnMap } from "../../../shared/utils/export.utils";
 
 
 
@@ -89,10 +101,12 @@ const Widget = (props: AllWidgetProps<any>) => {
   const [selectedLayer, setSelectedLayer] = React.useState<number | null>(null)
 
   const [fields, setFields] = React.useState<string[]>([])
+  const [fieldSelected, setFieldSelected] = React.useState("")
   const [values, setValues] = React.useState<string[]>([])
   const [condition, setCondition] = React.useState("")
 
   const [loading, setLoading] = React.useState(false)
+  const [urlLayer, setUrlLayer] = React.useState("")
 
   /*
   ==========================
@@ -110,7 +124,17 @@ const Widget = (props: AllWidgetProps<any>) => {
 
         const response = await loadLayers(urls.SERVICIO_CONSULTA_AVANZADA_ALFANUMERICA)
         console.log({response})
-        setLayers(response.layers)
+
+        const nameTemas = ["Trámites", "Predios reserva", "Infraestructura educativa", "Clasificación del suelo",
+          "Servicios Salud", "Capacidad instalada", "Servicios hospedajes"]
+
+        const mappedLayers = response.layers.map((layer, i) => ({
+          ...layer,
+          nameServicio: layer.name,
+          name: nameTemas[i] ?? layer.name
+        }))
+
+        setLayers(mappedLayers)
 
       } catch (error) {
 
@@ -146,6 +170,7 @@ const Widget = (props: AllWidgetProps<any>) => {
       .map((f) => f.name)
 
     setFields(validFields)
+    setUrlLayer(url)
 
   }
 
@@ -166,9 +191,107 @@ const Widget = (props: AllWidgetProps<any>) => {
   }
 
   const appendCondition = (text: string) => {
-
+    setFieldSelected(text)
     setCondition(prev => `${prev} ${text}`)
 
+  }
+
+  const obtenerValores = async () => {
+    var where = "1=1", returnGeometry = true;
+    const features = await consultarCapaCAA({returnGeometry, campos: fieldSelected, url: urlLayer, where})
+    console.log({features})
+    const uniqueValues = Array.from(new Set(features.map(f => f.attributes[fieldSelected])))
+    setValues(uniqueValues)
+    console.log({features,uniqueValues})
+    mostrarConsultaCAA({ features })
+    
+    // drawFeaturesOnMap({ features, spatialReference: varJimuMapView.view.spatialReference }, varJimuMapView, 15)
+  }
+
+  interface FeatureSet {
+    features: __esri.Graphic[]
+  }
+
+  function mostrarConsultaCAA(featureSet: FeatureSet) {
+
+    const { features } = featureSet;
+
+    if (!features?.length) {
+      console.log(
+        "<B> Info </B>",
+        "El campo seleccionado no contiene datos"
+      );
+      setLoading(false);
+      return;
+    }
+
+    // const state = consultaAvanzadaAlfanumerica;
+
+    // state.featureSet = featureSet;
+
+    // if (!state.valoresObtenidos) {
+
+    //   state.valoresObtenidos = features;
+
+    //   console.log("cargarValoresCAA", features);
+
+    //   return;
+    // }
+
+    console.log("dibujarFeaturesCAA",features)
+    console.log("mostrarResultadosEnTablaCAA",featureSet)
+  }
+
+  
+
+  interface QueryOptions {
+    url?: string;
+    where?: string;
+    campos?: string;
+    returnGeometry?: boolean;
+    spatialReference?: __esri.SpatialReference;
+  }
+
+  const consultarCapaCAA = async ({    
+    url,
+    where,
+    campos,
+    returnGeometry = true,
+    spatialReference = varJimuMapView.view.spatialReference
+  }: QueryOptions): Promise<__esri.Graphic[]> => {
+
+    if (!url || !where) {
+      throw new Error("URL o condición WHERE inválida");
+    }
+
+    try {
+
+      const query = new Query({
+        where,
+        outFields: [campos],
+        returnGeometry,
+        outSpatialReference: spatialReference,
+        spatialRelationship: "intersects"
+      });
+
+      const response = await executeQueryJSON(url, query) as __esri.FeatureSet;
+      console.log({response})
+      console.log(response)
+      return response.features;
+
+    } catch (error) {
+
+      console.error("Error ejecutando consulta:", error);
+
+      console.log(
+        "<B> Info </B>",
+        "No se logró completar la operación"
+      );
+
+      setLoading(false);
+
+      throw error;
+    }
   }
 
   
@@ -177,108 +300,116 @@ const Widget = (props: AllWidgetProps<any>) => {
     <div style={{height:'100%', backgroundColor: 'antiquewhite', padding: '10px', boxSizing: 'border-box'}}>
       {props.useMapWidgetIds && props.useMapWidgetIds.length === 1 && (
         <JimuMapViewComponent useMapWidgetId={props.useMapWidgetIds?.[0]} onActiveViewChange={activeViewChangeHandler} />
-      )}
-      {/* <JimuMapViewComponent
-        useMapWidgetId="map"
-        onActiveViewChange={(jmv) => { setView(jmv.view) }}
-      /> */}      {
-        varJimuMapView && (
+      )}      {
+      varJimuMapView && (
           
           <div className="consulta-widget">
 
-      <h3>Consulta Avanzada Alfanumérica</h3>
+            <h3>Consulta Avanzada Alfanumérica</h3>
 
-      {/* TEMA */}
+            {/* TEMA */}
 
-      <label>Tema</label>
+            <label>Tema</label>
 
-      <select
-        className="select"
-        onChange={handleLayerChange}
-      >
+            <select
+              className="select"
+              onChange={handleLayerChange}
+            >
 
-        <option>Seleccione...</option>
+              <option>Seleccione...</option>
 
-        {layers.map(layer => (
+              {layers.map(layer => (
 
-          <option key={layer.id} value={layer.id}>
-            {layer.name}
-          </option>
+                <option key={layer.id} value={layer.id}>
+                  {layer.name}
+                </option>
 
-        ))}
+              ))}
 
-      </select>
+            </select>
 
-      {/* CAMPOS */}
+            {/* CAMPOS */}
 
-      <label>Campos</label>
+            <label>Campos</label>
 
-      <select
-        className="select"
-        onChange={(e) => appendCondition(e.target.value)}
-      >
+            <select
+              className="select"
+              onChange={(e) => appendCondition(e.target.value)}
+            >
 
-        <option>Seleccione...</option>
+              <option>Seleccione...</option>
 
-        {fields.map(field => (
+              {fields.map(field => (
 
-          <option key={field}>
-            {field}
-          </option>
+                <option key={field}>
+                  {field}
+                </option>
 
-        ))}
+              ))}
 
-      </select>
+            </select>
 
-      {/* VALORES */}
+            {/* VALORES */}
 
-      <label>Valores</label>
+            <label>Valores</label>
+            <div className="actions">
 
-      <textarea className="valuesBox" />
+              <button
+                onClick={obtenerValores}
+              >
+                Obtener
+              </button>
 
-      {/* OPERADORES */}
+              <button>
+                Borrar
+              </button>
 
-      <div className="operators">
+            </div>
+            <textarea className="valuesBox" value={values.join("\n")} readOnly />
 
-        {["LIKE","AND","OR","NOT","IS","NULL","=","<>",">","<",">=","<="].map(op => (
+            {/* OPERADORES */}
 
-          <button
-            key={op}
-            onClick={() => appendCondition(op)}
-          >
-            {op}
-          </button>
+            <div className="operators">
 
-        ))}
+              {["LIKE","AND","OR","NOT","IS","NULL","=","<>",">","<",">=","<="].map(op => (
 
-      </div>
+                <button
+                  key={op}
+                  onClick={() => appendCondition(op)}
+                >
+                  {op}
+                </button>
 
-      {/* CONDICION */}
+              ))}
 
-      <label>Condición de Búsqueda</label>
+            </div>
 
-      <textarea
-        value={condition}
-        readOnly
-      />
+            {/* CONDICION */}
 
-      {/* BOTONES */}
+            <label>Condición de Búsqueda</label>
 
-      <div className="actions">
+            <textarea
+              value={condition}
+              readOnly
+            />
 
-        <button
-          onClick={() => setCondition("")}
-        >
-          Limpiar
-        </button>
+            {/* BOTONES */}
 
-        <button>
-          Buscar
-        </button>
+            <div className="actions">
 
-      </div>
+              <button
+                onClick={() => setCondition("")}
+              >
+                Limpiar
+              </button>
 
-    </div>
+              <button>
+                Buscar
+              </button>
+
+            </div>
+
+          </div>
         )
       }
     </div>

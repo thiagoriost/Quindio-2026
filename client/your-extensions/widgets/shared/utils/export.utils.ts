@@ -1,4 +1,9 @@
 import * as XLSX from 'xlsx'
+import { loadModules } from 'esri-loader'
+import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer"
+import Graphic from '@arcgis/core/Graphic'
+import { Point, Polygon, Polyline } from "@arcgis/core/geometry"
+
 
 /**
  * Genera un archivo CSV a partir de un arreglo de entidades ArcGIS.
@@ -159,3 +164,120 @@ export const downloadBlob = (
 
   URL.revokeObjectURL(url)
 }
+
+export const drawFeaturesOnMap = async (response, jimuMapView, zoom = 11) => {
+        let geometry = null
+        let symbol = null
+        if (!response)
+          { return }
+        const { features, spatialReference } = response
+        if (!jimuMapView || features.length === 0 || !response) return
+
+
+        const [PopupTemplate,
+              SimpleMarkerSymbol,
+              SimpleLineSymbol,
+              ] =
+              await loadModules(
+                ['esri/PopupTemplate',
+                'esri/symbols/SimpleMarkerSymbol',
+                'esri/symbols/SimpleLineSymbol'])
+
+        const graphicsLayer = new GraphicsLayer()
+
+        features.forEach((feature) => {
+          console.log("Tipo geometría =>",feature.geometry)
+          //Validación de un Polígono
+          if (feature.geometry.rings) {
+            // setTypeGraphMap("polygon")
+
+            const polygon = new Polygon({
+              rings: feature.geometry.rings,
+              spatialReference: spatialReference
+            })
+
+            const symbolGraph = {
+              type: 'simple-fill',
+              color: "orange",
+              outline: {
+                color: "magenta",
+                width: 0.5
+              }
+            }
+            geometry = polygon
+            symbol = symbolGraph
+          }
+          //Validación de un Punto
+          if (feature.geometry.x || feature.geometry.y)
+          {
+
+            const point = new Point({
+              x: feature.geometry.x,
+              y: feature.geometry.y,
+              spatialReference: spatialReference
+            })
+
+            console.log("Objeto Point =>",point)
+
+            const outlPoint = new SimpleLineSymbol({
+              color: [255, 255, 0], // Amarillo
+              width: 1
+            })
+          const symbPoint = new SimpleMarkerSymbol({
+              color: [255, 0, 0], // Rojo
+              outline:outlPoint,
+              size: '8px'
+          })
+          geometry = point
+          symbol = symbPoint
+        }
+        //Validación del tipo polilinea
+        if (feature.geometry.paths) {
+
+
+          const polyline = new Polyline({
+            paths: feature.geometry.paths,
+            spatialReference: spatialReference
+          })
+
+          const symbolGraph = {
+            type: 'simple-fill',
+            color: "orange",
+            outline: {
+              color: "magenta",
+              width: 0.5
+            }
+          }
+          geometry = polyline
+          symbol = symbolGraph
+        }
+          const popupTemplate = new PopupTemplate({
+            title: "Feature Info",
+            content: `
+                <ul>
+                  ${Object.keys(feature.attributes).map(key => `<li><strong>${key}:</strong> ${feature.attributes[key]}</li>`).join('')}
+                </ul>
+              `
+          })
+
+          const graphic = new Graphic({
+            //geometry: polygon,
+            geometry: geometry,
+            //symbol: symbolGraph,
+            symbol: symbol,
+            attributes: feature.attributes,
+            popupTemplate: popupTemplate
+          })
+
+          graphicsLayer.add(graphic)
+        })
+
+        jimuMapView.view.map.add(graphicsLayer)
+
+        //Extent y zoom de la geometría en el mapa
+        jimuMapView.view.goTo({
+          target: graphicsLayer.graphics.getItemAt(0).geometry,
+          zoom // Ajusta el nivel de zoom según sea necesario
+        })
+
+    }
