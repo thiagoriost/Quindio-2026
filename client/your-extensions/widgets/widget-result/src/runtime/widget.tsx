@@ -10,7 +10,9 @@
  * - Mostrar resultados en una tabla paginada.
  * - Exportar resultados a CSV.
  * - Seleccionar una entidad y visualizar su geometría en el mapa.
+ * - Resolver y validar referencias espaciales antes de dibujar o navegar.
  * - Restaurar el extent inicial del mapa cuando se limpian resultados o se cierra el widget.
+ * - Gestionar capas temporales de predios para resultados marcados como temporales.
  * - Manejar limpieza automática del estado del widget.
  *
  * Los resultados se reciben desde Redux en:
@@ -111,15 +113,17 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
     )
 
     /**
-     * para recordar si la última consulta era temporal antes de que data pase a null.
+     * Bandera para recordar si la última consulta fue temporal antes de que data pase a null.
+     * Evita restaurar extent cuando la visualización corresponde a una capa temporal persistente.
      */
     const temporalLayerRef = React.useRef<boolean>(false)
 
 
     /**
-     * Guarda el extent inicial del mapa cuando la vista
-     * del mapa está disponible.
-     * 
+     * Inicializa recursos dependientes del mapa cuando la vista está disponible:
+     * - Guarda el extent inicial para restauraciones posteriores.
+     * - Crea una GraphicsLayer exclusiva para resaltar selecciones de la tabla.
+     * - Libera la capa al desmontar o cambiar la vista activa.
      */
     React.useEffect(() => {
         const view = jimuMapView?.view
@@ -141,29 +145,6 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
       graphicsLayerRef.current = null;
     };
   }, [jimuMapView]);
-
-  /**
-   * Crea una capa gráfica utilizada para mostrar
-   * la geometría de la entidad seleccionada.
-   *
-   * La capa se agrega al mapa al inicializarse y
-   * se elimina automáticamente cuando el widget se desmonta.
-   */
-  /*  React.useEffect(() => {
-        const view = jimuMapView?.view
-        if (!view) return
-        const layer = new GraphicsLayer({
-            id: 'result-selection-layer'
-        })
-        view.map.add(layer)
-        graphicsLayerRef.current = layer
-
-        return () => {
-            view.map.remove(layer)
-            layer.destroy()
-            graphicsLayerRef.current = null
-        }
-    }, [jimuMapView]) */
 
     /**
      * Restaura el extent inicial del mapa.
@@ -206,6 +187,22 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
         }
     }, [data])
 
+    /**
+     * Valida si un objeto de referencia espacial tiene información utilizable por ArcGIS JS API.
+     * Se considera válida cuando trae wkid, latestWkid o wkt.
+     */
+    const isValidSpatialReference = (spatialReference: any): spatialReference is __esri.SpatialReference => {
+      if (!spatialReference || typeof spatialReference !== 'object') return false
+
+      return Number.isFinite(spatialReference.wkid)
+        || Number.isFinite(spatialReference.latestWkid)
+        || typeof spatialReference.wkt === 'string'
+    }
+
+    /**
+     * Aplica un efecto de parpadeo temporal al renderer de una FeatureLayer.
+     * Se usa para resaltar una capa temporal existente cuando vuelve a ser seleccionada.
+     */
     const flashLayer = (layer: __esri.FeatureLayer) => {
 
         const originalRenderer = layer.renderer
@@ -229,55 +226,82 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
         }, 400)
     }
 
-      const resolveSpatialReference = (geometry: any, fallback: __esri.SpatialReference) => {
-        return geometry?.spatialReference || data?.spatialReference || fallback
+    /**
+     * Resuelve la referencia espacial para una geometría priorizando:
+     * 1) geometry.spatialReference válida,
+     * 2) data.spatialReference válida,
+     * 3) spatialReference fallback de la vista.
+     */
+    const resolveSpatialReference = (geometry: any, fallback: __esri.SpatialReference) => {
+      if (isValidSpatialReference(geometry?.spatialReference)) {
+        return geometry.spatialReference
       }
 
-      const buildGeometry = (geometry: any, fallbackSpatialReference: __esri.SpatialReference) => {
-        if (!geometry) return null
-
-        const geometryType = geometry.type
-          || (geometry.rings ? 'polygon' : null)
-          || (geometry.paths ? 'polyline' : null)
-          || (geometry.x != null && geometry.y != null ? 'point' : null)
-
-        if (!geometryType) return null
-
-        const spatialReference = resolveSpatialReference(geometry, fallbackSpatialReference)
-
-        if (geometryType === 'polygon' && geometry.rings) {
-          return new Polygon({
-            rings: geometry.rings,
-            spatialReference
-          })
-        }
-
-        if (geometryType === 'point' && geometry.x != null && geometry.y != null) {
-          return new Point({
-            x: geometry.x,
-            y: geometry.y,
-            spatialReference
-          })
-        }
-
-        if (geometryType === 'polyline' && geometry.paths) {
-          return new Polyline({
-            paths: geometry.paths,
-            spatialReference
-          })
-        }
-
-        return null
+      if (isValidSpatialReference(data?.spatialReference)) {
+        return data.spatialReference
       }
 
-      const getGoToTarget = (geometry: __esri.Geometry) => {
-        if ('extent' in geometry && geometry.extent) {
-          return geometry.extent.expand(2)
-        }
+      return fallback
+    }
 
-        return geometry
+    /**
+     * Construye una geometría de ArcGIS (Polygon, Point o Polyline)
+     * a partir de un objeto crudo proveniente de resultados.
+     */
+    const buildGeometry = (geometry: any, fallbackSpatialReference: __esri.SpatialReference) => {
+      if (!geometry) return null
+
+      const geometryType = geometry.type
+        || (geometry.rings ? 'polygon' : null)
+        || (geometry.paths ? 'polyline' : null)
+        || (geometry.x != null && geometry.y != null ? 'point' : null)
+
+      if (!geometryType) return null
+
+      const spatialReference = resolveSpatialReference(geometry, fallbackSpatialReference)
+
+      if (geometryType === 'polygon' && geometry.rings) {
+        return new Polygon({
+          rings: geometry.rings,
+          spatialReference
+        })
       }
 
+      if (geometryType === 'point' && geometry.x != null && geometry.y != null) {
+        return new Point({
+          x: geometry.x,
+          y: geometry.y,
+          spatialReference
+        })
+      }
+
+      if (geometryType === 'polyline' && geometry.paths) {
+        return new Polyline({
+          paths: geometry.paths,
+          spatialReference
+        })
+      }
+
+      return null
+    }
+
+    /**
+     * Define el target para view.goTo:
+     * - Si existe extent, se usa expandido para un mejor encuadre.
+     * - En caso contrario, se usa la geometría directa.
+     */
+    const getGoToTarget = (geometry: __esri.Geometry) => {
+      if ('extent' in geometry && geometry.extent) {
+        return geometry.extent.expand(2)
+      }
+
+      return geometry
+    }
+
+  /**
+   * Crea o reutiliza una capa temporal para visualizar un predio seleccionado.
+   * Si la capa ya existe, la enfoca y aplica flash visual.
+   */
   const crearCapaTemporal = async (featureData: any) => {
     const view = jimuMapView?.view;
     if (!view) return;
@@ -306,10 +330,8 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
         }
 
         const geometry = new Polygon({
-            rings: featureData.geometry.rings,
-            spatialReference: {
-                wkid: data.spatialReference?.wkid
-            }
+          rings: featureData.geometry.rings,
+          spatialReference: resolveSpatialReference(featureData.geometry, view.spatialReference)
         })
 
         const graphic = new Graphic({
@@ -697,6 +719,15 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
   );
 }
 
+/**
+ * Publica resultados en el estado del WidgetResult y lo abre en el layout.
+ *
+ * @param features Entidades a mostrar en la tabla.
+ * @param fields Definición de campos para la tabla/exportación.
+ * @param props Props del widget emisor para registrar sourceWidgetId.
+ * @param spatialReference Referencia espacial asociada a los resultados.
+ * @param widgetResultId Id del widget-result en el layout.
+ */
 export const abrirTablaResultados = (
   features: any[],
   fields: any[],
@@ -720,7 +751,11 @@ export const abrirTablaResultados = (
   getAppStore().dispatch(appActions.openWidget(widgetResultId));
 };
 
-// Limpia la data del widget de resultados y lo cierra
+/**
+ * Limpia el estado de resultados del widget y ejecuta su cierre.
+ *
+ * @param widgetResultId Id del widget-result en el layout.
+ */
 export const limpiarYCerrarWidgetResultados = (widgetResultId) => {
   // Limpia la data enviada al widget de resultados
   getAppStore().dispatch(

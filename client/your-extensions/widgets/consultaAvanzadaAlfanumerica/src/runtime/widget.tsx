@@ -9,34 +9,22 @@
  * @author IGAC - DIP
  * @since 2026
  */
-import { React, type AllWidgetProps } from "jimu-core"
 import { JimuMapViewComponent, type JimuMapView } from 'jimu-arcgis'
-import Query from "@arcgis/core/rest/support/Query";
-import { executeQueryJSON } from "@arcgis/core/rest/query";
-import Polygon from "@arcgis/core/geometry/Polygon"
-import MapView from "@arcgis/core/views/MapView"
 import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer"
-import Graphic from "@arcgis/core/Graphic"
-import Polyline from "@arcgis/core/geometry/Polyline"
-import SimpleMarkerSymbol from "@arcgis/core/symbols/SimpleMarkerSymbol"
-import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol"
-import SimpleFillSymbol from "@arcgis/core/symbols/SimpleFillSymbol"
-import Color from "@arcgis/core/Color"
-import Point from "@arcgis/core/geometry/Point"
-import SpatialReference from "@arcgis/core/geometry/SpatialReference"
-import * as projection from "@arcgis/core/geometry/projection"
-import { clearPoint } from "../../../../widgets/utils/module"
-import { LayerInfo } from "widgets/shared/types/types_consultaAvanzadaAlfanumerica"
-import { urls} from "../../../api/serviciosQuindio"
-import { loadLayers } from "../../../shared/services/queryMapServer.service"
-
-import '../styles/styles.css'
-import { view } from "motion/dist/react-m";
-import { drawFeaturesOnMap, goToInitialExtent} from "../../../shared/utils/export.utils";
-import { WIDGET_IDS } from "../../../shared/constants/widget-ids";
-import { abrirTablaResultados, limpiarYCerrarWidgetResultados } from "../../../widget-result/src/runtime/widget";
-import { SearchActionBar } from "../../../shared/components/search-action-bar";
+import { executeQueryJSON } from "@arcgis/core/rest/query";
+import { React, type AllWidgetProps } from "jimu-core"
+import Query from "@arcgis/core/rest/support/Query";
 import { Label, Select, Option } from "jimu-ui";
+
+import { abrirTablaResultados, limpiarYCerrarWidgetResultados } from "../../../widget-result/src/runtime/widget";
+import { drawFeaturesOnMap, goToInitialExtent} from "../../../shared/utils/export.utils";
+import { LayerInfo } from "widgets/shared/types/types_consultaAvanzadaAlfanumerica"
+import { SearchActionBar } from "../../../shared/components/search-action-bar";
+import { loadLayers } from "../../../shared/services/queryMapServer.service"
+import { WIDGET_IDS } from "../../../shared/constants/widget-ids";
+import { clearPoint } from "../../../../widgets/utils/module"
+import { urls} from "../../../api/serviciosQuindio"
+import '../styles/styles.css'
 
 
 
@@ -69,6 +57,18 @@ const Widget = (props: AllWidgetProps<any>) => {
 
   const isValid = condition.trim() !== "" && urlLayer !== "" && selectedLayer !== null
   const disabled = loading
+
+  interface FeatureSet {
+    features: __esri.Graphic[]
+  }
+
+  interface QueryOptions {
+    url?: string;
+    where?: string;
+    campos?: string[];
+    returnGeometry?: boolean;
+    spatialReference?: __esri.SpatialReference;
+  }
   
   /**
    * Manejador del cambio de vista activa del mapa.
@@ -219,8 +219,6 @@ const Widget = (props: AllWidgetProps<any>) => {
     setValues(uniqueValues)
     console.log({features,uniqueValues})
     mostrarConsultaCAA({ features })
-    
-    // drawFeaturesOnMap({ features, spatialReference: varJimuMapView.view.spatialReference }, varJimuMapView, 15)
   }
 
   const buscar = async () => {
@@ -251,10 +249,6 @@ const Widget = (props: AllWidgetProps<any>) => {
     }
   }
 
-  interface FeatureSet {
-    features: __esri.Graphic[]
-  }
-
   function mostrarConsultaCAA(featureSet: FeatureSet) {
 
     const { features } = featureSet;
@@ -268,16 +262,6 @@ const Widget = (props: AllWidgetProps<any>) => {
       return;
     }
 
-  }
-
-  
-
-  interface QueryOptions {
-    url?: string;
-    where?: string;
-    campos?: string[];
-    returnGeometry?: boolean;
-    spatialReference?: __esri.SpatialReference;
   }
 
   const consultarCapaCAA = async ({    
@@ -303,13 +287,7 @@ const Widget = (props: AllWidgetProps<any>) => {
       });
 
       const response = await executeQueryJSON(url, query) as __esri.FeatureSet;
-      /* const nameAliasByField = []
-      response.fields.forEach( e => {
-          nameAliasByField.push({name: e.name, alias: e.alias})    
-      })
-      console.log({nameAliasByField})
-      console.log({response})
-      console.log(response) */
+     
       return response.features;
 
     } catch (error) {

@@ -50,6 +50,7 @@ import '../styles/style.css'
 
 //Importación interfaces
 import { type InterfaceResponseConsultaSimple, type InterfaceMensajeModal, typeMSM } from '../types/interfaceResponseConsultaSimple' // The map object can be accessed using the JimuMapViewComponent
+import { abrirTablaResultados } from "../../../widget-result/src/runtime/widget";
 
 const { useEffect, useState } = React
 
@@ -124,7 +125,7 @@ const Widget = (props: AllWidgetProps<any>) => {
    * Cuando se actualiza la respuesta de la consulta, procesa los datos para la tabla de resultados.
    */
   useEffect(() => {
-    if (!ResponseConsultaSimple) return
+    if (!ResponseConsultaSimple || !jimuMapView?.view) return
     const { features } = ResponseConsultaSimple
     // Construye columnas y filas para el DataGrid
     const DgridCol = Object.keys(features[0].attributes).map(key => ({ key: key, name: key }))
@@ -136,7 +137,7 @@ const Widget = (props: AllWidgetProps<any>) => {
 
     // Actualiza el estado de la tabla de resultados
     const firstFeatureArray = features.length ? [features[0]] : []
-    const spatialReference = ResponseConsultaSimple.spatialReference
+    const spatialReference = ResponseConsultaSimple.spatialReference ?? jimuMapView.view.spatialReference
 
     /* const fields = [
         { name: 'DEPARTAMEN', alias: 'Departamento' },
@@ -149,7 +150,7 @@ const Widget = (props: AllWidgetProps<any>) => {
 
     const fields = ResponseConsultaSimple.fields
 
-    abrirTablaResultados(firstFeatureArray, fields, spatialReference as unknown as __esri.SpatialReference)
+    abrirTablaResultados(firstFeatureArray, fields, props, spatialReference, widgetResultId )
     // setColumns(DgridCol)
     setControlForms(true)
     // setRows(DgridRows)
@@ -159,26 +160,6 @@ const Widget = (props: AllWidgetProps<any>) => {
     }, 10)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ResponseConsultaSimple])
-
-
-  const abrirTablaResultados = (features: any[], fields: any[], spatialReference?: __esri.SpatialReference) => {
-  
-      getAppStore().dispatch(appActions.openWidget(widgetResultId))
-
-      getAppStore().dispatch(
-          appActions.widgetStatePropChange(
-              widgetResultId,   // id del WidgetResult en el layout desde el widget controller
-              'results', // nombre de la propiedad que se va a actualizar en el estado del widget
-              {
-                  sourceWidgetId: props.id, // id del widget que envía los datos (este widget)
-                  title: 'Resultados de prueba', // título que se mostrará en el widget de resultados
-                  features: features, // datos de las características a mostrar
-                  fields: fields, // campos a mostrar en la tabla de resultados
-                  spatialReference: spatialReference // referencia espacial de los datos
-              }
-          )
-      )
-  }
 
   // Reinicia la condición cuando cambia el control de formularios
   useEffect(() => {
@@ -238,11 +219,6 @@ const Widget = (props: AllWidgetProps<any>) => {
     import('../../../utils/module').then(modulo => { setUtilsModule(modulo) })
   }, [])
 
-
-
-
-
-
   /**
    * Renderiza la interfaz del widget:
    * - Muestra el mapa si está configurado.
@@ -266,22 +242,8 @@ const Widget = (props: AllWidgetProps<any>) => {
           />
         : null
       }
-      {/* Tabla de resultados o filtros de consulta */}
-      {/* {controlForms && <TablaResultCS
-        props={props}
-        rows={rows}
-        columns={columns}
-        view={view}
-        setControlForms={setControlForms}
-        jimuMapView={jimuMapView}
-        setResponseConsultaSimple={setResponseConsultaSimple}
-        lastGeometriDeployed={lastGeometriDeployed}
-        setLastGeometriDeployed={setLastGeometriDeployed}
-        typeGraphMap={typeGraphMap}
-        spatialRefer={spatialRefer}
-        setAlertDial={setAlertDial}
-        setMensModal={setMensModal}
-      />} */}
+      {/* filtros de consulta */}
+      
       <FiltersCS
         props={props}
         temas={temas}
