@@ -35,6 +35,7 @@ import { view } from "motion/dist/react-m";
 import { drawFeaturesOnMap, goToInitialExtent} from "../../../shared/utils/export.utils";
 import { WIDGET_IDS } from "../../../shared/constants/widget-ids";
 import { abrirTablaResultados, limpiarYCerrarWidgetResultados } from "../../../widget-result/src/runtime/widget";
+import { SearchActionBar } from "../../../shared/components/search-action-bar";
 
 
 
@@ -59,9 +60,15 @@ const Widget = (props: AllWidgetProps<any>) => {
   const [loading, setLoading] = React.useState(false)
   const [urlLayer, setUrlLayer] = React.useState("")
   const [graphicsLayer, setGraphicsLayer] = React.useState<GraphicsLayer | null>(null)
+  const [error, setError] = React.useState("")
 
   const widgetResultId = WIDGET_IDS.RESULT // ID del widget de resultados en el layout
+ 
+  const [selectedValue, setSelectedValue] = React.useState("")
 
+  const isValid = condition.trim() !== "" && urlLayer !== "" && selectedLayer !== null
+  const disabled = loading
+  
   /**
    * Manejador del cambio de vista activa del mapa.
    * Guarda la referencia al mapa en el estado del componente.
@@ -84,11 +91,20 @@ const Widget = (props: AllWidgetProps<any>) => {
    * @returns {void}
    */
   const handleClear = () => {
-    if (!varJimuMapView) return
-    clearPoint(varJimuMapView, graphicsLayer)
+    if (varJimuMapView) {
+      clearPoint(varJimuMapView, graphicsLayer)
+    }
+
     setGraphicsLayer(null)
+    setSelectedLayer(null)
+    setFields([])
+    setFieldSelected("")
     setValues([])
+    setSelectedValue("")
     setCondition("")
+    setUrlLayer("")
+    setLoading(false)
+    setError("")
   }
 
   /**
@@ -188,8 +204,9 @@ const Widget = (props: AllWidgetProps<any>) => {
   }
 
   const appendCondition = (text: string) => {
+    if (!text) return
     setFieldSelected(text)
-    setCondition(prev => `${prev} ${text}`)
+    setCondition(prev => `${prev} ${text}`.trim())
 
   }
 
@@ -208,6 +225,7 @@ const Widget = (props: AllWidgetProps<any>) => {
   const buscar = async () => {
     if (!condition || !urlLayer) return
     setLoading(true)
+    setError("")
     try {
       const features = await consultarCapaCAA({ returnGeometry: true, campos: fields, url: urlLayer, where: condition.trim() })
       console.log("Resultados búsqueda:", features)
@@ -216,13 +234,28 @@ const Widget = (props: AllWidgetProps<any>) => {
       const fieldsToShow = fields.map(f => ({ name: f, alias: f }))
       const featuresFixed = []
       features.forEach(e=>{
-        const geometry = e.geometry as Polygon
-        featuresFixed.push({ attributes: e.attributes, geometry: { rings: geometry.rings } })
+        let geometry
+        if(e.geometry.type === "point"){
+          geometry = e.geometry as Point
+        } else if(e.geometry.type === "polyline"){
+          geometry = e.geometry as Polyline
+        } else if(e.geometry.type === "polygon"){
+          geometry = e.geometry as Polygon
+        }
+        // featuresFixed.push({ attributes: e.attributes, geometry: geometry })
+        featuresFixed.push({ attributes: e.attributes, geometry: e.geometry.type === "polygon" 
+          ? { rings: geometry.rings, type: geometry.type, extent: geometry.extent }
+          : e.geometry.type === "point"
+            ? { x: geometry.x, y: geometry.y, type: geometry.type }
+            : { paths: geometry.paths, type: geometry.type }
+        })
+        // featuresFixed.push({ attributes: e.attributes, geometry})
       })      
       console.log({fieldsToShow, featuresFixed})
       abrirTablaResultados(featuresFixed, fieldsToShow, props, varJimuMapView.view.spatialReference, widgetResultId)
-    } catch (error) {
-      console.error("Error en búsqueda:", error)
+    } catch (err) {
+      console.error("Error en búsqueda:", err)
+      setError("Ocurrió un error al ejecutar la búsqueda. Verifique la condición ingresada.")
     } finally {
       setLoading(false)
     }
@@ -307,15 +340,13 @@ const Widget = (props: AllWidgetProps<any>) => {
   
 
   return (
-    <div style={{height:'100%', backgroundColor: 'antiquewhite', padding: '10px', boxSizing: 'border-box'}}>
+    <div style={{height:'100%', padding: '10px', boxSizing: 'border-box'}}>
       {props.useMapWidgetIds && props.useMapWidgetIds.length === 1 && (
         <JimuMapViewComponent useMapWidgetId={props.useMapWidgetIds?.[0]} onActiveViewChange={activeViewChangeHandler} />
       )}      {
       varJimuMapView && (
           
-          <div className="consulta-widget">
-
-            <h3>Consulta Avanzada Alfanumérica</h3>
+          <div className="consulta-widget">            
 
             {/* TEMA */}
 
@@ -323,6 +354,7 @@ const Widget = (props: AllWidgetProps<any>) => {
 
             <select
               className="select"
+              value={selectedLayer ?? ""}
               onChange={handleLayerChange}
             >
 
@@ -351,7 +383,7 @@ const Widget = (props: AllWidgetProps<any>) => {
 
               {fields.map(field => (
 
-                <option key={field}>
+                <option key={field} value={field}>
                   {field}
                 </option>
 
@@ -362,7 +394,7 @@ const Widget = (props: AllWidgetProps<any>) => {
             {/* VALORES */}
 
             <label>Valores</label>
-            <div className="actions">
+            {/* <div className="actions">
 
               <button
                 onClick={obtenerValores}
@@ -376,7 +408,16 @@ const Widget = (props: AllWidgetProps<any>) => {
                 Borrar
               </button>
 
-            </div>
+            </div> */}
+            <SearchActionBar
+                onSearch={obtenerValores}
+                onClear={handleClear}
+                loading={loading}
+                disableSearch={!isValid || disabled}
+                helpText="Seleccione un campo y haga clic en 'Obtener' para cargar los valores únicos de ese campo. Luego, seleccione un valor para agregarlo a la condición de búsqueda."
+                searchLabel="Obtener"
+                error={error}
+            />
             <select
               className="valuesBox"
               size={6}
@@ -417,7 +458,7 @@ const Widget = (props: AllWidgetProps<any>) => {
 
             {/* BOTONES */}
 
-            <div className="actions">
+            {/* <div className="actions">
 
               <button
                 onClick={handleClear}
@@ -431,7 +472,16 @@ const Widget = (props: AllWidgetProps<any>) => {
                 Buscar
               </button>
 
-            </div>
+            </div> */}
+            <SearchActionBar
+                onSearch={buscar}
+                onClear={handleClear}
+                loading={loading}
+                disableSearch={!isValid || disabled}
+                helpText="Ingrese una condición de búsqueda válida para habilitar el botón de busqueda. Utilice los campos, valores y operadores para construir su consulta. Por ejemplo: CAMPO1 = 'Valor' AND CAMPO2 > 100."
+                searchLabel="Ubicar"
+                error={error}
+            />
 
           </div>
         )
