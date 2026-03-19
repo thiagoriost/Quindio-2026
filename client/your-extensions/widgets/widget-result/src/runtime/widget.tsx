@@ -234,18 +234,25 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
       }
 
       const buildGeometry = (geometry: any, fallbackSpatialReference: __esri.SpatialReference) => {
-        if (!geometry?.type) return null
+        if (!geometry) return null
+
+        const geometryType = geometry.type
+          || (geometry.rings ? 'polygon' : null)
+          || (geometry.paths ? 'polyline' : null)
+          || (geometry.x != null && geometry.y != null ? 'point' : null)
+
+        if (!geometryType) return null
 
         const spatialReference = resolveSpatialReference(geometry, fallbackSpatialReference)
 
-        if (geometry.type === 'polygon' && geometry.rings) {
+        if (geometryType === 'polygon' && geometry.rings) {
           return new Polygon({
             rings: geometry.rings,
             spatialReference
           })
         }
 
-        if (geometry.type === 'point' && geometry.x != null && geometry.y != null) {
+        if (geometryType === 'point' && geometry.x != null && geometry.y != null) {
           return new Point({
             x: geometry.x,
             y: geometry.y,
@@ -253,7 +260,7 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
           })
         }
 
-        if (geometry.type === 'polyline' && geometry.paths) {
+        if (geometryType === 'polyline' && geometry.paths) {
           return new Polyline({
             paths: geometry.paths,
             spatialReference
@@ -669,6 +676,10 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
               fields={data.fields}
               onExport={handleExport}
               onSelectFeature={handleSelectFeature}
+              total={total}
+              page={page}
+              totalPages={totalPages}
+              setPage={setPage}
             />
             {total > 1 && (
               <ResultFooter

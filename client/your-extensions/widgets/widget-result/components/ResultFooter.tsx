@@ -26,7 +26,9 @@ export const ResultFooter = ({
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        background: '#f4f4f4'
+        background: '#f4f4f4',
+        width: '-webkit-fill-available',
+        marginRight: 10
       }}
     >
 

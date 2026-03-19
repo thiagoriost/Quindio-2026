@@ -36,6 +36,7 @@ import { drawFeaturesOnMap, goToInitialExtent} from "../../../shared/utils/expor
 import { WIDGET_IDS } from "../../../shared/constants/widget-ids";
 import { abrirTablaResultados, limpiarYCerrarWidgetResultados } from "../../../widget-result/src/runtime/widget";
 import { SearchActionBar } from "../../../shared/components/search-action-bar";
+import { Label, Select, Option } from "jimu-ui";
 
 
 
@@ -194,7 +195,7 @@ const Widget = (props: AllWidgetProps<any>) => {
   */
 
   const handleLayerChange = async (e) => {
-
+    handleClear()
     const id = Number(e.target.value)
 
     setSelectedLayer(id)
@@ -232,27 +233,16 @@ const Widget = (props: AllWidgetProps<any>) => {
       const graphicsLayer = await drawFeaturesOnMap({ features, spatialReference: varJimuMapView.view.spatialReference }, varJimuMapView, 16)
       setGraphicsLayer(graphicsLayer)
       const fieldsToShow = fields.map(f => ({ name: f, alias: f }))
-      const featuresFixed = []
-      features.forEach(e=>{
-        let geometry
-        if(e.geometry.type === "point"){
-          geometry = e.geometry as Point
-        } else if(e.geometry.type === "polyline"){
-          geometry = e.geometry as Polyline
-        } else if(e.geometry.type === "polygon"){
-          geometry = e.geometry as Polygon
-        }
-        // featuresFixed.push({ attributes: e.attributes, geometry: geometry })
-        featuresFixed.push({ attributes: e.attributes, geometry: e.geometry.type === "polygon" 
-          ? { rings: geometry.rings, type: geometry.type, extent: geometry.extent, spatialReference: geometry.spatialReference }
-          : e.geometry.type === "point"
-            ? { x: geometry.x, y: geometry.y, type: geometry.type, spatialReference: geometry.spatialReference }
-            : { paths: geometry.paths, type: geometry.type, spatialReference: geometry.spatialReference }
-        })
-        // featuresFixed.push({ attributes: e.attributes, geometry})
-      })      
+      const featuresFixed = features
+        .filter(e => e?.geometry)
+        .map(e => ({
+          attributes: e.attributes,
+          geometry: e.geometry.toJSON()
+        }))
+
+      const resultSpatialReference = features[0]?.geometry?.spatialReference || varJimuMapView.view.spatialReference
       console.log({fieldsToShow, featuresFixed})
-      abrirTablaResultados(featuresFixed, fieldsToShow, props, varJimuMapView.view.spatialReference, widgetResultId)
+      abrirTablaResultados(featuresFixed, fieldsToShow, props, resultSpatialReference, widgetResultId)
     } catch (err) {
       console.error("Error en búsqueda:", err)
       setError("Ocurrió un error al ejecutar la búsqueda. Verifique la condición ingresada.")
@@ -340,7 +330,7 @@ const Widget = (props: AllWidgetProps<any>) => {
   
 
   return (
-    <div style={{height:'100%', padding: '10px', boxSizing: 'border-box'}}>
+    <div style={{height:'100%', padding: '5px', boxSizing: 'border-box'}}>
       {props.useMapWidgetIds && props.useMapWidgetIds.length === 1 && (
         <JimuMapViewComponent useMapWidgetId={props.useMapWidgetIds?.[0]} onActiveViewChange={activeViewChangeHandler} />
       )}      {
@@ -350,65 +340,51 @@ const Widget = (props: AllWidgetProps<any>) => {
 
             {/* TEMA */}
 
-            <label>Tema</label>
-
-            <select
-              className="select"
-              value={selectedLayer ?? ""}
-              onChange={handleLayerChange}
+            <Label>Municipio</Label>
+            <Select
+                value={selectedLayer ?? ""}
+                disabled={loading}
+                onChange={handleLayerChange}
             >
+                <Option value="">
+                    {loading ? 'Cargando ...' : 'Seleccione...'}
+                </Option>
 
-              <option>Seleccione...</option>
-
-              {layers.map(layer => (
-
-                <option key={layer.id} value={layer.id}>
-                  {layer.name}
-                </option>
-
-              ))}
-
-            </select>
+                {layers.map(layer => (
+                    <Option key={layer.id} value={layer.id}>
+                        {layer.name}
+                    </Option>
+                ))}
+            </Select>
 
             {/* CAMPOS */}
 
-            <label>Campos</label>
+            <Label>Campos</Label>
 
-            <select
-              className="select"
-              onChange={(e) => appendCondition(e.target.value)}
+            <Select
+                // value={selectedLayer ?? ""}
+                disabled={loading}
+                onChange={(e) => {
+                setCondition("")
+                setValues([])
+                appendCondition(e.target.value)
+              }}
             >
+                <Option value="">
+                    {loading ? 'Cargando ...' : 'Seleccione...'}
+                </Option>
 
-              <option>Seleccione...</option>
-
-              {fields.map(field => (
-
-                <option key={field} value={field}>
-                  {field}
-                </option>
-
-              ))}
-
-            </select>
+                {fields.map(field => (
+                    <Option key={field} value={field}>
+                        {field}
+                    </Option>
+                ))}
+            </Select>
 
             {/* VALORES */}
 
-            <label>Valores</label>
-            {/* <div className="actions">
-
-              <button
-                onClick={obtenerValores}
-              >
-                Obtener
-              </button>
-
-              <button
-                onClick={handleClear}
-              >
-                Borrar
-              </button>
-
-            </div> */}
+            <Label>Valores</Label>
+            
             <SearchActionBar
                 onSearch={obtenerValores}
                 onClear={handleClear}
@@ -418,17 +394,18 @@ const Widget = (props: AllWidgetProps<any>) => {
                 searchLabel="Obtener"
                 error={error}
             />
-            <select
+            <Select
               className="valuesBox"
-              size={6}
+              size="lg"
+              disabled={values.length === 0 || loading}
               onChange={(e) => {
                 setCondition(prev => `${prev} '${e.target.value}'`)
               }}
             >
               {values.map((val, i) => (
-                <option key={i} value={val}>{val}</option>
+                <Option key={i} value={val}>{val}</Option>
               ))}
-            </select>
+            </Select>
 
             {/* OPERADORES */}
 

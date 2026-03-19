@@ -919,7 +919,7 @@ const drawPoint = (varJimuMapView, point, typeCoordeninate, textoGeographicDMS) 
  * @param {JimuMapView} varJimuMapView - Vista del mapa de Jimu (ArcGIS Experience Builder)
  * @returns {void}
  */
-export const clearPoint = (varJimuMapView) => {
+export const clearPoint = (varJimuMapView, graphicsLayer) => {
 
   if (!varJimuMapView || !varJimuMapView.view) {
     console.error("clearPoint: vista del mapa no disponible")
@@ -933,6 +933,10 @@ export const clearPoint = (varJimuMapView) => {
     varJimuMapView.view.goTo({
       zoom: 10
     })
+  }
+
+  if(graphicsLayer) {
+    graphicsLayer.removeAll()
   }
 }
 

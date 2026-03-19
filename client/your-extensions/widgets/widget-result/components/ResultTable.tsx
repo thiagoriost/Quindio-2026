@@ -1,6 +1,7 @@
 /** @jsx jsx */
 import { Table, Button } from 'jimu-ui'
 import { React } from 'jimu-core'
+import { ResultFooter } from './ResultFooter'
 
 /**
  * Propiedades del componente ResultTable.
@@ -50,6 +51,11 @@ interface Props {
    * - Hacer zoom a la entidad seleccionada.
    */
   onSelectFeature: (feature: __esri.Graphic) => void
+
+  total: number
+  page: number
+  totalPages: number
+  setPage: (page: any) => void
 }
 
 /**
@@ -84,8 +90,9 @@ interface Props {
  *   }}
  * />
  */
-export const ResultTable = ({ features, fields, onExport, onSelectFeature }: Props) => {
+export const ResultTable = ({ features, fields, onExport, onSelectFeature, total, page, totalPages, setPage }: Props) => {
 
+  console.log({features,fields})
   /**
    * Índice de la fila actualmente seleccionada.
    *
@@ -113,12 +120,21 @@ export const ResultTable = ({ features, fields, onExport, onSelectFeature }: Pro
           marginBottom: 8
         }}
       >
+        {total > 1 && (
+       <ResultFooter
+          total={total}
+          page={page}
+          totalPages={totalPages}
+          onPrev={() => { setPage((prev) => Math.max(1, prev - 1)) }}
+          onNext={() => { setPage((prev) => Math.min(totalPages, prev + 1)) }}
+        />
+        )}
         <Button
           size="sm"
           type="primary"
           onClick={onExport}
         >
-          Exportar
+          Exportar tabla
         </Button>
       </div>
 
