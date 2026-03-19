@@ -26,6 +26,8 @@ import { exportService } from "../../../shared/services/export.service";
 import { JimuMapViewComponent, JimuMapView } from "jimu-arcgis";
 import Graphic from "@arcgis/core/Graphic";
 import Polygon from "@arcgis/core/geometry/Polygon";
+import Point from "@arcgis/core/geometry/Point";
+import Polyline from "@arcgis/core/geometry/Polyline";
 import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
 import { useOnWidgetClose } from "../../../shared/hooks/useOnWidgetClose";
 import { appActions, getAppStore } from "jimu-core";
@@ -227,6 +229,48 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
         }, 400)
     }
 
+      const resolveSpatialReference = (geometry: any, fallback: __esri.SpatialReference) => {
+        return geometry?.spatialReference || data?.spatialReference || fallback
+      }
+
+      const buildGeometry = (geometry: any, fallbackSpatialReference: __esri.SpatialReference) => {
+        if (!geometry?.type) return null
+
+        const spatialReference = resolveSpatialReference(geometry, fallbackSpatialReference)
+
+        if (geometry.type === 'polygon' && geometry.rings) {
+          return new Polygon({
+            rings: geometry.rings,
+            spatialReference
+          })
+        }
+
+        if (geometry.type === 'point' && geometry.x != null && geometry.y != null) {
+          return new Point({
+            x: geometry.x,
+            y: geometry.y,
+            spatialReference
+          })
+        }
+
+        if (geometry.type === 'polyline' && geometry.paths) {
+          return new Polyline({
+            paths: geometry.paths,
+            spatialReference
+          })
+        }
+
+        return null
+      }
+
+      const getGoToTarget = (geometry: __esri.Geometry) => {
+        if ('extent' in geometry && geometry.extent) {
+          return geometry.extent.expand(2)
+        }
+
+        return geometry
+      }
+
   const crearCapaTemporal = async (featureData: any) => {
     const view = jimuMapView?.view;
     if (!view) return;
@@ -427,28 +471,12 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
 
         graphicsLayerRef.current.removeAll()
 
+        const geometry = buildGeometry(feature.geometry, view.spatialReference)
 
-    let geometry
-    if (feature.geometry.type === "polygon") {
-      geometry = new Polygon({
-        rings: feature.geometry.rings,
-        spatialReference: data.spatialReference || view.spatialReference,
-      });      
-    } else if (feature.geometry.type === "point") {
-      geometry = {
-        type: "point",  
-        x: feature.geometry.x,
-        y: feature.geometry.y,
-        spatialReference: data.spatialReference || view.spatialReference,
-      };
-    }
-      else if (feature.geometry.type === "polyline") {
-        geometry = {
-          type: "polyline",
-          paths: feature.geometry.paths,
-          spatialReference: data.spatialReference || view.spatialReference,
-        };
-      }
+        if (!geometry) {
+            console.warn('No fue posible construir una geometría válida para la selección:', feature.geometry)
+            return
+        }
 
 
         const graphic = new Graphic({
@@ -466,18 +494,18 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
 
         graphicsLayerRef.current.add(graphic)
 
-    // console.log({graphic})
-    if (graphic.geometry.extent) {
-      await view.goTo({
-        target: graphic.geometry.extent.expand(2),
-      });
-    }else if (graphic.geometry.type === "point") {
-      await view.goTo({
-        target: graphic.geometry,
-        zoom: 18
-      });
-    }
-  };
+        if (graphic.geometry.type === 'point') {
+            await view.goTo({
+                target: graphic.geometry,
+                zoom: 18
+            })
+            return
+        }
+
+        await view.goTo({
+            target: getGoToTarget(graphic.geometry)
+        })
+    };
 
   /**
    * Validación de mapa configurado en el widget.

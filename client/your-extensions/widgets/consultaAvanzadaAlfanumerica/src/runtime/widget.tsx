@@ -244,10 +244,10 @@ const Widget = (props: AllWidgetProps<any>) => {
         }
         // featuresFixed.push({ attributes: e.attributes, geometry: geometry })
         featuresFixed.push({ attributes: e.attributes, geometry: e.geometry.type === "polygon" 
-          ? { rings: geometry.rings, type: geometry.type, extent: geometry.extent }
+          ? { rings: geometry.rings, type: geometry.type, extent: geometry.extent, spatialReference: geometry.spatialReference }
           : e.geometry.type === "point"
-            ? { x: geometry.x, y: geometry.y, type: geometry.type }
-            : { paths: geometry.paths, type: geometry.type }
+            ? { x: geometry.x, y: geometry.y, type: geometry.type, spatialReference: geometry.spatialReference }
+            : { paths: geometry.paths, type: geometry.type, spatialReference: geometry.spatialReference }
         })
         // featuresFixed.push({ attributes: e.attributes, geometry})
       })      
@@ -479,7 +479,7 @@ const Widget = (props: AllWidgetProps<any>) => {
                 loading={loading}
                 disableSearch={!isValid || disabled}
                 helpText="Ingrese una condición de búsqueda válida para habilitar el botón de busqueda. Utilice los campos, valores y operadores para construir su consulta. Por ejemplo: CAMPO1 = 'Valor' AND CAMPO2 > 100."
-                searchLabel="Ubicar"
+                searchLabel="Buscar"
                 error={error}
             />
 
