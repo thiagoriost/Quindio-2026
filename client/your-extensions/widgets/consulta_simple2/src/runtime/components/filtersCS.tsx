@@ -9,12 +9,14 @@
  */
 
 import { React } from 'jimu-core'
-import { Button, Label, Select, TextInput } from 'jimu-ui'
+const { useEffect, useState } = React
+import {Label, Select, TextInput } from 'jimu-ui'
 
 import { typeMSM } from '../../types/interfaceResponseConsultaSimple'
 import { urls } from '../../../../api/servicios'
 import { SearchActionBar } from '../../../../shared/components/search-action-bar'
-const { useEffect, useState } = React
+
+import '../../styles/style.css'
 
 /**
  * Componente FiltersCS - Gestiona los filtros del widget Consulta Simple.
@@ -733,7 +735,7 @@ const FiltersCS = function ({
   }, [])
 
   return (
-        <form onSubmit={consultaSimple}>
+        <form onSubmit={consultaSimple} className='consulta-simple-scroll'>
             <div className="mb-1">
               <Label size="default"> Tema </Label>
               <Select
@@ -830,23 +832,6 @@ const FiltersCS = function ({
                   type="search" className="mb-4" required readOnly={txtValorState}
                   value={txtValor} onChange={handleChangevalorTxt}></TextInput>
                 </div>
-                {/* <div className="btns">
-                  <Button
-                    htmlType="submit"
-                    size="default"
-                    type="default"
-                  >
-                    Consultar
-                  </Button>
-                  <Button
-                    htmlType="button"
-                    onClick={limpiarCons}
-                    size="default"
-                    type="default"
-                  >
-                    Limpiar
-                  </Button>
-                </div> */}
                 <SearchActionBar
                     onSearch={consultaSimple}
                     onClear={limpiarCons}

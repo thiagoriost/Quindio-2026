@@ -2,12 +2,9 @@
     Sección de importación
     @date 2024-06-11
 */
-import { React, AllWidgetProps, esri } from "jimu-core";
+import { React, AllWidgetProps} from "jimu-core";
 const { useRef, useEffect, useState } = React;
-import FeatureLayer from "@arcgis/core/layers/FeatureLayer";
 import { JimuMapViewComponent, JimuMapView } from 'jimu-arcgis'; // The map object can be accessed using the JimuMapViewComponent
-import { Button, Label, Select, TextInput } from 'jimu-ui'; // import components
-
 //Objetos desde arcgis
 import Graphic from '@arcgis/core/Graphic';
 import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
@@ -405,7 +402,7 @@ import { InterfaceResponseConsultaSimple, InterfaceMensajeModal, typeMSM  } from
     }, []);
 
     return (
-      <div className="w-100 p-3 bg-primary text-white">
+      <div className="">
         {props.useMapWidgetIds && props.useMapWidgetIds.length === 1 && (
           <JimuMapViewComponent useMapWidgetId={props.useMapWidgetIds?.[0]} onActiveViewChange={activeViewChangeHandler} />
         )}

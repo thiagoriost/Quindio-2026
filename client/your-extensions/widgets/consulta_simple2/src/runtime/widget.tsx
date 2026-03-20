@@ -228,7 +228,7 @@ const Widget = (props: AllWidgetProps<any>) => {
    * - Muestra indicador de carga si está activo.
    */
   return (
-    <div className='w-100 p-3' style={{  }}>
+    <div className='consulta-simple-widget' style={{  }}>
       {/* Mapa principal */}
       {props.useMapWidgetIds && props.useMapWidgetIds.length === 1 && (
         <JimuMapViewComponent useMapWidgetId={props.useMapWidgetIds?.[0]} onActiveViewChange={activeViewChangeHandler} />
@@ -315,7 +315,7 @@ const Widget = (props: AllWidgetProps<any>) => {
         />
       }
       {/* Indicador de carga */}
-      {/* {isLoading && widgetModules?.OUR_LOADING()} */}
+      {isLoading && widgetModules?.OUR_LOADING()}
     </div>
   )
 }

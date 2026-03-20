@@ -144,3 +144,9 @@
   --overlay-dark: rgba(0, 0, 0, 0.1);
   --color-primary-transparent: rgba(138, 162, 96, 0.25);
 }
+
+/* Utilidad para overlays contextuales (loading, mask, etc.). */
+.loading-host {
+   position: relative;
+   min-height: 0;
+}

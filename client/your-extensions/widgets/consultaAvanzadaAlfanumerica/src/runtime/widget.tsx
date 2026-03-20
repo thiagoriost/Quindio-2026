@@ -24,6 +24,7 @@ import { loadLayers } from "../../../shared/services/queryMapServer.service"
 import { WIDGET_IDS } from "../../../shared/constants/widget-ids";
 import { clearPoint } from "../../../../widgets/utils/module"
 import { urls} from "../../../api/serviciosQuindio"
+import OurLoading from '../../../commonWidgets/our_loading/OurLoading'
 import '../styles/styles.css'
 
 
@@ -173,19 +174,24 @@ const Widget = (props: AllWidgetProps<any>) => {
   */
 
   async function loadFields(layerId: number) {
+    setLoading(true)
+    try {
 
-    const url = `${urls.SERVICIO_CONSULTA_AVANZADA_ALFANUMERICA}/${layerId}`
+      const url = `${urls.SERVICIO_CONSULTA_AVANZADA_ALFANUMERICA}/${layerId}`
 
-    const response = await fetch(`${url}?f=json`)
-    const data = await response.json()
+      const response = await fetch(`${url}?f=json`)
+      const data = await response.json()
 
-    const validFields = data.fields
-      .filter((f) => f.name !== "ESRI_OID" && f.name !== "SHAPE")
-      .map((f) => f.name)
+      const validFields = data.fields
+        .filter((f) => f.name !== "ESRI_OID" && f.name !== "SHAPE")
+        .map((f) => f.name)
 
-    setFields(validFields)
-    setUrlLayer(url)
-    return validFields
+      setFields(validFields)
+      setUrlLayer(url)
+      return validFields
+    } finally {
+      setLoading(false)
+    }
   }
 
   /*
@@ -212,13 +218,21 @@ const Widget = (props: AllWidgetProps<any>) => {
   }
 
   const obtenerValores = async () => {
-    var where = "1=1", returnGeometry = true;
-    const features = await consultarCapaCAA({returnGeometry, campos: fields, url: urlLayer, where})
-    console.log({features, fields})
-    const uniqueValues = Array.from(new Set(features.map(f => f.attributes[fieldSelected])))
-    setValues(uniqueValues)
-    console.log({features,uniqueValues})
-    mostrarConsultaCAA({ features })
+    setLoading(true)
+    try {
+      var where = "1=1", returnGeometry = true;
+      const features = await consultarCapaCAA({returnGeometry, campos: fields, url: urlLayer, where})
+      console.log({features, fields})
+      const uniqueValues = Array.from(new Set(features.map(f => f.attributes[fieldSelected])))
+      setValues(uniqueValues)
+      console.log({features,uniqueValues})
+      mostrarConsultaCAA({ features })
+    } catch (err) {
+      console.error("Error obteniendo valores:", err)
+      setError("Ocurrio un error al obtener los valores del campo seleccionado.")
+    } finally {
+      setLoading(false)
+    }
   }
 
   const buscar = async () => {
@@ -314,7 +328,7 @@ const Widget = (props: AllWidgetProps<any>) => {
       )}      {
       varJimuMapView && (
           
-          <div className="consulta-widget">            
+          <div className="consulta-widget consultaAA-scroll loading-host">            
 
             {/* TEMA */}
 
@@ -412,22 +426,6 @@ const Widget = (props: AllWidgetProps<any>) => {
             />
 
             {/* BOTONES */}
-
-            {/* <div className="actions">
-
-              <button
-                onClick={handleClear}
-              >
-                Limpiar
-              </button>
-
-              <button
-                onClick={buscar}
-              >
-                Buscar
-              </button>
-
-            </div> */}
             <SearchActionBar
                 onSearch={buscar}
                 onClear={handleClear}
@@ -437,6 +435,7 @@ const Widget = (props: AllWidgetProps<any>) => {
                 searchLabel="Buscar"
                 error={error}
             />
+            {loading && <OurLoading />}
 
           </div>
         )

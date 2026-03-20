@@ -1,5 +1,4 @@
 import { React, type AllWidgetProps } from 'jimu-core'
-import { appActions, getAppStore } from 'jimu-core'
 import { JimuMapViewComponent, type JimuMapView } from 'jimu-arcgis' // The map object can be accessed using the JimuMapViewComponent
 import { Button } from 'jimu-ui' // import components
 import 'react-data-grid/lib/styles.css'
@@ -8,16 +7,13 @@ import { Polygon } from '@arcgis/core/geometry'
 import type { InterfaceResponseConsulta, interfaceFeature } from '../types/interfaceResponseConsultaSimple'
 import '../styles/style.css'
 import FeatureLayer from '@arcgis/core/layers/FeatureLayer'
-import { type InterfaceColumns, type Row, type interfaceMensajeModal, typeMSM } from '../types/interfaces'
+import { type interfaceMensajeModal, typeMSM } from '../types/interfaces'
 import { loadModules } from 'esri-loader'
 import { WIDGET_IDS } from '../../../shared/constants/widget-ids'
 import { SearchActionBar } from '../../../shared/components/search-action-bar'
 import { abrirTablaResultados, limpiarYCerrarWidgetResultados } from '../../../widget-result/src/runtime/widget'
 
 const { useEffect, useState } = React
-// import ModalComponent from './components/ModalComponent'
-// import { loadEsriModules } from './components/TablaResultados'
-// import InputSelect from './components/InputSelect'
 
 const ConsultaAvanzada = (props: AllWidgetProps<any>) => {
   const [jsonSERV, setJsonSERV] = useState([])
@@ -37,12 +33,7 @@ const ConsultaAvanzada = (props: AllWidgetProps<any>) => {
   const [condicionBusqueda, setCondicionBusqueda] = useState('')
   const [responseConsulta, setResponseConsulta] = useState<any>(null)
   const [graphicsLayerDeployed, setGraphicsLayerDeployed] = useState(null)
-  const [featuresLayersDeployed, setFeaturesLayersDeployed] = useState<any[]>([]) // almacena los features y su metadata pintados en el mapa
-  const [mostrarResultadoFeaturesConsulta, setMostrarResultadoFeaturesConsulta] = useState(false)
-  const [rows, setRows] = useState<Row[]>([])
-  const [columns, setColumns] = useState<InterfaceColumns[]>([])
   const [LayerSelectedDeployed, setLayerSelectedDeployed] = useState(null)
-  const [lastGeometriDeployed, setLastGeometriDeployed] = useState()
   const [isLoading, setIsLoading] = useState(false)
   const [initialExtent, setInitialExtent] = useState(null)
   const [mensajeModal, setMensajeModal] = useState<interfaceMensajeModal>({
@@ -61,14 +52,13 @@ const ConsultaAvanzada = (props: AllWidgetProps<any>) => {
   const [jimuMapView, setJimuMapView] = useState<JimuMapView>()
   // const [ResponseConsultaSimple, setResponseConsultaSimple] = useState<InterfaceResponseConsulta>()
 
-  /*
-    Cargue del contenido alusivo a las temáticas, subtemáticas, grupos y capas desde el servidor de contenidos
-    @date 2024-05-22
-    @author IGAC - DIP
-    @param (String) urlServicioTOC => URL de acceso al servidor que proporciona la data de temas, subtemas, grupos y capas
-    @return (String)
-    @remarks FUENTE: https://www.freecodecamp.org/news/how-to-fetch-api-data-in-react/
-  */
+  /**
+   * Carga y transforma la tabla de contenido remota en una estructura jerárquica
+   * de temáticas y capas para poblar los controles del formulario.
+   *
+   * @param {Array<any>} jsonSERV Estructura acumulada de temáticas/capas.
+   * @returns {Promise<void>}
+   */
   const getJSONContenido = async (jsonSERV) => {
     try {
       const urlServicioTOC = servicios.urls.tablaContenido
@@ -147,12 +137,12 @@ const ConsultaAvanzada = (props: AllWidgetProps<any>) => {
     }
   }
 
-  /* Método getTemas()=> obtiene temáticas desde el objeto jsonData
-    @date 2024-05-22
-    @author IGAC - DIP
-    @param (JSON) jsonData: Estructura organizada en formato JSON, desde el servidor que proporciona la data de temas, subtemas, grupos y capas
-    @return (Object) setTemas: Estructura de datos correspondiente a los temas desde el arreglo opcArr
-  */
+  /**
+   * Obtiene la lista de temas raíz (parent = '#') desde la estructura de contenido.
+   *
+   * @param {Array<any>} jsonData Estructura de temáticas y capas.
+   * @returns {void}
+   */
 
   const getTemas = (jsonData) => {
     const opcArr = []
@@ -178,19 +168,13 @@ const ConsultaAvanzada = (props: AllWidgetProps<any>) => {
     setTemas(opcArr)
   }
 
-  /*
-    Método getSubtemas => Obtener lista de subtemas, según el tema seleccionado en el control Tema
-    @date 2023-05-23
-    @author IGAC - DIP
-    @param (Object) temas asocia el control con el tema seleccionado
-    @dateUpdated 2024-05-27
-    @changes Al cambiar tema, borrar valores campos Atributo y Valor
-    @dateUpdated 2024-05-28
-    @changes Actualizar estado de selección Tema
-    @changes Fix selección items campo Subtema
-    @changes Fix selección items campo Capa
-    @return (Object) setSubtemas: Estructura de datos correspondiente a los subtemas
-  */
+  /**
+   * Procesa el cambio del selector Tema.
+   * Resetea controles dependientes y carga subtemas/capas del tema seleccionado.
+   *
+   * @param {{ target: { value: string } }} temas Evento del control Tema.
+   * @returns {void}
+   */
   const getSubtemas = (temas) => {
     let idParent: number = -1
     let type: string = ''
@@ -251,17 +235,13 @@ const ConsultaAvanzada = (props: AllWidgetProps<any>) => {
       setCapas(capasArr)
     }
   }
-  /*
-    Método getGrupoOrCapa => Método para obtener grupo (temáticas de las subtemáticas) y/o capas conocido subtema
-    @date 2023-05-23
-    @author IGAC - DIP
-    @param (Object) subtemas: control Subtema
-    @dateUpdated 2024-05-27
-    @changes Al cambiar tema, borrar valores campos Atributo y Valor
-    @dateUpdated 2024-05-28
-    @changes Deseleccionar opciones en campo Grupo
-    @changes Deseleccionar opciones en campo Capa
-  */
+  /**
+   * Procesa el cambio del selector Subtema.
+   * Carga grupos y/o capas asociadas al subtema seleccionado.
+   *
+   * @param {{ target: { value: string } }} param0 Evento del control Subtema.
+   * @returns {void}
+   */
   const getGrupoOrCapa = ({ target }) => {
     let idParent: number = -1
     let type: string = ''
@@ -317,17 +297,12 @@ const ConsultaAvanzada = (props: AllWidgetProps<any>) => {
     setCapas([]) // limpia el campo capas
     setCapaselected(null) // limpia la capa seleccionada
   }
-  /*
-      Método getCapaByGrupo => Método para obtener capa conocido un grupo
-      @date 2023-05-23
-      @author IGAC - DIP
-      @param (Object)
-      @dateUpdated 2024-05-27
-      @changes Al cambiar tema, borrar valores campos Atributo y Valor
-      @dateUpdated 2024-05-28
-      @changes Fix selección item campo Grupo
-      @changes Deselección item campo Capa
-  */
+  /**
+   * Procesa el cambio del selector Grupo y carga las capas asociadas.
+   *
+   * @param {{ target: { value: string } }} grupos Evento del control Grupo.
+   * @returns {void}
+   */
   const getCapaByGrupo = (grupos) => {
     let idParent: number = -1
     let type: string = ''
@@ -373,17 +348,13 @@ const ConsultaAvanzada = (props: AllWidgetProps<any>) => {
       setselCapas(undefined)
     }
   }
-  /*
-    getAtributosCapa => Método para obtener los atributos de una capa conocida y renderizarla en el campo Atributo
-    @date 2024-05-24
-    @author IGAC - DIP
-    @param (Object) capa => Información de capa, desde campo Capa
-    @dateUpdated 2024-05-27
-    @changes Al cambiar tema, borrar valores campos Atributo y Valor
-    @dateUpdated 2024-05-30
-    @changes Seteo de la URL asociado al control Capa
-    @returns (Array) AtrCapaArr => Arreglo con atributos (name, alias)
-  */
+  /**
+   * Consulta metadatos de la capa seleccionada y llena la lista de atributos.
+   * También despliega la capa en el mapa y actualiza su referencia activa.
+   *
+   * @param {{ value: number }} target Valor seleccionado en el control Capa.
+   * @returns {void}
+   */
   const getAtributosCapa = (target) => {
     let urlCapa: string = ''
     let JsonAtrCapa: any = ''
@@ -430,13 +401,9 @@ const ConsultaAvanzada = (props: AllWidgetProps<any>) => {
 
 
   /**
-   * limpiarCons => Limpia todos los controles del formulario y remueve las capas del mapa.
-   * Reinicia el formulario al estado inicial.
-   * @param {React.MouseEvent<HTMLButtonElement>|{target: {value: string}}} evt - Evento del botón Limpiar
-   * @returns {void} Reinicia todos los estados de los controles
-   * @author IGAC - DIP
-   * @since 2024-05-28
-   * @updated 2026-03-09 - Adaptación desde filtersCS para ConsultaAvanzada
+   * Limpia todos los controles del formulario, resetea estados y elimina capas del mapa.
+   *
+   * @returns {void}
    */
   const limpiarCons = () => {
     if (utilsModule?.logger()) console.log('Handle Evt en limpiar =>')
@@ -456,7 +423,6 @@ const ConsultaAvanzada = (props: AllWidgetProps<any>) => {
     setselGrupo(undefined)
     setLayerSelectedDeployed(null)
     setGraphicsLayerDeployed(null)
-    setFeaturesLayersDeployed([])
     setResponseConsulta(null)
     // Limpiar capas del mapa
     if (jimuMapView && jimuMapView.view) {
@@ -474,7 +440,12 @@ const ConsultaAvanzada = (props: AllWidgetProps<any>) => {
     jimuMapView.view.zoom = jimuMapView.view.zoom - 0.00000001
   }
 
-  //https://developers.arcgis.com/experience-builder/guide/add-layers-to-a-map/
+  /**
+   * Guarda la vista activa del mapa para operar con capas y navegación.
+   *
+   * @param {JimuMapView} jmv Vista activa de Experience Builder.
+   * @returns {void}
+   */
   const activeViewChangeHandler = (jmv: JimuMapView) => {
     if (utilsModule?.logger()) console.log('Ingresando al evento objeto JimuMapView...')
     if (jmv) {
@@ -483,13 +454,15 @@ const ConsultaAvanzada = (props: AllWidgetProps<any>) => {
     }
   }
 
+  /**
+   * Dibuja las features devueltas por la consulta en un GraphicsLayer temporal.
+   *
+   * @param {InterfaceResponseConsulta} response Respuesta de la consulta espacial.
+   * @returns {Promise<void>}
+   */
   const drawFeaturesOnMap = async (response: InterfaceResponseConsulta) => {
     const { features, spatialReference } = response
     if (!jimuMapView || features.length === 0 || !response) return
-
-    /* const [
-      Graphic, GraphicsLayer, SimpleFillSymbol, SimpleLineSymbol, SimpleMarkerSymbol, Point, Extent, PopupTemplate
-    ] = await utilsModule.loadEsriModules() */
 
     loadModules([
       'esri/layers/GraphicsLayer', 'esri/PopupTemplate',
@@ -543,15 +516,15 @@ const ConsultaAvanzada = (props: AllWidgetProps<any>) => {
     })
   }
 
-  /**
-     * Metodo que dibuja en el mapa la capa chequeada y actualiza el state FeaturesLayersDeployed
-     * @param capasToRender
-     * @param varJimuMapView
-     */
+    /**
+    * Dibuja en el mapa la capa seleccionada por URL y la deja como capa activa.
+    *
+    * @param {string} url URL del FeatureLayer a desplegar.
+    * @returns {void}
+    */
   const dibujaCapasSeleccionadas = (url) => {
     const layer = new FeatureLayer({ url })
     jimuMapView.view.map.add(layer)
-    setFeaturesLayersDeployed(features => [...features, layer])
     layer.when(() => {
       setLayerSelectedDeployed(layer)
       jimuMapView.view.goTo(layer.fullExtent).catch(error => {
@@ -684,9 +657,11 @@ const ConsultaAvanzada = (props: AllWidgetProps<any>) => {
   }
 
   const handleChangeTextArea = ({ target }) => { setCondicionBusqueda(target.value) }
+
+  
   const formularioConsulta = () => {
     return (
-      <div className='overflow-auto' style={{ flex: 1, minHeight: 0 }}>
+      <div className='consulta-avanzada-scroll'>
         {
           widgetModules?.INPUTSELECT(temas, getSubtemas, selTema, 'Tema')
         }
@@ -760,8 +735,7 @@ const ConsultaAvanzada = (props: AllWidgetProps<any>) => {
     )
   }
   /**
-   * Toma la respuesta de la consulta y ajusta la data para poder ser renderizada la tabla de resultados.
-   * Forma el objeto de columnas y filas
+   * Cuando hay respuesta de consulta, prepara y envía los datos al widget de resultados.
    */
   useEffect(() => {
     if (utilsModule?.logger()) console.log('effect responseConsulta')
@@ -809,7 +783,7 @@ const ConsultaAvanzada = (props: AllWidgetProps<any>) => {
 
 
   /**
-   * Despues de modificar el valor del campo, realiza la consulta
+   * Cuando cambia el atributo seleccionado, consulta los valores disponibles.
    */
   useEffect(() => {
     if (campo)consultarValores()
@@ -818,8 +792,7 @@ const ConsultaAvanzada = (props: AllWidgetProps<any>) => {
   }, [campo])
 
   /**
-   * cuando 'servicios' ya tiene data, realiza la consulta de la tabla de contenido y con esto
-   * llena los campos select
+   * Cuando se cargan los servicios, inicializa temas/subtemas/capas del formulario.
    */
   useEffect(() => {
     servicios && getJSONContenido(jsonSERV)
@@ -846,16 +819,16 @@ const ConsultaAvanzada = (props: AllWidgetProps<any>) => {
   }, [])
 
   return (
-    <div className='w-100 p-1 d-flex flex-column h-100'>
+    <div className='consulta-avanzada-widget loading-host'>
       {props.useMapWidgetIds && props.useMapWidgetIds.length === 1 && (
         <JimuMapViewComponent useMapWidgetId={props.useMapWidgetIds?.[0]} onActiveViewChange={activeViewChangeHandler} />
       )}
       {
         formularioConsulta()
       }
-      {/* {
+      {
         isLoading && widgetModules?.OUR_LOADING()
-      } */}
+      }
       {
         widgetModules?.MODAL(mensajeModal, setMensajeModal)
       }
@@ -865,6 +838,15 @@ const ConsultaAvanzada = (props: AllWidgetProps<any>) => {
 
 export default ConsultaAvanzada
 
+/**
+ * Ejecuta una consulta REST sobre una capa de ArcGIS y retorna su respuesta en JSON.
+ *
+ * @param {string} campo Campos a consultar en outFields.
+ * @param {string} url URL base del endpoint query.
+ * @param {boolean} returnGeometry Indica si la geometría debe ser incluida.
+ * @param {string} where Expresión SQL de filtrado.
+ * @returns {Promise<any | undefined>}
+ */
 const realizarConsulta = async (campo: string, url: string, returnGeometry: boolean, where: string) => {
   const controller = new AbortController()
   const fixUrl = `${url}?where=${where}&geometryType=esriGeometryEnvelope&outFields=${campo}&returnGeometry=${returnGeometry}&f=pjson`
@@ -883,6 +865,13 @@ const realizarConsulta = async (campo: string, url: string, returnGeometry: bool
   }
 }
 
+/**
+ * Obtiene valores únicos y ordenados de un atributo para poblar el selector de valores.
+ *
+ * @param {InterfaceResponseConsulta} response Respuesta de consulta con features.
+ * @param {string} campo Nombre del campo a extraer.
+ * @returns {Array<{value: string | number, label: string | number}>}
+ */
 const getOrdenarDatos = (response: InterfaceResponseConsulta, campo: string) => {
   const { features } = response
   const justDatos = []
@@ -910,19 +899,25 @@ const getOrdenarDatos = (response: InterfaceResponseConsulta, campo: string) => 
   return sortedArrayObjet
 }
 
-/* Implementación de la función alterna _.where
-  @date 2024-05-22
-  @author IGAC - DIP
-  @param (Array) array: Array de búsqueda
-  @param (Object) object: Criterio para ser buscado como un objeto
-  @returns (Array) Elemento del array que se busca
-  @remarks método obtenido de Internet (https://stackoverflow.com/questions/58823625/underscore-where-es6-typescript-alternative)
-*/
+/**
+ * Filtro auxiliar equivalente a _.where para colecciones simples.
+ *
+ * @param {Array<any>} array Colección de elementos a filtrar.
+ * @param {Record<string, any>} object Criterio de coincidencia exacta.
+ * @returns {Array<any>}
+ */
 const where = (array, object) => {
   const keys = Object.keys(object)
   return array.filter(item => keys.every(key => item[key] === object[key]))
 }
 
+/**
+ * Regresa el mapa al extent inicial capturado al abrir el widget.
+ *
+ * @param {JimuMapView} jimuMapView Vista activa del mapa.
+ * @param {any} initialExtent Extensión inicial del mapa.
+ * @returns {void}
+ */
 const goToInitialExtent = (jimuMapView: JimuMapView, initialExtent: any) => {
   if (jimuMapView && initialExtent) {
     jimuMapView.view.goTo(initialExtent, { duration: 1000 })
