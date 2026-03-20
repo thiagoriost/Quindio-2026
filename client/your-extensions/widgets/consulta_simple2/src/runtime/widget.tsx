@@ -228,7 +228,7 @@ const Widget = (props: AllWidgetProps<any>) => {
    * - Muestra indicador de carga si está activo.
    */
   return (
-    <div className='w-100 p-3' style={{ backgroundColor: 'var(--sys-color-primary)', color: 'var(--sys-color-on-primary)' }}>
+    <div className='w-100 p-3' style={{  }}>
       {/* Mapa principal */}
       {props.useMapWidgetIds && props.useMapWidgetIds.length === 1 && (
         <JimuMapViewComponent useMapWidgetId={props.useMapWidgetIds?.[0]} onActiveViewChange={activeViewChangeHandler} />

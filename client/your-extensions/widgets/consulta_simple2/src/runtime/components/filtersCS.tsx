@@ -13,6 +13,7 @@ import { Button, Label, Select, TextInput } from 'jimu-ui'
 
 import { typeMSM } from '../../types/interfaceResponseConsultaSimple'
 import { urls } from '../../../../api/servicios'
+import { SearchActionBar } from '../../../../shared/components/search-action-bar'
 const { useEffect, useState } = React
 
 /**
@@ -598,9 +599,9 @@ const FiltersCS = function ({
    * @since 2024-05-28
    * @updated 2024-06-25 - Fix para limpiar campo Atributo
    */
-  function limpiarCons (evt) {
+  function limpiarCons () {
     //State del control Tema
-    if (utilsModule?.logger()) console.log('Handle Evt en limpiar =>', evt.target.value)
+    
     setselTema(undefined) // Mostrar placeholder en Select Tema
     setTemas(temas)
     setSubtemas([])
@@ -627,10 +628,10 @@ const FiltersCS = function ({
    * @since 2024-05-29
    * @updated 2024-06-25 - Validaciones de campos requeridos
    */
-  function consultaSimple (evt: { preventDefault: () => void }) {
+  function consultaSimple (/* evt: { preventDefault: () => void } */) {
     //if (utilsModule?.logger()) console.log("En pruebas...");
     setIsLoading(true)
-    evt.preventDefault()
+    // evt.preventDefault()
     setRenderMap(false)
     let cond = ''
 
@@ -720,7 +721,7 @@ const FiltersCS = function ({
 
   useEffect(() => {
     if (props.state === 'CLOSED') {
-      limpiarCons({ target: { value: '' } })
+      limpiarCons()
     }
   }, [props.state])
 
@@ -829,7 +830,7 @@ const FiltersCS = function ({
                   type="search" className="mb-4" required readOnly={txtValorState}
                   value={txtValor} onChange={handleChangevalorTxt}></TextInput>
                 </div>
-                <div className="btns">
+                {/* <div className="btns">
                   <Button
                     htmlType="submit"
                     size="default"
@@ -845,7 +846,12 @@ const FiltersCS = function ({
                   >
                     Limpiar
                   </Button>
-                </div>
+                </div> */}
+                <SearchActionBar
+                    onSearch={consultaSimple}
+                    onClear={limpiarCons}
+                    helpText="Ingrese el valor a consultar y presione el botón de búsqueda para ejecutar la consulta simple con los filtros seleccionados."
+                />
               </>
             }
 

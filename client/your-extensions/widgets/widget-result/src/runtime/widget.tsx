@@ -732,7 +732,7 @@ export const abrirTablaResultados = (
   features: any[],
   fields: any[],
   props: any,
-  spatialReference?: __esri.SpatialReference,
+  spatialReference?: any,
   widgetResultId?: string,
 ) => {
   getAppStore().dispatch(
@@ -756,7 +756,7 @@ export const abrirTablaResultados = (
  *
  * @param widgetResultId Id del widget-result en el layout.
  */
-export const limpiarYCerrarWidgetResultados = (widgetResultId) => {
+export const limpiarYCerrarWidgetResultados = (widgetResultId: string) => {
   // Limpia la data enviada al widget de resultados
   getAppStore().dispatch(
     appActions.widgetStatePropChange(widgetResultId, "results", null),

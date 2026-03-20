@@ -11,6 +11,8 @@ import FeatureLayer from '@arcgis/core/layers/FeatureLayer'
 import { type InterfaceColumns, type Row, type interfaceMensajeModal, typeMSM } from '../types/interfaces'
 import { loadModules } from 'esri-loader'
 import { WIDGET_IDS } from '../../../shared/constants/widget-ids'
+import { SearchActionBar } from '../../../shared/components/search-action-bar'
+import { abrirTablaResultados, limpiarYCerrarWidgetResultados } from '../../../widget-result/src/runtime/widget'
 
 const { useEffect, useState } = React
 // import ModalComponent from './components/ModalComponent'
@@ -436,8 +438,8 @@ const ConsultaAvanzada = (props: AllWidgetProps<any>) => {
    * @since 2024-05-28
    * @updated 2026-03-09 - Adaptación desde filtersCS para ConsultaAvanzada
    */
-  const limpiarCons = (evt) => {
-    if (utilsModule?.logger()) console.log('Handle Evt en limpiar =>', evt.target.value)
+  const limpiarCons = () => {
+    if (utilsModule?.logger()) console.log('Handle Evt en limpiar =>')
     setselTema(undefined)
     setTemas(temas)
     setSubtemas([])
@@ -684,7 +686,7 @@ const ConsultaAvanzada = (props: AllWidgetProps<any>) => {
   const handleChangeTextArea = ({ target }) => { setCondicionBusqueda(target.value) }
   const formularioConsulta = () => {
     return (
-      <div className='overflow-auto'>
+      <div className='overflow-auto' style={{ flex: 1, minHeight: 0 }}>
         {
           widgetModules?.INPUTSELECT(temas, getSubtemas, selTema, 'Tema')
         }
@@ -712,13 +714,13 @@ const ConsultaAvanzada = (props: AllWidgetProps<any>) => {
           campo &&
           <div className='align-items-center mt-1' style={{ paddingBottom: '1px', paddingTop: '1px' }}>
             {widgetModules?.INPUT_TEXTAREA(condicionBusqueda, handleChangeTextArea, 'Condición de búsqueda')}
-            <div className='w-100 text-center' style={{ backgroundColor: 'rgb(0 0 0 / 70%)', padding: '1px' }}>
+            <div className='w-100 text-center' style={{ padding: '1px' }}>
               <Button
                 // size='sm'
                 type='primary'
                 onClick={() => { setCondicionBusqueda('') } }
               >
-                Borrar condición de busqueda
+                Borrar condición de búsqueda
               </Button>
             </div>
           </div>
@@ -726,7 +728,7 @@ const ConsultaAvanzada = (props: AllWidgetProps<any>) => {
         }
         {
           campo &&
-          <div className='condition-buttons text-center pt-1' style={{ backgroundColor: 'rgb(0 0 0 / 70%)', padding: '5px' }}>
+          <div className='condition-buttons text-center pt-1' style={{ padding: '5px' }}>
             <Button type='primary' size='sm' className='mr-1 mb-1 color-deep-purple-100' onClick={() => { asignarSimbolCondicionBusqueda('=') }}>=</Button>
             <Button type='primary' size='sm' className='mr-1 mb-1 color-deep-purple-100' onClick={() => { asignarSimbolCondicionBusqueda('BETWEEN') }}>{'<>'}</Button>
             <Button type='primary' size='sm' className='mr-1 mb-1 color-deep-purple-100' onClick={() => { asignarSimbolCondicionBusqueda('>') }}>{'>'}</Button>
@@ -744,24 +746,15 @@ const ConsultaAvanzada = (props: AllWidgetProps<any>) => {
         }
         {
           (condicionBusqueda && valores.length > 0) &&
-          <div className='fila' style={{ backgroundColor: 'rgb(0 0 0 / 70%)', height: '40px', padding: '5px', marginTop: '5px' }}>
-            <Button
-              htmlType='button'
-              size='sm'
-              type='primary'
-              onClick={_RealizarConsulta}
-            >
-              Consultar
-            </Button>
-            <Button
-              htmlType='button'
-              onClick={limpiarCons}
-              size='sm'
-              type='primary'
-            >
-              Limpiar
-            </Button>
-          </div>
+          <>
+            <SearchActionBar
+                onSearch={_RealizarConsulta}
+                onClear={limpiarCons}
+                searchLabel='Consultar'
+                clearLabel='Limpiar'
+                helpText="Ingrese la condición de búsqueda y haga clic en Consultar para ejecutar la consulta. Use el botón Limpiar para reiniciar el formulario."
+            />
+          </>
         }
       </div>
     )
@@ -796,60 +789,13 @@ const ConsultaAvanzada = (props: AllWidgetProps<any>) => {
 
     const fields = responseConsulta.fields
 
-    abrirTablaResultados(features, fields, spatialReference as unknown as __esri.SpatialReference)
+    abrirTablaResultados(features, fields, props, spatialReference as unknown as __esri.SpatialReference, widgetResultId)
 
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [responseConsulta])
 
-  const abrirTablaResultados = (features: any[], fields: any[], spatialReference?: __esri.SpatialReference) => {
-    
-    getAppStore().dispatch(appActions.openWidget(widgetResultId))
-
-    /**
-     * Actualiza el estado del widget de resultados con los datos de la consulta avanzada.
-     * Envía los resultados (features, campos y referencia espacial) al widget de resultados
-     * para su visualización en la tabla.
-     *
-     * @function
-     * @param {string} widgetResultId - ID del widget de resultados en el layout
-     * @param {Array} features - Arreglo de entidades geoespaciales resultantes de la consulta
-     * @param {Array} fields - Definición de los campos/columnas a mostrar en la tabla
-     * @param {object} spatialReference - Referencia espacial de los datos
-     * @returns {void}
-     * @author IGAC - DIP
-     * @since 2024-05-28
-     * @updated 2026-03-09 - Documentación mejorada y formato JSDoc
-     */
-    getAppStore().dispatch(
-      appActions.widgetStatePropChange(
-        widgetResultId, // ID del widget de resultados
-        'results',
-        {
-          sourceWidgetId: props.id, // ID del widget origen
-          title: 'Resultados de prueba', // Título de la tabla de resultados
-          features: features, // Datos geoespaciales
-          fields: fields, // Definición de columnas
-          spatialReference: spatialReference // Referencia espacial
-        }
-      )
-    )
-  }
-
-  // Limpia la data del widget de resultados y lo cierra
-    const limpiarYCerrarWidgetResultados = () => {
-      // Limpia la data enviada al widget de resultados
-      getAppStore().dispatch(
-        appActions.widgetStatePropChange(
-          widgetResultId,
-          'results',
-          null
-        )
-      )
-      // Cierra el widget de resultados
-      getAppStore().dispatch(appActions.closeWidget(widgetResultId))
-    }
-
+ 
   // Detecta el cierre del widget y limpia el widget de resultados
   // Requiere: widgetState y limpiarYCerrarWidgetResultados definidos
   // Usa el estado global de Experience Builder para saber si el widget está cerrado
@@ -857,7 +803,7 @@ const ConsultaAvanzada = (props: AllWidgetProps<any>) => {
   React.useEffect(() => {   
     //console.log({props})
     if (props.state === 'CLOSED') {
-    limpiarYCerrarWidgetResultados()
+    limpiarYCerrarWidgetResultados(widgetResultId)
     }
   }, [props])
 
@@ -883,7 +829,7 @@ const ConsultaAvanzada = (props: AllWidgetProps<any>) => {
 
   useEffect(() => {
     if (props.state === 'CLOSED') {
-      limpiarCons({ target: { value: '' } })
+      limpiarCons()
     }
   }, [props.state])
 
@@ -900,23 +846,12 @@ const ConsultaAvanzada = (props: AllWidgetProps<any>) => {
   }, [])
 
   return (
-    <div className='w-100 p-1 bg-primary'>
+    <div className='w-100 p-1 d-flex flex-column h-100'>
       {props.useMapWidgetIds && props.useMapWidgetIds.length === 1 && (
         <JimuMapViewComponent useMapWidgetId={props.useMapWidgetIds?.[0]} onActiveViewChange={activeViewChangeHandler} />
       )}
       {
-        /* mostrarResultadoFeaturesConsulta
-          ? widgetModules.TABLARESULTADOS({
-            rows,
-            columns,
-            jimuMapView,
-            lastGeometriDeployed,
-            LayerSelectedDeployed,
-            graphicsLayerDeployed,
-            setLastGeometriDeployed,
-            setMostrarResultadoFeaturesConsulta
-          })
-          :  */formularioConsulta()
+        formularioConsulta()
       }
       {/* {
         isLoading && widgetModules?.OUR_LOADING()
