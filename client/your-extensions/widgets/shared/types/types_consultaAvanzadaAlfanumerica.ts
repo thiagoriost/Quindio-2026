@@ -2,6 +2,7 @@ export interface LayerInfo {
   id: number
   name: string
   nameServicio?: string
+  url?: string
 }
 
 export interface MapServiceResponse {

@@ -27,6 +27,10 @@ import OurLoading from '../../../commonWidgets/our_loading/OurLoading'
 import '../styles/styles.css'
 
 
+interface interfaceConsultaPor { id: number, name: string, url: string }
+interface interfaceCategories { id: number, name: string }
+interface interfaceMunicipio { id: string, name: string }
+
 
 
 const Widget = (props: AllWidgetProps<any>) => {
@@ -41,6 +45,12 @@ const Widget = (props: AllWidgetProps<any>) => {
   const [graphicsLayer, setGraphicsLayer] = React.useState<GraphicsLayer | null>(null)
   const [error, setError] = React.useState("")
   const widgetResultId = WIDGET_IDS.RESULT // ID del widget de resultados en el layout
+
+  const [consultaPorSeleccionada, setConsultaPorSeleccionada] = React.useState< interfaceConsultaPor | null>(null)
+  const [categories, setCategories] = React.useState<interfaceCategories[] | null>(null)
+  const [selectedCategory, setSelectedCategory] = React.useState<number | null>(null)
+  const [municipios, setMunicipios] = React.useState<interfaceMunicipio[] | null>(null)
+  const [selectedMunicipio, setSelectedMunicipio] = React.useState<string | null>(null)
 
   const consultaPor = [{
     id: 0,
@@ -66,25 +76,27 @@ const Widget = (props: AllWidgetProps<any>) => {
     spatialReference?: __esri.SpatialReference;
   }
 
-  const handleConsultaPor = (e) => {
+  const handleConsultaPor = async(e) => {
     if (e.target.value === "") return
     const id = Number(e.target.value)
     const selected = consultaPor.find(c => c.id === id)
     console.log({selected})
-    realizarQuery(selected.url, selected.name)
+    setConsultaPorSeleccionada(selected)
+    setLoading(true)
+    const response = await realizarQuery(selected.url, selected.name)
+    //  poblar el campo categoria con la información presente en response.layers 
+    if (response && response.layers) {
+      const categories = response.layers.map((layer: LayerInfo) => ({id: layer.id, name: layer.name}))
+      setCategories(categories.length > 0 ? categories : null)
+    }
   }
 
   const realizarQuery = async (url: string, name: string) => {
-    setLoading(true)
     setError("")
-    try {   
-      var urlCapa = url + "/0";
-      const where = "1=1";
-      var campos = ["NOMBREESTABLECIMIENTO", "NIT", "LABORATORIOS", "SALONESCONFERENCIAS", "NUMEROCOMPUTADORES", "ACCESOINTERNET", "WEBSITE", "PROGRAMASESPECIALES",
-          "NUMEROESTUDIANTES", "NUMERODOCENTES", "ZONASRECREATIVAS", "ICFECS", "PRIMERAPELLIDO", "SEGUNDOAPELLIDO", "NOMBRE", "OBJECTID", "CODIGOESTABLECIMIENTO"
-      ];
-      // consultaEducacion.contadorQueryTask = 0;
-      // consultarQueryTask(campos, urlCapa, true, "1=1");
+    try {
+      const response = await loadLayers(url)
+      console.log({ response, url, name })
+      return response
     }
     catch (err) {
       console.error("Error realizando consulta:", err)
@@ -188,13 +200,48 @@ const Widget = (props: AllWidgetProps<any>) => {
     handleClear()
     const id = Number(e.target.value)
 
-    
+    setSelectedCategory(null)
 
     const validFields = await loadFields(id)
     
   }
 
-  
+  const handleCategoriesChange = async (e) => {
+    const id = Number(e.target.value)
+    const selected = categories?.find(c => c.id === id)
+    console.log({ selected })
+    setSelectedCategory(id)
+    setMunicipios(null)
+    setSelectedMunicipio(null)
+    // obtener los municipios asociados a la categoria seleccionada y poblar el select de municipios
+    const { url } = consultaPorSeleccionada
+    const municipiosUrl = `${url}/${id}`
+    console.log({ municipiosUrl })
+    setLoading(true)
+    try {
+      const features = await consultarCapaCAA({ returnGeometry: true, campos: ["IDMUNICIPIO", "MUNICIPIO"], url: municipiosUrl, where: "1=1" })
+      console.log({ features })
+      // eliminar duplicados por IDMUNICIPIO y ordenar alfabeticamente por MUNICIPIO
+      const uniqueMap = new Map<string, string>()
+      features.forEach(f => {
+        const idMun = f.attributes.IDMUNICIPIO as string
+        const nombre = f.attributes.MUNICIPIO as string
+        if (!uniqueMap.has(idMun)) {
+          uniqueMap.set(idMun, nombre)
+        }
+      })
+      const municipiosList: interfaceMunicipio[] = Array.from(uniqueMap, ([id, name]) => ({ id, name }))
+        .sort((a, b) => a.name.localeCompare(b.name))
+      setMunicipios(municipiosList.length > 0 ? municipiosList : null)
+    } catch (err) {
+      console.error("Error obteniendo municipios:", err)
+      setError("Ocurrió un error al obtener los municipios.")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+
   const obtenerValores = async () => {
     setLoading(true)
     try {
@@ -306,19 +353,17 @@ const Widget = (props: AllWidgetProps<any>) => {
             <Label>Categoria</Label>
 
             <Select
-                // value={selectedLayer ?? ""}
+                value={selectedCategory ?? ""}
                 disabled={loading}
-                onChange={(e) => {
-                
-              }}
+                onChange={handleCategoriesChange}
             >
                 <Option value="">
                     {loading ? 'Cargando ...' : 'Seleccione...'}
                 </Option>
 
-                {[].map(field => (
-                    <Option key={field} value={field}>
-                        {field}
+                {categories?.map(field => (
+                    <Option key={field.id} value={field.id}>
+                        {field.name}
                     </Option>
                 ))}
             </Select>
@@ -327,17 +372,17 @@ const Widget = (props: AllWidgetProps<any>) => {
 
             <Label>Municipio</Label>
             <Select
-                
+                value={selectedMunicipio ?? ""}
                 disabled={loading}
-                onChange={handleLayerChange}
+                onChange={(e) => setSelectedMunicipio(e.target.value)}
             >
                 <Option value="">
                     {loading ? 'Cargando ...' : 'Seleccione...'}
                 </Option>
 
-                {[].map(layer => (
-                    <Option key={layer.id} value={layer.id}>
-                        {layer.name}
+                {municipios?.map(mun => (
+                    <Option key={mun.id} value={mun.id}>
+                        {mun.name}
                     </Option>
                 ))}
             </Select>
