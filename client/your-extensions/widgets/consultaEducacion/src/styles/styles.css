@@ -1,0 +1,45 @@
+@import '../../../utils/styles/presetsQuindio.css';
+
+.consulta-widget {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: var(--spacing-sm);
+  background-color: var(--bg-color-white);
+}
+
+.select {
+
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+.consultaE-scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: var(--spacing-xs);
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+.consultaE-scroll::-webkit-scrollbar {
+    width: 8px;
+}
+
+.consultaE-scroll::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+    border-radius: var(--border-radius-lg);
+}
+
+.consultaE-scroll::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+    border-radius: var(--border-radius-lg);
+}
+
+.consultaE-scroll::-webkit-scrollbar-thumb:hover {
+    background: var(--scrollbar-thumb-hover);
+}
