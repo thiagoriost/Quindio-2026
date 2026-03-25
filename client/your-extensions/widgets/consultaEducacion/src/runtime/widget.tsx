@@ -341,7 +341,8 @@ const Widget = (props: AllWidgetProps<any>) => {
     ]
     const cloneFeatures = features.map(f => {
       const attributes = { ...f.attributes, IMAGEN: imagenUrl }
-      return { ...f, attributes }
+      const geometry = f.geometry ? f.geometry.clone() : null
+      return { ...f, attributes, geometry }
     })
     setCloneFeatures(cloneFeatures)
     console.log({cloneFeatures})
