@@ -29,7 +29,8 @@ import '../styles/styles.css'
 
 interface interfaceConsultaPor { id: number, name: string, url: string }
 interface interfaceCategories { id: number, name: string }
-interface interfaceMunicipio { id: string, name: string }
+interface interfaceMunicipio { IDMUNICIPIO: string, MUNICIPIO: string }
+interface interfaceEstablecimiento { NOMBREESTABLECIMIENTO: string, DIRECCION: string, JORNADA: string, IMAGEN: string, geometry: __esri.Geometry }
 
 
 
@@ -50,8 +51,12 @@ const Widget = (props: AllWidgetProps<any>) => {
   const [categories, setCategories] = React.useState<interfaceCategories[] | null>(null)
   const [selectedCategory, setSelectedCategory] = React.useState<number | null>(null)
   const [municipios, setMunicipios] = React.useState<interfaceMunicipio[] | null>(null)
-  const [selectedMunicipio, setSelectedMunicipio] = React.useState<string | null>(null)
-
+  const [selectedMunicipio, setSelectedMunicipio] = React.useState<interfaceMunicipio | null>(null)
+  const [urlLayerSelected, setUrlLayerSelected] = React.useState<string | null>(null)
+  const [selectedEstablecimiento, setSelectedEstablecimiento] = React.useState<interfaceEstablecimiento | null>(null)
+  const [establecimientos, setEstablecimientos] = React.useState<interfaceEstablecimiento[] | null>(null)
+  const [verAtributos, setVerAtributos] = React.useState(false)
+  const [cloneFeatures, setCloneFeatures] = React.useState<__esri.Graphic[]>([])
   const consultaPor = [{
     id: 0,
     name: "Consulta educaci\u00F3n",
@@ -207,6 +212,7 @@ const Widget = (props: AllWidgetProps<any>) => {
   }
 
   const handleCategoriesChange = async (e) => {
+    if (!categories) return
     const id = Number(e.target.value)
     const selected = categories?.find(c => c.id === id)
     console.log({ selected })
@@ -216,10 +222,11 @@ const Widget = (props: AllWidgetProps<any>) => {
     // obtener los municipios asociados a la categoria seleccionada y poblar el select de municipios
     const { url } = consultaPorSeleccionada
     const municipiosUrl = `${url}/${id}`
+    setUrlLayerSelected(municipiosUrl) // almacenar la url de la capa seleccionada para usarla luego en la consulta de los municipios    
     console.log({ municipiosUrl })
     setLoading(true)
     try {
-      const features = await consultarCapaCAA({ returnGeometry: true, campos: ["IDMUNICIPIO", "MUNICIPIO"], url: municipiosUrl, where: "1=1" })
+      const features = await consultarCapaCAA({ returnGeometry: false, campos: ["IDMUNICIPIO", "MUNICIPIO"], url: municipiosUrl, where: "1=1" })
       console.log({ features })
       // eliminar duplicados por IDMUNICIPIO y ordenar alfabeticamente por MUNICIPIO
       const uniqueMap = new Map<string, string>()
@@ -230,8 +237,8 @@ const Widget = (props: AllWidgetProps<any>) => {
           uniqueMap.set(idMun, nombre)
         }
       })
-      const municipiosList: interfaceMunicipio[] = Array.from(uniqueMap, ([id, name]) => ({ id, name }))
-        .sort((a, b) => a.name.localeCompare(b.name))
+      const municipiosList: interfaceMunicipio[] = Array.from(uniqueMap, ([IDMUNICIPIO, MUNICIPIO]) => ({ IDMUNICIPIO, MUNICIPIO }))
+        .sort((a, b) => a.MUNICIPIO.localeCompare(b.MUNICIPIO))
       setMunicipios(municipiosList.length > 0 ? municipiosList : null)
     } catch (err) {
       console.error("Error obteniendo municipios:", err)
@@ -241,41 +248,108 @@ const Widget = (props: AllWidgetProps<any>) => {
     }
   }
 
-
-  const obtenerValores = async () => {
+  const handleMunicipioChange = async(e) => {
+    if (!municipios) return
+    const id = e.target.value
+    const selected = municipios?.find(m => m.IDMUNICIPIO === id)
+    
+    console.log({ selected })
+    setSelectedMunicipio(selected)
+    setEstablecimientos(null)
+    setSelectedEstablecimiento(null)
     setLoading(true)
     try {
-      var where = "1=1", returnGeometry = true;
-      // const features = await consultarCapaCAA({returnGeometry, campos: fields, url: urlLayer, where})
-  
-      // const uniqueValues = Array.from(new Set(features.map(f => f.attributes[fieldSelected])))
-  
-      // console.log({features,uniqueValues})
-      // mostrarConsultaCAA({ features })
+      const features = await consultarCapaCAA({ returnGeometry: true, campos: ["NOMBREESTABLECIMIENTO","DIRECCION","JORNADA","IMAGEN"], url: urlLayerSelected, where: `IDMUNICIPIO='${id}'` })
+      console.log({ features })
+      const lista: interfaceEstablecimiento[] = features.map(f => ({
+        NOMBREESTABLECIMIENTO: f.attributes.NOMBREESTABLECIMIENTO as string,
+        DIRECCION: f.attributes.DIRECCION as string,
+        JORNADA: f.attributes.JORNADA as string,
+        IMAGEN: f.attributes.IMAGEN as string,
+        geometry: f.geometry.clone() as __esri.Geometry
+      })).sort((a, b) => a.NOMBREESTABLECIMIENTO.localeCompare(b.NOMBREESTABLECIMIENTO))
+      setEstablecimientos(lista.length > 0 ? lista : null)
     } catch (err) {
-      console.error("Error obteniendo valores:", err)
-      setError("Ocurrio un error al obtener los valores del campo seleccionado.")
+      console.error("Error obteniendo datos del municipio seleccionado:", err)
+      setError("Ocurrió un error al obtener los datos del municipio seleccionado.")
     } finally {
       setLoading(false)
     }
   }
 
-  
-
-  function mostrarConsultaCAA(featureSet: FeatureSet) {
-
-    const { features } = featureSet;
-
-    if (!features?.length) {
-      console.log(
-        "<B> Info </B>",
-        "El campo seleccionado no contiene datos"
-      );
-      setLoading(false);
-      return;
-    }
+  const handleEstablecimientoChange = (e) => {
+    if (!establecimientos) return
+    const nombre = e.target.value
+    const selected = establecimientos?.find(est => est.NOMBREESTABLECIMIENTO === nombre)
+    console.log({selected})
+    setSelectedEstablecimiento(selected || null)
+    setVerAtributos(false)
 
   }
+
+  const buscar = async () => {
+    if (!selectedEstablecimiento) {
+      setError("Por favor seleccione un establecimiento para realizar la búsqueda.")
+      return
+    }
+    const urlCapa = urls.SERVICIO_EDUCACION_ALFANUMERICO + "/0";
+    const where = "1=1";
+    const campos = ["NOMBREESTABLECIMIENTO", "NIT", "LABORATORIOS", "SALONESCONFERENCIAS", "NUMEROCOMPUTADORES", "ACCESOINTERNET", "WEBSITE", "PROGRAMASESPECIALES", "NUMEROESTUDIANTES", "NUMERODOCENTES", "ZONASRECREATIVAS", "ICFECS", "PRIMERAPELLIDO", "SEGUNDOAPELLIDO", "NOMBRE", "OBJECTID", "CODIGOESTABLECIMIENTO"
+    ];
+    const features = await consultarCapaCAA({ returnGeometry: true, campos, url: urlCapa, where: `NOMBREESTABLECIMIENTO='${selectedEstablecimiento.NOMBREESTABLECIMIENTO}'` })
+    console.log({ features })
+    if (selectedEstablecimiento && selectedEstablecimiento.geometry) {
+      // centrar el mapa en el establecimiento seleccionado y mostrar un popup con su información
+      varJimuMapView.view.goTo({ target: selectedEstablecimiento.geometry, zoom: 15 })
+      // dibujar un punto en el mapa en la ubicación del establecimiento seleccionado
+      const pointGraphic = {
+        geometry: selectedEstablecimiento.geometry,
+        symbol: {
+          type: "simple-marker",
+          style: "circle",
+          color: "red",
+          size: "12px"
+        }
+      };
+      varJimuMapView.view.graphics.add(pointGraphic);
+    }
+    const URL_ARCHIVOS_QUINDIO = urls.URL_ARCHIVOS_QUINDIO
+    // construir la url de la imagen del establecimiento utilizando la propiedad IMAGEN y la constante URL_ARCHIVOS_QUINDIO
+    const imagenUrl = selectedEstablecimiento.IMAGEN !== " " ? `${URL_ARCHIVOS_QUINDIO}${selectedEstablecimiento.IMAGEN}` : null
+
+    // ajusta los campos para que cumplan la estructura esperada por el vidget resultados
+    const camposResultados = [
+      { name: "NOMBREESTABLECIMIENTO", alias: "Nombre establecimiento" },
+      { name: "CODIGOESTABLECIMIENTO", alias: "Código" },
+      { name: "NIT", alias: "NIT" },
+      { name: "DIRECCION", alias: "Dirección" },
+      { name: "JORNADA", alias: "Jornada" },
+      { name: "LABORATORIOS", alias: "Laboratorios" },
+      { name: "SALONESCONFERENCIAS", alias: "Salones conferencias" },
+      { name: "NUMEROCOMPUTADORES", alias: "Computadores" },
+      { name: "ACCESOINTERNET", alias: "Acceso internet" },
+      { name: "WEBSITE", alias: "Sitio web" },
+      { name: "PROGRAMASESPECIALES", alias: "Programas especiales" },
+      { name: "NUMEROESTUDIANTES", alias: "Número estudiantes" },
+      { name: "NUMERODOCENTES", alias: "Número docentes" },
+      { name: "ZONASRECREATIVAS", alias: "Zonas recreativas" },
+      { name: "ICFECS", alias: "ICFES" },
+      { name: "NOMBRE", alias: "Nombre contacto" },
+      { name: "PRIMERAPELLIDO", alias: "Primer apellido" },
+      { name: "SEGUNDOAPELLIDO", alias: "Segundo apellido" },
+      // { name: "IMAGEN", alias: "Imagen" },
+    ]
+    const cloneFeatures = features.map(f => {
+      const attributes = { ...f.attributes, IMAGEN: imagenUrl }
+      return { ...f, attributes }
+    })
+    setCloneFeatures(cloneFeatures)
+    console.log({cloneFeatures})
+    // abrir el widget de resultados y mostrar la información del establecimiento seleccionado
+    abrirTablaResultados(cloneFeatures, camposResultados, props, widgetResultId, varJimuMapView.view.spatialReference)
+    // cambiar a la pestaña de vista atributos en donde se debe mostrar la información del establecimiento seleccionado
+    setVerAtributos(true)
+  }  
 
   const consultarCapaCAA = async ({    
     url,
@@ -328,95 +402,135 @@ const Widget = (props: AllWidgetProps<any>) => {
       varJimuMapView && (
           
           <div className="consulta-widget consultaAA-scroll loading-host">            
+            {verAtributos ? (
+              <div className="detalle-establecimiento">
+                {cloneFeatures?.[0]?.attributes?.IMAGEN && cloneFeatures[0].attributes.IMAGEN !== " " && (
+                  <div className="establecimiento-img-container">
+                    <img src={cloneFeatures[0].attributes.IMAGEN} alt="Imagen del establecimiento" />
+                  </div>
+                )}
 
-            {/* Consultar por */}
+                <h3 className="detalle-titulo">{selectedEstablecimiento?.NOMBREESTABLECIMIENTO}</h3>
 
-            <Label>Consulta por</Label>
-            <Select
-                
-                disabled={loading}
-                onChange={handleConsultaPor}
-            >
-                <Option value="">
-                    {loading ? 'Cargando ...' : 'Seleccione...'}
-                </Option>
+                <div className="detalle-campos">
+                  {(cloneFeatures?.[0]?.attributes?.NOMBRE || cloneFeatures?.[0]?.attributes?.PRIMERAPELLIDO || cloneFeatures?.[0]?.attributes?.SEGUNDOAPELLIDO) && (
+                    <div className="detalle-campo">
+                      <span className="detalle-label">Contacto</span>
+                      <span className="detalle-value">{`${cloneFeatures?.[0]?.attributes?.NOMBRE || ''} ${cloneFeatures?.[0]?.attributes?.PRIMERAPELLIDO || ''} ${cloneFeatures?.[0]?.attributes?.SEGUNDOAPELLIDO || ''}`.trim()}</span>
+                    </div>
+                  )}
 
-                {consultaPor.map(layer => (
-                    <Option key={layer.id} value={layer.id}>
-                        {layer.name}
-                    </Option>
-                ))}
-            </Select>
+                  {cloneFeatures?.[0]?.attributes?.DIRECCION && (
+                    <div className="detalle-campo">
+                      <span className="detalle-label">Dirección</span>
+                      <span className="detalle-value">{selectedEstablecimiento?.DIRECCION}</span>
+                    </div>
+                  )}
 
-            {/* Categoria */}
+                  {selectedEstablecimiento?.JORNADA && (
+                    <div className="detalle-campo">
+                      <span className="detalle-label">Jornada</span>
+                      <span className="detalle-value">{selectedEstablecimiento.JORNADA}</span>
+                    </div>
+                  )}
+                </div>
 
-            <Label>Categoria</Label>
+                <button className="detalle-btn-volver" onClick={() => setVerAtributos(false)}>Parámetros</button>
+              </div>
+            ) 
+            : <div>
+              {/* Consultar por */}
 
-            <Select
-                value={selectedCategory ?? ""}
-                disabled={loading}
-                onChange={handleCategoriesChange}
-            >
-                <Option value="">
-                    {loading ? 'Cargando ...' : 'Seleccione...'}
-                </Option>
+              <Label>Consulta por</Label>
+              <Select
+                  
+                  disabled={loading}
+                  onChange={handleConsultaPor}
+              >
+                  <Option value="">
+                      {loading ? 'Cargando ...' : 'Seleccione...'}
+                  </Option>
 
-                {categories?.map(field => (
-                    <Option key={field.id} value={field.id}>
-                        {field.name}
-                    </Option>
-                ))}
-            </Select>
+                  {consultaPor.map(layer => (
+                      <Option key={layer.id} value={layer.id}>
+                          {layer.name}
+                      </Option>
+                  ))}
+              </Select>
 
-            {/* Municipio */}
+              {/* Categoria */}
 
-            <Label>Municipio</Label>
-            <Select
-                value={selectedMunicipio ?? ""}
-                disabled={loading}
-                onChange={(e) => setSelectedMunicipio(e.target.value)}
-            >
-                <Option value="">
-                    {loading ? 'Cargando ...' : 'Seleccione...'}
-                </Option>
+              <Label>Categoria</Label>
 
-                {municipios?.map(mun => (
-                    <Option key={mun.id} value={mun.id}>
-                        {mun.name}
-                    </Option>
-                ))}
-            </Select>
+              <Select
+                  value={selectedCategory ?? ""}
+                  disabled={loading}
+                  onChange={handleCategoriesChange}
+              >
+                  <Option value="">
+                      {loading ? 'Cargando ...' : 'Seleccione...'}
+                  </Option>
 
-            {/* Atributo */}
+                  {categories?.map(field => (
+                      <Option key={field.id} value={field.id}>
+                          {field.name}
+                      </Option>
+                  ))}
+              </Select>
 
-            <Label>Atributo</Label>
-            <Select
-                
-                disabled={loading}
-                onChange={handleLayerChange}
-            >
-                <Option value="">
-                    {loading ? 'Cargando ...' : 'Seleccione...'}
-                </Option>
+              {/* Municipio */}
 
-                {[].map(layer => (
-                    <Option key={layer.id} value={layer.id}>
-                        {layer.name}
-                    </Option>
-                ))}
-            </Select>
+              <Label>Municipio</Label>
+              <Select
+                  value={selectedMunicipio?.IDMUNICIPIO ?? ""}
+                  disabled={loading}
+                  onChange={handleMunicipioChange}
+              >
+                  <Option value="">
+                      {loading ? 'Cargando ...' : 'Seleccione...'}
+                  </Option>
+
+                  {municipios?.map(mun => (
+                      <Option key={mun.IDMUNICIPIO} value={mun.IDMUNICIPIO}>
+                          {mun.MUNICIPIO}
+                      </Option>
+                  ))}
+              </Select>
+
+              {/* Atributo */}
+
+              <Label>Atributo</Label>
+              <Select
+                  value={selectedEstablecimiento?.NOMBREESTABLECIMIENTO ?? ""}
+                  disabled={loading}
+                  onChange={handleEstablecimientoChange}
+              >
+                  <Option value="">
+                      {loading ? 'Cargando ...' : 'Seleccione...'}
+                  </Option>
+
+                  {establecimientos?.map((est, idx) => (
+                      <Option key={idx} value={est.NOMBREESTABLECIMIENTO}>
+                          {est.NOMBREESTABLECIMIENTO}
+                      </Option>
+                  ))}
+              </Select>
+              
+
+              {/* BOTONES */}
+              <SearchActionBar
+                  onSearch={buscar}
+                  onClear={handleClear}
+                  loading={loading}
+                  // disableSearch={!isValid || disabled}
+                  helpText="Ingrese una condición de búsqueda válida para habilitar el botón de busqueda. Utilice los campos, valores y operadores para construir su consulta. Por ejemplo: CAMPO1 = 'Valor' AND CAMPO2 > 100."
+                  searchLabel="Buscar"
+                  error={error}
+              />
+            </div>
+            }
             
 
-            {/* BOTONES */}
-            <SearchActionBar
-                onSearch={()=>{}}
-                onClear={handleClear}
-                loading={loading}
-                // disableSearch={!isValid || disabled}
-                helpText="Ingrese una condición de búsqueda válida para habilitar el botón de busqueda. Utilice los campos, valores y operadores para construir su consulta. Por ejemplo: CAMPO1 = 'Valor' AND CAMPO2 > 100."
-                searchLabel="Buscar"
-                error={error}
-            />
             {loading && <OurLoading />}
 
           </div>

@@ -732,8 +732,8 @@ export const abrirTablaResultados = (
   features: any[],
   fields: any[],
   props: any,
+  widgetResultId: string,
   spatialReference?: any,
-  widgetResultId?: string,
 ) => {
   getAppStore().dispatch(
     appActions.widgetStatePropChange(
