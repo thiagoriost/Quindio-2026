@@ -3,6 +3,9 @@ import { loadModules } from 'esri-loader'
 import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer"
 import Graphic from '@arcgis/core/Graphic'
 import { Point, Polygon, Polyline } from "@arcgis/core/geometry"
+import type { JimuMapView } from 'jimu-arcgis'
+import Query from "@arcgis/core/rest/support/Query"
+import { executeQueryJSON } from "@arcgis/core/rest/query"
 // import { appActions, getAppStore } from 'jimu-core'
 
 
@@ -297,3 +300,50 @@ export const goToInitialExtent = (varJimuMapView, initialExtent, initialZoom) =>
 
   }
 
+export interface QueryOptions {
+    url?: string;
+    where?: string;
+    campos?: string[];
+    returnGeometry?: boolean;
+    spatialReference?: __esri.SpatialReference;
+    varJimuMapView?: JimuMapView;
+  }
+
+export const ejecutarConsulta = async ({
+    url,
+    where,
+    campos,
+    returnGeometry = true,
+    spatialReference
+  }: QueryOptions): Promise<__esri.Graphic[]> => {
+
+    if (!url || !where) {
+      throw new Error("URL o condición WHERE inválida")
+    }
+
+    try {
+
+      const query = new Query({
+        where,
+        outFields: campos?.length ? campos : ["*"],
+        returnGeometry,
+        outSpatialReference: spatialReference,
+        spatialRelationship: "intersects"
+      })
+
+      const response = await executeQueryJSON(url, query)
+     console.log({response})
+      return response.features
+
+    } catch (error) {
+
+      console.error("Error ejecutando consulta:", error)
+
+      console.log(
+        "<B> Info </B>",
+        "No se logró completar la operación"
+      )
+
+      throw error
+    }
+  }

@@ -17,7 +17,7 @@ import Query from "@arcgis/core/rest/support/Query";
 import { Label, Select, Option } from "jimu-ui";
 
 import { abrirTablaResultados, limpiarYCerrarWidgetResultados } from "../../../widget-result/src/runtime/widget";
-import { drawFeaturesOnMap, goToInitialExtent} from "../../../shared/utils/export.utils";
+import { drawFeaturesOnMap, ejecutarConsulta, goToInitialExtent} from "../../../shared/utils/export.utils";
 import { LayerInfo } from "widgets/shared/types/types_consultaAvanzadaAlfanumerica"
 import { SearchActionBar } from "../../../shared/components/search-action-bar";
 import { loadLayers } from "../../../shared/services/queryMapServer.service"
@@ -221,7 +221,7 @@ const Widget = (props: AllWidgetProps<any>) => {
     setLoading(true)
     try {
       var where = "1=1", returnGeometry = true;
-      const features = await consultarCapaCAA({returnGeometry, campos: fields, url: urlLayer, where})
+      const features = await ejecutarConsulta({returnGeometry, campos: fields, url: urlLayer, where})
       console.log({features, fields})
       const uniqueValues = Array.from(new Set(features.map(f => f.attributes[fieldSelected])))
       setValues(uniqueValues)
@@ -240,7 +240,7 @@ const Widget = (props: AllWidgetProps<any>) => {
     setLoading(true)
     setError("")
     try {
-      const features = await consultarCapaCAA({ returnGeometry: true, campos: fields, url: urlLayer, where: condition.trim() })
+      const features = await ejecutarConsulta({ returnGeometry: true, campos: fields, url: urlLayer, where: condition.trim() })
       console.log("Resultados búsqueda:", features)
       const graphicsLayer = await drawFeaturesOnMap({ features, spatialReference: varJimuMapView.view.spatialReference }, varJimuMapView, 16)
       setGraphicsLayer(graphicsLayer)
@@ -254,7 +254,7 @@ const Widget = (props: AllWidgetProps<any>) => {
 
       const resultSpatialReference = features[0]?.geometry?.spatialReference || varJimuMapView.view.spatialReference
       console.log({fieldsToShow, featuresFixed})
-      abrirTablaResultados(featuresFixed, fieldsToShow, props, resultSpatialReference, widgetResultId)
+      abrirTablaResultados(featuresFixed, fieldsToShow, props, widgetResultId, resultSpatialReference)
     } catch (err) {
       console.error("Error en búsqueda:", err)
       setError("Ocurrió un error al ejecutar la búsqueda. Verifique la condición ingresada.")
@@ -277,49 +277,6 @@ const Widget = (props: AllWidgetProps<any>) => {
     }
 
   }
-
-  const consultarCapaCAA = async ({    
-    url,
-    where,
-    campos,
-    returnGeometry = true,
-    spatialReference = varJimuMapView.view.spatialReference
-  }: QueryOptions): Promise<__esri.Graphic[]> => {
-
-    if (!url || !where) {
-      throw new Error("URL o condición WHERE inválida");
-    }
-
-    try {
-
-      const query = new Query({
-        where,
-        outFields: campos?.length ? campos : ["*"],
-        returnGeometry,
-        outSpatialReference: spatialReference,
-        spatialRelationship: "intersects"
-      });
-
-      const response = await executeQueryJSON(url, query) as __esri.FeatureSet;
-     
-      return response.features;
-
-    } catch (error) {
-
-      console.error("Error ejecutando consulta:", error);
-
-      console.log(
-        "<B> Info </B>",
-        "No se logró completar la operación"
-      );
-
-      setLoading(false);
-
-      throw error;
-    }
-  }
-
-  
 
   return (
     <div style={{height:'100%', padding: '5px', boxSizing: 'border-box'}}>

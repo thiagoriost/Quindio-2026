@@ -10,13 +10,14 @@
  */
 import { JimuMapViewComponent, type JimuMapView } from 'jimu-arcgis'
 import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer"
+import Graphic from "@arcgis/core/Graphic"
 import { executeQueryJSON } from "@arcgis/core/rest/query";
 import { React, type AllWidgetProps } from "jimu-core"
 import Query from "@arcgis/core/rest/support/Query";
 import { Label, Select, Option } from "jimu-ui";
 
 import { abrirTablaResultados, limpiarYCerrarWidgetResultados } from "../../../widget-result/src/runtime/widget";
-import { drawFeaturesOnMap, goToInitialExtent} from "../../../shared/utils/export.utils";
+import { drawFeaturesOnMap, ejecutarConsulta, goToInitialExtent} from "../../../shared/utils/export.utils";
 import { LayerInfo } from "widgets/shared/types/types_consultaAvanzadaAlfanumerica"
 import { SearchActionBar } from "../../../shared/components/search-action-bar";
 import { loadLayers } from "../../../shared/services/queryMapServer.service"
@@ -57,6 +58,7 @@ const Widget = (props: AllWidgetProps<any>) => {
   const [establecimientos, setEstablecimientos] = React.useState<interfaceEstablecimiento[] | null>(null)
   const [verAtributos, setVerAtributos] = React.useState(false)
   const [cloneFeatures, setCloneFeatures] = React.useState<__esri.Graphic[]>([])
+  const [featuresDibujados, setFeaturesDibujados] = React.useState<__esri.Graphic[]>([])
   const consultaPor = [{
     id: 0,
     name: "Consulta educaci\u00F3n",
@@ -72,17 +74,9 @@ const Widget = (props: AllWidgetProps<any>) => {
   interface FeatureSet {
     features: __esri.Graphic[]
   }
-
-  interface QueryOptions {
-    url?: string;
-    where?: string;
-    campos?: string[];
-    returnGeometry?: boolean;
-    spatialReference?: __esri.SpatialReference;
-  }
-
   const handleConsultaPor = async(e) => {
     if (e.target.value === "") return
+    limpiarFeaturesDibujados(varJimuMapView, featuresDibujados)
     const id = Number(e.target.value)
     const selected = consultaPor.find(c => c.id === id)
     console.log({selected})
@@ -95,6 +89,13 @@ const Widget = (props: AllWidgetProps<any>) => {
       setCategories(categories.length > 0 ? categories : null)
     }
   }
+
+  const limpiarFeaturesDibujados = (jimuMapView: JimuMapView, features: __esri.Graphic[]) => {
+    if (jimuMapView && features?.length) {
+      jimuMapView.view.graphics.removeMany(features)
+    }
+  }
+
 
   const realizarQuery = async (url: string, name: string) => {
     setError("")
@@ -139,6 +140,7 @@ const Widget = (props: AllWidgetProps<any>) => {
     }
 
     setGraphicsLayer(null)
+    setFeaturesDibujados([])
     setLoading(false)
     setError("")
   }
@@ -226,7 +228,7 @@ const Widget = (props: AllWidgetProps<any>) => {
     console.log({ municipiosUrl })
     setLoading(true)
     try {
-      const features = await consultarCapaCAA({ returnGeometry: false, campos: ["IDMUNICIPIO", "MUNICIPIO"], url: municipiosUrl, where: "1=1" })
+      const features = await ejecutarConsulta({ returnGeometry: false, campos: ["IDMUNICIPIO", "MUNICIPIO"], url: municipiosUrl, where: "1=1" })
       console.log({ features })
       // eliminar duplicados por IDMUNICIPIO y ordenar alfabeticamente por MUNICIPIO
       const uniqueMap = new Map<string, string>()
@@ -259,7 +261,7 @@ const Widget = (props: AllWidgetProps<any>) => {
     setSelectedEstablecimiento(null)
     setLoading(true)
     try {
-      const features = await consultarCapaCAA({ returnGeometry: true, campos: ["NOMBREESTABLECIMIENTO","DIRECCION","JORNADA","IMAGEN"], url: urlLayerSelected, where: `IDMUNICIPIO='${id}'` })
+      const features = await ejecutarConsulta({ returnGeometry: true, campos: ["NOMBREESTABLECIMIENTO","DIRECCION","JORNADA","IMAGEN"], url: urlLayerSelected, where: `IDMUNICIPIO='${id}'` })
       console.log({ features })
       const lista: interfaceEstablecimiento[] = features.map(f => ({
         NOMBREESTABLECIMIENTO: f.attributes.NOMBREESTABLECIMIENTO as string,
@@ -292,26 +294,34 @@ const Widget = (props: AllWidgetProps<any>) => {
       setError("Por favor seleccione un establecimiento para realizar la búsqueda.")
       return
     }
+    // limpiar geometrías previamente dibujadas
+    if(featuresDibujados?.length){
+      limpiarFeaturesDibujados(varJimuMapView, featuresDibujados)
+      setFeaturesDibujados([])
+    }
     const urlCapa = urls.SERVICIO_EDUCACION_ALFANUMERICO + "/0";
     const where = "1=1";
     const campos = ["NOMBREESTABLECIMIENTO", "NIT", "LABORATORIOS", "SALONESCONFERENCIAS", "NUMEROCOMPUTADORES", "ACCESOINTERNET", "WEBSITE", "PROGRAMASESPECIALES", "NUMEROESTUDIANTES", "NUMERODOCENTES", "ZONASRECREATIVAS", "ICFECS", "PRIMERAPELLIDO", "SEGUNDOAPELLIDO", "NOMBRE", "OBJECTID", "CODIGOESTABLECIMIENTO"
     ];
-    const features = await consultarCapaCAA({ returnGeometry: true, campos, url: urlCapa, where: `NOMBREESTABLECIMIENTO='${selectedEstablecimiento.NOMBREESTABLECIMIENTO}'` })
+    const features = await ejecutarConsulta({ returnGeometry: true, campos, url: urlCapa, where: `NOMBREESTABLECIMIENTO='${selectedEstablecimiento.NOMBREESTABLECIMIENTO}'` })
     console.log({ features })
-    if (selectedEstablecimiento && selectedEstablecimiento.geometry) {
-      // centrar el mapa en el establecimiento seleccionado y mostrar un popup con su información
-      varJimuMapView.view.goTo({ target: selectedEstablecimiento.geometry, zoom: 15 })
-      // dibujar un punto en el mapa en la ubicación del establecimiento seleccionado
-      const pointGraphic = {
-        geometry: selectedEstablecimiento.geometry,
-        symbol: {
-          type: "simple-marker",
-          style: "circle",
-          color: "red",
-          size: "12px"
-        }
-      };
-      varJimuMapView.view.graphics.add(pointGraphic);
+    // dibujar los features obtenidos en el mapa
+    if (features?.length) {
+      const graphics = features
+        .filter(f => f?.geometry)
+        .map(f => new Graphic({
+          geometry: f.geometry,
+          symbol: {
+            type: "simple-marker",
+            style: "circle",
+            color: "red",
+            size: "12px"
+          } as any
+        }))
+      varJimuMapView.view.graphics.addMany(graphics)
+      setFeaturesDibujados(graphics)
+      // centrar el mapa en el primer feature obtenido
+      varJimuMapView.view.goTo({ target: features[0].geometry, zoom: 15 })
     }
     const URL_ARCHIVOS_QUINDIO = urls.URL_ARCHIVOS_QUINDIO
     // construir la url de la imagen del establecimiento utilizando la propiedad IMAGEN y la constante URL_ARCHIVOS_QUINDIO
@@ -339,11 +349,12 @@ const Widget = (props: AllWidgetProps<any>) => {
       { name: "SEGUNDOAPELLIDO", alias: "Segundo apellido" },
       // { name: "IMAGEN", alias: "Imagen" },
     ]
-    const cloneFeatures = features.map(f => {
-      const attributes = { ...f.attributes, IMAGEN: imagenUrl }
-      const geometry = f.geometry ? f.geometry.clone() : null
-      return { ...f, attributes, geometry }
-    })
+    const cloneFeatures = features
+      .filter(f => f?.geometry)
+      .map(f => ({
+        attributes: { ...f.attributes, IMAGEN: imagenUrl },
+        geometry: f.geometry.toJSON()
+      }))
     setCloneFeatures(cloneFeatures)
     console.log({cloneFeatures})
     // abrir el widget de resultados y mostrar la información del establecimiento seleccionado
@@ -351,48 +362,6 @@ const Widget = (props: AllWidgetProps<any>) => {
     // cambiar a la pestaña de vista atributos en donde se debe mostrar la información del establecimiento seleccionado
     setVerAtributos(true)
   }  
-
-  const consultarCapaCAA = async ({    
-    url,
-    where,
-    campos,
-    returnGeometry = true,
-    spatialReference = varJimuMapView.view.spatialReference
-  }: QueryOptions): Promise<__esri.Graphic[]> => {
-
-    if (!url || !where) {
-      throw new Error("URL o condición WHERE inválida");
-    }
-
-    try {
-
-      const query = new Query({
-        where,
-        outFields: campos?.length ? campos : ["*"],
-        returnGeometry,
-        outSpatialReference: spatialReference,
-        spatialRelationship: "intersects"
-      });
-
-      const response = await executeQueryJSON(url, query) as __esri.FeatureSet;
-     console.log({response})
-      return response.features;
-
-    } catch (error) {
-
-      console.error("Error ejecutando consulta:", error);
-
-      console.log(
-        "<B> Info </B>",
-        "No se logró completar la operación"
-      );
-
-      setLoading(false);
-
-      throw error;
-    }
-  }
-
   
 
   return (
@@ -402,7 +371,7 @@ const Widget = (props: AllWidgetProps<any>) => {
       )}      {
       varJimuMapView && (
           
-          <div className="consulta-widget consultaAA-scroll loading-host">            
+          <div className="consulta-widget consulta-scroll loading-host">            
             {verAtributos ? (
               <div className="detalle-establecimiento">
                 {cloneFeatures?.[0]?.attributes?.IMAGEN && cloneFeatures[0].attributes.IMAGEN !== " " && (
