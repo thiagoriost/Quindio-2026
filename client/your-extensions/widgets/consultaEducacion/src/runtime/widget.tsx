@@ -11,13 +11,11 @@
 import { JimuMapViewComponent, type JimuMapView } from 'jimu-arcgis'
 import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer"
 import Graphic from "@arcgis/core/Graphic"
-import { executeQueryJSON } from "@arcgis/core/rest/query";
 import { React, type AllWidgetProps } from "jimu-core"
-import Query from "@arcgis/core/rest/support/Query";
 import { Label, Select, Option } from "jimu-ui";
 
 import { abrirTablaResultados, limpiarYCerrarWidgetResultados } from "../../../widget-result/src/runtime/widget";
-import { drawFeaturesOnMap, ejecutarConsulta, goToInitialExtent} from "../../../shared/utils/export.utils";
+import {  ejecutarConsulta, goToInitialExtent} from "../../../shared/utils/export.utils";
 import { LayerInfo } from "widgets/shared/types/types_consultaAvanzadaAlfanumerica"
 import { SearchActionBar } from "../../../shared/components/search-action-bar";
 import { loadLayers } from "../../../shared/services/queryMapServer.service"
@@ -48,7 +46,7 @@ const Widget = (props: AllWidgetProps<any>) => {
   const [error, setError] = React.useState("")
   const widgetResultId = WIDGET_IDS.RESULT // ID del widget de resultados en el layout
 
-  const [consultaPorSeleccionada, setConsultaPorSeleccionada] = React.useState< interfaceConsultaPor | null>(null)
+  const [consultaPorSeleccionada, setConsultaPorSeleccionada] = React.useState< interfaceConsultaPor | null>({name: "", id: null, url: ""})
   const [categories, setCategories] = React.useState<interfaceCategories[] | null>(null)
   const [selectedCategory, setSelectedCategory] = React.useState<number | null>(null)
   const [municipios, setMunicipios] = React.useState<interfaceMunicipio[] | null>(null)
@@ -57,11 +55,11 @@ const Widget = (props: AllWidgetProps<any>) => {
   const [selectedEstablecimiento, setSelectedEstablecimiento] = React.useState<interfaceEstablecimiento | null>(null)
   const [establecimientos, setEstablecimientos] = React.useState<interfaceEstablecimiento[] | null>(null)
   const [verAtributos, setVerAtributos] = React.useState(false)
-  const [cloneFeatures, setCloneFeatures] = React.useState<__esri.Graphic[]>([])
+  const [cloneFeatures, setCloneFeatures] = React.useState<any[]>([])
   const [featuresDibujados, setFeaturesDibujados] = React.useState<__esri.Graphic[]>([])
   const consultaPor = [{
     id: 0,
-    name: "Consulta educaci\u00F3n",
+    name: "Consulta educación",
     url: urls.SERVICIO_EDUCACION
   }, {
     id: 1,
@@ -69,14 +67,9 @@ const Widget = (props: AllWidgetProps<any>) => {
     url: urls.SERVICIO_EDUCACION_ALFANUMERICO
   }];
 
-  // const isValid = condition.trim() !== "" && urlLayer !== "" && selectedLayer !== null
- 
-  interface FeatureSet {
-    features: __esri.Graphic[]
-  }
-  const handleConsultaPor = async(e) => {
+  const handleConsultaPor = async(e: { target: { value: string; }; }) => {
     if (e.target.value === "") return
-    limpiarFeaturesDibujados(varJimuMapView, featuresDibujados)
+    
     const id = Number(e.target.value)
     const selected = consultaPor.find(c => c.id === id)
     console.log({selected})
@@ -153,13 +146,20 @@ const Widget = (props: AllWidgetProps<any>) => {
       handleClear()
       goToInitialExtent(varJimuMapView, initialExtent, initialZoom)
       limpiarYCerrarWidgetResultados(widgetResultId)
+      limpiarFeaturesDibujados(varJimuMapView, featuresDibujados)
+      setVerAtributos(false)
+      setConsultaPorSeleccionada({name: "", id: null, url: ""})
+      setSelectedCategory(null)
+      setCategories(null)
+      setMunicipios(null)
+      setSelectedMunicipio(null)
+      setSelectedEstablecimiento(null)
+      setEstablecimientos(null)
     }  
     
   }, [props])
 
- 
-
-  /*
+ /*
   ==========================
   LOAD LAYERS ON WIDGET OPEN
   ==========================
@@ -173,47 +173,10 @@ const Widget = (props: AllWidgetProps<any>) => {
 
   /*
   ==========================
-  LOAD FIELDS OF LAYER
-  ==========================
-  */
-
-  async function loadFields(layerId: number) {
-    setLoading(true)
-    try {
-
-      const url = `${urls.SERVICIO_CONSULTA_AVANZADA_ALFANUMERICA}/${layerId}`
-
-      const response = await fetch(`${url}?f=json`)
-      const data = await response.json()
-
-      const validFields = data.fields
-        .filter((f) => f.name !== "ESRI_OID" && f.name !== "SHAPE")
-        .map((f) => f.name)
-
-      
-      return validFields
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  /*
-  ==========================
   EVENT HANDLERS
   ==========================
   */
-
-  const handleLayerChange = async (e) => {
-    handleClear()
-    const id = Number(e.target.value)
-
-    setSelectedCategory(null)
-
-    const validFields = await loadFields(id)
-    
-  }
-
-  const handleCategoriesChange = async (e) => {
+  const handleCategoriesChange = async (e: { target: { value: any; }; }) => {
     if (!categories) return
     const id = Number(e.target.value)
     const selected = categories?.find(c => c.id === id)
@@ -250,7 +213,7 @@ const Widget = (props: AllWidgetProps<any>) => {
     }
   }
 
-  const handleMunicipioChange = async(e) => {
+  const handleMunicipioChange = async(e: { target: { value: any; }; }) => {
     if (!municipios) return
     const id = e.target.value
     const selected = municipios?.find(m => m.IDMUNICIPIO === id)
@@ -279,7 +242,7 @@ const Widget = (props: AllWidgetProps<any>) => {
     }
   }
 
-  const handleEstablecimientoChange = (e) => {
+  const handleEstablecimientoChange = (e: { target: { value: any; }; }) => {
     if (!establecimientos) return
     const nombre = e.target.value
     const selected = establecimientos?.find(est => est.NOMBREESTABLECIMIENTO === nombre)
@@ -413,7 +376,7 @@ const Widget = (props: AllWidgetProps<any>) => {
 
               <Label>Consulta por</Label>
               <Select
-                  
+                  value={consultaPorSeleccionada?.id ?? ""}
                   disabled={loading}
                   onChange={handleConsultaPor}
               >
