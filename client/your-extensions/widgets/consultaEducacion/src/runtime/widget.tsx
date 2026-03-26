@@ -267,7 +267,7 @@ const Widget = (props: AllWidgetProps<any>) => {
     const campos = ["NOMBREESTABLECIMIENTO", "NIT", "LABORATORIOS", "SALONESCONFERENCIAS", "NUMEROCOMPUTADORES", "ACCESOINTERNET", "WEBSITE", "PROGRAMASESPECIALES", "NUMEROESTUDIANTES", "NUMERODOCENTES", "ZONASRECREATIVAS", "ICFECS", "PRIMERAPELLIDO", "SEGUNDOAPELLIDO", "NOMBRE", "OBJECTID", "CODIGOESTABLECIMIENTO"
     ];
     const features = await ejecutarConsulta({ returnGeometry: true, campos, url: urlCapa, where: `NOMBREESTABLECIMIENTO='${selectedEstablecimiento.NOMBREESTABLECIMIENTO}'` })
-    console.log({ features })
+    console.log({ features, selectedMunicipio, selectedEstablecimiento })
     // dibujar los features obtenidos en el mapa
     if (features?.length) {
       const graphics = features

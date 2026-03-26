@@ -1,21 +1,21 @@
 /**
  * Componente para renderizar gráficos de resultados usando Recharts.
- * 
+ *
  * Soporta dos tipos de visualización:
  * - "bar": gráfico de barras
  * - "pie": gráfico de pastel
- * 
+ *
  * @component
- * 
+ *
  * @param {Object} props - Propiedades del componente.
  * @param {any[]} props.data - Datos a graficar (arreglo de objetos).
  * @param {"bar" | "pie"} [props.type="bar"] - Tipo de gráfico a mostrar.
  * @param {string} [props.xKey="name"] - Clave para el eje X o etiquetas.
  * @param {string} [props.yKey="value"] - Clave para los valores numéricos.
  * @param {string} [props.title] - Título opcional mostrado debajo del gráfico.
- * 
+ *
  * @returns {JSX.Element | null} Renderiza el gráfico o null si no hay datos.
- * 
+ *
  * @example
  * <ResultGraphic
  *   data={[{ name: "A", value: 10 }, { name: "B", value: 20 }]}
@@ -24,7 +24,7 @@
  *   yKey="value"
  *   title="Ejemplo de gráfico"
  * />
- * 
+ *
  * @remarks
  * - Usa `ResponsiveContainer` para adaptarse al tamaño del contenedor.
  * - Si `data` está vacío o es null, no renderiza nada.
@@ -39,9 +39,8 @@ import {
   ResponsiveContainer,
   PieChart,
   Pie,
-  Cell,
   Legend
-} from "recharts";
+} from "recharts"
 
 interface Props {
   data: any[];
@@ -51,12 +50,10 @@ interface Props {
   title?: string;
 }
 
-const COLORS = ["#b59b00", "#8884d8", "#82ca9d", "#ff7f50"];
-
 
 const ResultGraphic = ({ data, type = "bar", xKey = "name", yKey = "value", title }: Props) => {
 
-  if (!data || data.length === 0) return null;
+  if (!data || data.length === 0) return null
 
   return (
     <div
@@ -104,11 +101,11 @@ const ResultGraphic = ({ data, type = "bar", xKey = "name", yKey = "value", titl
             flex: '0 0 auto',
             textAlign: 'center',
             fontSize: 13,
-            marginTop: 8,          //  separa del gráfico
-            marginBottom: 10,      //  separa del borde inferior
+            marginTop: 8, //  separa del gráfico
+            marginBottom: 10, //  separa del borde inferior
             color: '#444',
             paddingTop: 4,
-            borderTop: '1px solid #eee',  // línea sutil
+            borderTop: '1px solid #eee', // línea sutil
             fontWeight: 500,
             letterSpacing: 0.3
           }}
@@ -117,6 +114,6 @@ const ResultGraphic = ({ data, type = "bar", xKey = "name", yKey = "value", titl
         </div>
       )}
     </div>
-  );
-};
-export default ResultGraphic;
+  )
+}
+export default ResultGraphic

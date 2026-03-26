@@ -35,7 +35,28 @@ const urls = {
   SERVICIO_MDS                : "http://132.255.20.184:6080/arcgis/rest/services/QUINDIO_III/hilshade/ImageServer",
   SERVICIO_BANCO_SERVICIOS    : "https://sigquindio.gov.co:8443/ADMINSERV/AdminGeoApplication/AdminGeoWebServices/getDirectorioWFS",
   SERVICIO_SHAPEFILE : "https://sigquindio.gov.co/arcgis/rest/services/QUINDIO_III/ExportJsonToShape/GPServer/ExportJsonToShape/submitJob",
+  AmbientalAlfanumerico: {
+    BASE: 'https://sigquindio.gov.co/arcgis/rest/services/QUINDIO_III/AmbientalAlfanumerico/MapServer',
+    TRAMITESAMBPUNTO: 10, // Tramites ambientales
+    TRAMITESCATASTRO: 8, // Tramites ambientales predios
+    V_CALAIREESTMUN: 4,// Calidad del aire - Estacion - Municipio
+    V_CALAAGUAAFLUMUN: 0, // Calidad del agua -
+    V_PREDIOREFORESTACION: 7 // Predios de reforestación
+  },
+  Ambiental_T2025: {
+    BASE: 'https://sigquindio.gov.co/arcgis/rest/services/QUINDIO_III/Ambiental_T2025/MapServer',
+    Estaciones_climaticas: 69
+  },
+  Ambiental_T_Ajustado: {
+    BASE: 'https://sigquindio.gov.co/arcgis/rest/services/QUINDIO_III/Ambiental_T_Ajustado/MapServer',
+    Estaciones_limnigraficas: 68
+  },
+  CARTOGRAFIA: {
+    BASE: 'https://sigquindio.gov.co/arcgis/rest/services/QUINDIO_III/CartografiaBasica/MapServer',
+    MUNICIPIOS: 75,
+  },
 }
+
 export {
   urls
 }

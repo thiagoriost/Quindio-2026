@@ -1,7 +1,7 @@
 /** @jsx jsx */
-import { Table, Button } from 'jimu-ui'
+import { Table } from 'jimu-ui'
 import { React } from 'jimu-core'
-import { ResultFooter } from './ResultFooter'
+
 
 /**
  * Propiedades del componente ResultTable.
@@ -11,52 +11,25 @@ import { ResultFooter } from './ResultFooter'
  * del usuario como selección de filas y exportación.
  */
 interface Props {
-
-  /**
-   * Lista de entidades a mostrar en la tabla.
-   *
-   * Cada elemento normalmente corresponde a un `Graphic`
-   * retornado por una consulta de ArcGIS (por ejemplo un
-   * resultado de QueryTask o FeatureLayer).
-   */
   features: any[]
-
-  /**
-   * Definición de los campos que se mostrarán como columnas
-   * en la tabla.
-   *
-   * Cada objeto de campo debe contener al menos la propiedad
-   * `name` y opcionalmente `alias`.
-   */
   fields: any[]
-
-  /**
-   * Función opcional que se ejecuta cuando el usuario presiona
-   * el botón **Exportar**.
-   *
-   * Generalmente se utiliza para exportar los resultados
-   * de la tabla a formatos como CSV o Excel.
-   */
   onExport?: () => void
-
-  /**
-   * Función que se ejecuta cuando el usuario selecciona
-   * una fila de la tabla.
-   *
-   * Recibe como parámetro el `Graphic` correspondiente
-   * a la fila seleccionada.
-   *
-   * Usualmente se utiliza para:
-   * - Resaltar la geometría en el mapa.
-   * - Hacer zoom a la entidad seleccionada.
-   */
   onSelectFeature: (feature: __esri.Graphic) => void
 
   total: number
   page: number
   totalPages: number
   setPage: (page: any) => void
+  // cef 20260325
+  viewMode?: 'tabla' | 'grafico'
+  onChangeView?: (view: 'tabla' | 'grafico') => void
+  withGraphic?: boolean
+  data?: {
+    withGraphic?: boolean
+  }
+  setViewMode?: (view: 'tabla' | 'grafico') => void
 }
+
 
 /**
  * Componente React que renderiza una tabla de resultados
@@ -90,9 +63,9 @@ interface Props {
  *   }}
  * />
  */
-export const ResultTable = ({ features, fields, onExport, onSelectFeature, total, page, totalPages, setPage }: Props) => {
+export const ResultTable = ({ features, fields, onSelectFeature, data }: Props) => {
 
-  console.log({features,fields})
+  console.log({data})
   /**
    * Índice de la fila actualmente seleccionada.
    *
@@ -110,78 +83,58 @@ export const ResultTable = ({ features, fields, onExport, onSelectFeature, total
   }
 
   return (
-    <div>
+    <div className="widget-result-table-container">
 
-      {/* Barra superior */}
+
+      {/* CONTENEDOR SCROLL */}
       <div
         style={{
-          display: 'flex',
-          justifyContent: 'flex-end',
-          marginBottom: 8
+          flex: 1,
+          minHeight: 0,
+          overflow: "auto", // aquí vuelve el scroll horizontal
         }}
       >
-        {total > 1 && (
-       <ResultFooter
-          total={total}
-          page={page}
-          totalPages={totalPages}
-          onPrev={() => { setPage((prev) => Math.max(1, prev - 1)) }}
-          onNext={() => { setPage((prev) => Math.min(totalPages, prev + 1)) }}
-        />
-        )}
-        <Button
-          size="sm"
-          type="primary"
-          onClick={onExport}
-        >
-          Exportar tabla
-        </Button>
-      </div>
-
-      <Table>
-        <thead>
-          <tr>
-            {fields.map(field => (
-              <th key={field.name}>
-                {field.alias || field.name}
-              </th>
-            ))}
-          </tr>
-        </thead>
-
-        <tbody>
-          {features.map((f, index) => (
-            <tr
-              key={index}
-              onClick={() => {
-                setSelectedIndex(index)
-                onSelectFeature(f)
-              }}
-              style={{
-                cursor: 'pointer',
-                backgroundColor: selectedIndex === index ? '#e6f2ff' : '',
-                transition: 'background-color 0.2s ease'
-              }}
-              onMouseEnter={(e) => {
-                if (selectedIndex !== index) {
-                  e.currentTarget.style.backgroundColor = '#f5f5f5'
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (selectedIndex !== index) {
-                  e.currentTarget.style.backgroundColor = ''
-                }
-              }}
-            >
-              {fields.map(field => (
-                <td key={field.name}>
-                  {f.attributes?.[field.name]}
-                </td>
+        <Table style={{ minWidth: "max-content" }}>
+          <thead>
+            <tr>
+              {fields.map((field) => (
+                <th key={field.name}>{field.alias || field.name}</th>
               ))}
             </tr>
-          ))}
-        </tbody>
-      </Table>
+          </thead>
+
+          <tbody>
+            {features.map((f, index) => (
+              <tr
+                key={index}
+                onClick={() => {
+                  setSelectedIndex(index)
+                  onSelectFeature(f)
+                }}
+                style={{
+                  cursor: "pointer",
+                  backgroundColor: selectedIndex === index ? "#e6f2ff" : "",
+                  transition: "background-color 0.2s ease",
+                }}
+                onMouseEnter={(e) => {
+                  if (selectedIndex !== index) {
+                    e.currentTarget.style.backgroundColor = "#f5f5f5"
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (selectedIndex !== index) {
+                    e.currentTarget.style.backgroundColor = ""
+                  }
+                }}
+              >
+                {fields.map((field) => (
+                  <td key={field.name}>{f.attributes?.[field.name]}</td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </Table>
+      </div>
     </div>
   )
 }

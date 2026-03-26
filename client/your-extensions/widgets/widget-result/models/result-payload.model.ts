@@ -5,7 +5,7 @@
  * mediante el store global de Experience Builder.
  */
 
-export interface ChartDataItem {// cef 20260320
+export interface ChartDataItem {  // cef 20260320
   name: string;
   value: number;
 }
@@ -24,7 +24,7 @@ export interface ResultPayload {
   fields: ResultField[]
 
   /** Referencia espacial de los features */
-   spatialReference?: __esri.SpatialReference
+  spatialReference?: __esri.SpatialReference
 
   /** Permite zoom al seleccionar fila */
   enableZoom?: boolean
@@ -32,7 +32,7 @@ export interface ResultPayload {
   /** Texto del botón de retorno */
   returnLabel?: string
 
-/** Indica si la capa es temporal */
+  /** Indica si la capa es temporal */
   temporalLayer?: boolean
 
   /** Indica si la capa es temporal */
@@ -50,6 +50,6 @@ export interface ResultPayload {
 export interface ResultField {
   name: string // nombre del atributo
   alias?: string // etiqueta visible
-//  type?: 'string' | 'number' | 'date'
-   type: __esri.FieldProperties['type'] // obligatorio y compatible con tipos de campo de ArcGIS
+  //  type?: 'string' | 'number' | 'date'
+  type: __esri.FieldProperties['type'] // obligatorio y compatible con tipos de campo de ArcGIS
 }

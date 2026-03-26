@@ -19,25 +19,31 @@
  * state.widgetsState[widgetId].results
  */
 
-import { React, jsx, AllWidgetProps, IMState, IMConfig } from "jimu-core";
-import { useSelector } from "react-redux";
-import { ResultPayload } from "../../models/result-payload.model";
-import { ResultTable } from "../../components/ResultTable";
-import { ResultFooter } from "../../components/ResultFooter";
-import { exportService } from "../../../shared/services/export.service";
-import { JimuMapViewComponent, JimuMapView } from "jimu-arcgis";
-import Graphic from "@arcgis/core/Graphic";
-import Polygon from "@arcgis/core/geometry/Polygon";
+import { Button } from 'jimu-ui'
+import { React, jsx, AllWidgetProps, IMState, IMConfig } from 'jimu-core'
+import { useSelector } from 'react-redux'
+import { ResultPayload } from '../../models/result-payload.model'
+import { ResultTable } from '../../components/ResultTable'
+import { ResultFooter } from '../../components/ResultFooter'
+import { exportService } from '../../../shared/services/export.service'
+import { JimuMapViewComponent, JimuMapView } from 'jimu-arcgis'
+import Graphic from '@arcgis/core/Graphic'
+import Polygon from '@arcgis/core/geometry/Polygon'
 import Point from "@arcgis/core/geometry/Point";
 import Polyline from "@arcgis/core/geometry/Polyline";
-import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
-import { useOnWidgetClose } from "../../../shared/hooks/useOnWidgetClose";
-import { appActions, getAppStore } from "jimu-core";
-import { WidgetState } from "jimu-core";
-import FeatureLayer from "@arcgis/core/layers/FeatureLayer";
-import GroupLayer from "@arcgis/core/layers/GroupLayer";
-import "../styles/widgetResultFloating.css";
+import GraphicsLayer from '@arcgis/core/layers/GraphicsLayer'
+import { useOnWidgetClose } from '../../../shared/hooks/useOnWidgetClose';
+import { appActions, getAppStore } from 'jimu-core'
+import { WidgetState } from 'jimu-core'
+import FeatureLayer from '@arcgis/core/layers/FeatureLayer'
+import GroupLayer from '@arcgis/core/layers/GroupLayer'
+import '../styles/widgetResultFloating.css'
 import { i } from "motion/dist/react-m";
+
+// cef 20260313
+import * as geometryJsonUtils from '@arcgis/core/geometry/support/jsonUtils'
+// cef 20260313
+import ResultGraphic from "../../components/ResultGraphic_Richarts";
 
 /**
  * WidgetResult
@@ -97,6 +103,12 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
     const pageSize = 5
 
     /**
+     * estado para el gráfico //cef 20260313
+     */
+    const [chartData, setChartData] = React.useState<any[]>([])
+
+
+    /**
      * Resultados obtenidos desde Redux.
      *
      * Contiene:
@@ -118,12 +130,18 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
      */
     const temporalLayerRef = React.useRef<boolean>(false)
 
+    // cef 20260324 para tabs
+    const [activeTab, setActiveTab] = React.useState<string>('tabla')
+
+    // estado de la vista para grafico y/o tabla cef 20260324
+    const [viewMode, setViewMode] = React.useState<'tabla' | 'grafico'>(
+        data?.withGraphic ? 'grafico' : 'tabla'
+    )
 
     /**
-     * Inicializa recursos dependientes del mapa cuando la vista está disponible:
-     * - Guarda el extent inicial para restauraciones posteriores.
-     * - Crea una GraphicsLayer exclusiva para resaltar selecciones de la tabla.
-     * - Libera la capa al desmontar o cambiar la vista activa.
+     * Guarda el extent inicial del mapa cuando la vista
+     * del mapa está disponible.
+     * 
      */
     React.useEffect(() => {
         const view = jimuMapView?.view
@@ -144,7 +162,30 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
       layer.destroy();
       graphicsLayerRef.current = null;
     };
-  }, [jimuMapView]);
+    }, [jimuMapView]);
+
+    /**
+     * Crea una capa gráfica utilizada para mostrar
+     * la geometría de la entidad seleccionada.
+     *
+     * La capa se agrega al mapa al inicializarse y
+     * se elimina automáticamente cuando el widget se desmonta.
+     */
+    React.useEffect(() => {
+        const view = jimuMapView?.view
+        if (!view) return
+        const layer = new GraphicsLayer({
+            id: 'result-selection-layer'
+        })
+        view.map.add(layer)
+        graphicsLayerRef.current = layer
+
+        return () => {
+            view.map.remove(layer)
+            layer.destroy()
+            graphicsLayerRef.current = null
+        }
+    }, [jimuMapView])
 
     /**
      * Restaura el extent inicial del mapa.
@@ -184,6 +225,18 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
     React.useEffect(() => {
         if (data) {
             temporalLayerRef.current = data.temporalLayer === true
+        }
+    }, [data])
+
+    /*
+    *   cef 20260324
+    *   Sincronizar data para la gráfica usando swith toogle
+    */
+    React.useEffect(() => {
+        if (data?.withGraphic) {
+            setViewMode('grafico')
+        } else if (data) {
+            setViewMode('tabla')
         }
     }, [data])
 
@@ -297,10 +350,55 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
 
       return geometry
     }
-
-  /**
-   * Crea o reutiliza una capa temporal para visualizar un predio seleccionado.
-   * Si la capa ya existe, la enfoca y aplica flash visual.
+    /**
+     * Crea una capa temporal tipo {@link __esri.FeatureLayer} a partir de un feature
+     * y la agrega al mapa dentro de un {@link __esri.GroupLayer} llamado "capas-temporales".
+     * 
+     * Si la capa ya existe (basado en un id generado), no la vuelve a crear:
+     * - Hace zoom a la geometría existente
+     * - Ejecuta un efecto visual (`flashLayer`)
+     * 
+     * Si no existe:
+     * - Construye la geometría tipo {@link __esri.Polygon}
+     * - Crea un {@link __esri.Graphic}
+     * - Crea una nueva capa con simbología simple
+     * - La agrega a un grupo de capas temporales (lo crea si no existe)
+     * - Hace zoom al extent de la geometría
+     * 
+     * @async
+     * @function crearCapaTemporal
+     * 
+     * @param {any} featureData - Objeto que contiene la información del feature.
+     * @param {Object} featureData.geometry - Geometría del feature.
+     * @param {number[][][]} featureData.geometry.rings - Coordenadas del polígono.
+     * @param {Object} featureData.attributes - Atributos asociados al feature.
+     * @param {number} [featureData.attributes.OBJECTID] - Identificador del feature (opcional).
+     * 
+     * @returns {Promise<void>} No retorna valor. Realiza efectos sobre el mapa.
+     * 
+     * @remarks
+     * - El identificador de la capa se construye usando:
+     *   1. `data.valorBusqueda` (si existe)
+     *   2. `featureData.attributes.OBJECTID`
+     *   3. `Date.now()` como fallback
+     * 
+     * - Esto evita duplicidad de capas cuando el feature no tiene OBJECTID.
+     * 
+     * - La capa se renderiza con un estilo simple:
+     *   - Relleno rojo semi-transparente
+     *   - Borde rojo
+     * 
+     * - La navegación (`view.goTo`) se asegura de enfocar correctamente la geometría,
+     *   incluso si el usuario ha movido el mapa previamente.
+     * 
+     * @throws {Error} No lanza errores explícitos, pero depende de:
+     * - `jimuMapView.view` disponible
+     * - Clases de ArcGIS API (`Polygon`, `Graphic`, `FeatureLayer`, `GroupLayer`)
+     * 
+     * @example
+     * ```ts
+     * await crearCapaTemporal(featureSeleccionado)
+     * ```
    */
   const crearCapaTemporal = async (featureData: any) => {
     const view = jimuMapView?.view;
@@ -391,6 +489,9 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
         })
     }
 
+    /**
+    * Efecto que se ejecuta cuando cambian los datos de resultados (`data`).
+    */
     React.useEffect(() => { // cef 20260307
 
         if (!data) return
@@ -473,7 +574,7 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
         const fields = data.fields?.map(f => f.name)
 
         const today = new Date().toISOString().slice(0, 10)
-        const fileName = `${data.title.replace(/\s+/g, '_')}_${today}.csv`
+        const fileName = `${data.title?.replace(/\s+/g, '_')}_${today}.csv`
 
         exportService.exportCSV(features, fileName, fields)
     }
@@ -492,7 +593,10 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
             return
         }
 
-        if (!jimuMapView || !graphicsLayerRef.current) return
+        if (!jimuMapView || !graphicsLayerRef.current) {
+            console.error('Sin vinculación al mapa, revise!')
+            return
+        }
 
         if (!feature?.geometry) return
 
@@ -508,34 +612,82 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
         }
 
 
-        const graphic = new Graphic({
+        const graphic = new Graphic({   // 20260313
             geometry,
-            symbol: {
-                type: 'simple-fill',
-                color: [255, 0, 0, 0.2],
-                outline: {
-                    color: [255, 0, 0],
-                    width: 2
-                }
-            },
+            symbol: getSymbolByGeometry(geometry),
             attributes: feature.attributes
         })
 
+
         graphicsLayerRef.current.add(graphic)
 
-        if (graphic.geometry.type === 'point') {
+        if (geometry.type === "point") {  // cef 20260313
+
             await view.goTo({
-                target: graphic.geometry,
-                zoom: 18
+                target: geometry,
+                zoom: 16
             })
-            return
+
+        } else {
+
+            await view.goTo({
+                target: geometry.extent?.expand(2) ?? geometry
+            })
+
+        }
+    }
+
+    const getSymbolByGeometry = ( // 20260313
+        geometry: __esri.Geometry
+    ): __esri.GraphicProperties["symbol"] => {
+
+        console.log('getSymbolByGeometry:', geometry.type);
+        if (geometry.type === "polygon") {
+            return {
+                type: "simple-fill",
+                color: [255, 0, 0, 0.2],
+                outline: {
+                    type: "simple-line",
+                    color: [255, 0, 0],
+                    width: 2
+                }
+            }
         }
 
-        await view.goTo({
-            target: getGoToTarget(graphic.geometry)
-        })
-    };
+        if (geometry.type === "polyline") {
+            return {
+                type: "simple-line",
+                color: [255, 0, 0],
+                width: 3
+            }
+        }
+        /**
+         * Retorna un símbolo gráfico según el tipo de geometría.
+         * 
+         * @param {__esri.Geometry} geometry - Geometría de ArcGIS (point, polyline o polygon).
+         * @returns {__esri.GraphicProperties["symbol"]} Símbolo correspondiente para renderizar la geometría.
+         * 
+         * @throws {Error} Si el tipo de geometría no es soportado.
+         * 
+         * @example
+         * const symbol = getSymbolByGeometry(graphic.geometry)
+         */
+        if (geometry.type === "point" || geometry.type === "multipoint") {
+            return {
+                type: "simple-marker",
+                style: "circle",
+                color: [255, 0, 0],
+                size: 10,
+                outline: {
+                    type: "simple-line",
+                    color: [255, 255, 255],
+                    width: 1
+                }
+            }
+        }
 
+        throw new Error("Tipo de geometría no soportado")
+    }
   /**
    * Validación de mapa configurado en el widget.
    */
@@ -544,155 +696,105 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
     return (
       <div>
         {!open && (
-          <button
-            className="widget-result-floating-btn"
-            onClick={() => setOpen(true)}
-            title="Mostrar resultados"
-          >
-            <span className="widget-result-floating-icon">
-              {/* SVG tabla */}
-              <svg
-                width="28"
-                height="28"
-                viewBox="0 0 28 28"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <rect
-                  x="4"
-                  y="6"
-                  width="20"
-                  height="16"
-                  rx="3"
-                  fill="var(--color-primary-light)"
-                  stroke="var(--color-primary-light)"
-                  strokeWidth="2"
-                />
-                <rect
-                  x="4"
-                  y="11"
-                  width="20"
-                  height="1.5"
-                  fill="var(--color-primary-light)"
-                />
-                <rect
-                  x="10"
-                  y="6"
-                  width="1.5"
-                  height="16"
-                  fill="var(--color-primary-light)"
-                />
-                <rect
-                  x="16.5"
-                  y="6"
-                  width="1.5"
-                  height="16"
-                  fill="var(--color-primary-light)"
-                />
-              </svg>
-            </span>
-          </button>
-        )}
-        {open && (
-          <div className="widget-result-floating-panel">
-            <div className="widget-result-header">
-              Resultados
-              <button
-                className="widget-result-close-btn"
-                onClick={() => setOpen(false)}
-                title="Cerrar"
-              >
-                ×
-              </button>
+          <button className="widget-result-floating-btn" onClick={() => setOpen(true)} title="Mostrar resultados">
+                        <span className="widget-result-floating-icon">
+                            {/* SVG tabla */}
+                            <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <rect x="4" y="6" width="20" height="16" rx="3" fill="var(--color-primary-light)" stroke="var(--color-primary-light)" strokeWidth="2" />
+                                <rect x="4" y="11" width="20" height="1.5" fill="var(--color-primary-light)" />
+                                <rect x="10" y="6" width="1.5" height="16" fill="var(--color-primary-light)" />
+                                <rect x="16.5" y="6" width="1.5" height="16" fill="var(--color-primary-light)" />
+                            </svg>
+                        </span>
+                    </button>
+                )}
+                {open && (
+                    <div className="widget-result-floating-panel">
+                        <div className="widget-result-header">
+                            Resultados
+                            <button className="widget-result-close-btn" onClick={() => setOpen(false)} title="Cerrar">×</button>
+                        </div>
+                        <div className="widget-result-content">
+                            Debe seleccionar un Map Widget en la configuración.
+                        </div>
+                    </div>
+                )}
             </div>
-            <div className="widget-result-content">
-              Debe seleccionar un Map Widget en la configuración.
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  }
+        )
+    }
 
-  return (
-    <div>
-      {!open && (
-        <button
-          className="widget-result-floating-btn"
-          onClick={() => setOpen(true)}
-          title="Mostrar resultados"
-        >
-          <span
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            {/* SVG tabla */}
-            <svg
-              width="28"
-              height="28"
-              viewBox="0 0 28 28"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <rect
-                x="4"
-                y="6"
-                width="20"
-                height="16"
-                rx="3"
-                fill="var(--color-primary-light)"
-                stroke="var(--color-primary-light)"
-                strokeWidth="2"
-              />
-              <rect
-                x="4"
-                y="11"
-                width="20"
-                height="1.5"
-                fill="var(--color-primary-light)"
-              />
-              <rect
-                x="10"
-                y="6"
-                width="1.5"
-                height="16"
-                fill="var(--color-primary-light)"
-              />
-              <rect
-                x="16.5"
-                y="6"
-                width="1.5"
-                height="16"
-                fill="var(--color-primary-light)"
-              />
-            </svg>
-          </span>
-        </button>
-      )}
-      {open && (
-        <div className="widget-result-floating-panel">
-          <div className="widget-result-header">
-            Resultados
-            <button
-              className="widget-result-close-btn"
-              onClick={() => setOpen(false)}
-              title="Cerrar"
-            >
-              -
-            </button>
-          </div>
-          <div className="widget-result-content">
-            {/* Componente de acceso al MapView */}
-            <div style={{ position: "absolute", width: 0, height: 0 }}>
-              <JimuMapViewComponent
-                useMapWidgetId={props.useMapWidgetIds?.[0]}
-                onActiveViewChange={setJimuMapView}
-              />
+    /**
+     * Validación de mapa configurado en el widget. cef 20250325
+     */
+    if (!props.useMapWidgetIds?.length) {
+        return (
+            <div style={{ padding: 16 }}>
+                Debe seleccionar un Map Widget en la configuración.
+            </div>
+        )
+    }
+
+    return (
+        <div>
+
+            {/* Componente de acceso al MapView cef 20250325 */}
+            <div style={{ position: 'absolute', width: 0, height: 0 }}>
+                <JimuMapViewComponent
+                    useMapWidgetId={props.useMapWidgetIds?.[0]}
+                    onActiveViewChange={setJimuMapView}
+                />
             </div>
 
+            {!open && (
+                <button className="widget-result-floating-btn" onClick={() => setOpen(true)} title="Mostrar resultados">
+                    <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        {/* SVG tabla */}
+                        <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <rect x="4" y="6" width="20" height="16" rx="3" fill="var(--color-primary-light)" stroke="var(--color-primary-light)" strokeWidth="2" />
+                            <rect x="4" y="11" width="20" height="1.5" fill="var(--color-primary-light)" />
+                            <rect x="10" y="6" width="1.5" height="16" fill="var(--color-primary-light)" />
+                            <rect x="16.5" y="6" width="1.5" height="16" fill="var(--color-primary-light)" />
+                        </svg>
+                    </span>
+                </button>
+            )}
+            {open && (
+                <div className="widget-result-floating-panel">
+                    <div className="widget-result-header">
+                        Resultados
+                        <button className="widget-result-close-btn" onClick={() => setOpen(false)} title="Cerrar">-</button>
+                    </div>
+                    <div className="widget-result-content">
+
+                        {/* BOTONES */}
+                        {/* Barra superior */}
+                        <div className="widget-result-toolbar-bar">
+                        {data?.withGraphic && (
+                            <Button
+                            size="sm"
+                            type="primary"
+                            onClick={() => {
+                                setViewMode?.(viewMode === "tabla" ? "grafico" : "tabla")
+                            }}
+                            >
+                            {viewMode === "tabla" ? "Ver Gráfico" : "Ver Tabla"}
+                            </Button>
+                        )}
+                        { viewMode === 'tabla' &&
+                        (<Button size="sm" type="primary" className="widget-result-export-btn" onClick={handleExport}>
+                            Exportar tabla
+                        </Button>)}
+                        </div>
+                        {/*  ÁREA ÚNICA COMPARTIDA */}
+                        <div className="widget-result-view">
+
+                            {viewMode === 'grafico' && data?.withGraphic ? (
+                                <ResultGraphic
+                                    data={data.graphicData}
+                                    type={data.graphicType}
+                                    title={data.graphicTitle || 'Sin título'}
+                                />
+                            ) : (
             <ResultTable
               features={pagedFeatures}
               fields={data.fields}
@@ -702,8 +804,15 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
               page={page}
               totalPages={totalPages}
               setPage={setPage}
+              data={data} // cef 20260324 para mostrar botón de toggle si viene withGraphic
+              setViewMode={setViewMode} // cef 20260324 para toggle tabla/gráfico
             />
-            {total > 1 && (
+        )}
+
+    </div>
+
+            {/* FOOTER */}
+            {(total > 4 && viewMode === 'tabla') && (                            
               <ResultFooter
                 total={total}
                 page={page}
