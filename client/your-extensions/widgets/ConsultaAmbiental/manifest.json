@@ -1,0 +1,27 @@
+{
+  "name": "ConsultaAmbiental",
+  "label": "Consulta Ambiental",
+  "type": "widget",
+  "version": "1.19.0",
+  "exbVersion": "1.19.0",
+  "author": "Esri R&D Center Beijing",
+  "description": "Consulta ambiental para sig-quindio",
+  "copyright": "",
+  "license": "http://www.apache.org/licenses/LICENSE-2.0",
+  "properties": {},
+  "translatedLocales": [
+    "en"
+  ],
+  "defaultSize": {
+    "width": 400,
+    "height": 300
+  },
+  "useDataSources": [],
+  "outputDataSources": [
+    {
+      "id": "output-chart",
+      "type": "FEATURE_LAYER",
+      "label": "Resultados agrupados"
+    }
+  ]
+}

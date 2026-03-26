@@ -4,6 +4,12 @@
  * Usado para transferir resultados entre widgets
  * mediante el store global de Experience Builder.
  */
+
+export interface ChartDataItem {// cef 20260320
+  name: string;
+  value: number;
+}
+
 export interface ResultPayload {
   /** Widget que envía los resultados */
   sourceWidgetId: string
@@ -31,6 +37,14 @@ export interface ResultPayload {
 
   /** Indica si la capa es temporal */
   valorBusqueda?: string
+
+  /** Indica si muestra grafico cef 20260320 */
+  withGraphic?: boolean
+
+   // cef 20260320
+  graphicData?: ChartDataItem[];
+  graphicType?: "bar" | "pie";
+  graphicTitle?: string
 }
 
 export interface ResultField {

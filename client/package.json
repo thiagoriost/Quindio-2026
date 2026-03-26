@@ -9,10 +9,12 @@
     "build:prod": "cross-env NODE_ENV=production webpack --mode production",
     "build:for-download": "cross-env NODE_ENV=production OUTPUT_FOLDER=./dist-download webpack --mode production",
     "test": "jest --runInBand",
-    "lint": "eslint"
+    "lint": "eslint",
+    "postinstall": "node ./npm-bootstrap-extensions"
   },
   "author": "",
   "dependencies": {
+    "@amcharts/amcharts4": "^4.10.40",
     "@arcgis/charts-components": "^4.34.0",
     "@arcgis/coding-components": "^4.34.0",
     "@arcgis/map-components": "^4.34.0",
@@ -81,6 +83,7 @@
     "react-transition-group": "^4.4.5",
     "react-window": "^1.8.9",
     "reactstrap": "^9.2.3",
+    "recharts": "^3.8.0",
     "redux": "^5.0.1",
     "reselect": "^5.1.1",
     "sass": "^1.89.2",
