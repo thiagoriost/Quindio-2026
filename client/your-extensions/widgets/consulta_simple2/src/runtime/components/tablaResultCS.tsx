@@ -4,7 +4,6 @@
 */
 import { React } from "jimu-core"
 
-import DataGrid from "react-data-grid"
 import 'react-data-grid/lib/styles.css'
 
 import { Button } from "jimu-ui"
@@ -16,6 +15,7 @@ import { loadModules } from 'esri-loader'
 
 //Importación interfaces
 import { typeMSM } from "../../types/interfaceResponseConsultaSimple"
+import { DataGrid } from "react-data-grid"
 const { useEffect } = React
 
 
@@ -103,7 +103,7 @@ const TablaResultCS = function({props, rows, columns, view, setControlForms, jim
 
         //console.log("Row DG =>",row.row);
 
-        const spatialReference = view.graphics.items.find(e => e.attributes.OBJECTID == row.row.OBJECTID).geometry.spatialReference
+        const spatialReference = view.graphics.items.find(e => e.attributes.OBJECTID === row.row.OBJECTID).geometry.spatialReference
 
         //console.log("Tipo Geom =>",geometryType);
 
@@ -123,7 +123,7 @@ const TablaResultCS = function({props, rows, columns, view, setControlForms, jim
         //Inclusión capa en el mapa
         jimuMapView.view.map.add(graphicsLayer)
 
-        if (geometryType != "point")
+        if (geometryType !== "point")
         {
           jimuMapView.view.goTo(
             graphic.geometry.extent.expand(1.5),
@@ -235,12 +235,11 @@ const TablaResultCS = function({props, rows, columns, view, setControlForms, jim
                 spatialReference: spatialRefer
             }
             }
-            break
 
             case "polygon":
             case "polyline":
             {
-            const geometries = geometryType == 'polygon' ? geometry.rings : geometry.paths
+            const geometries = geometryType === 'polygon' ? geometry.rings : geometry.paths
 
             geometries.forEach(ring => {
                 ring.forEach(([x, y]) => {
@@ -258,13 +257,10 @@ const TablaResultCS = function({props, rows, columns, view, setControlForms, jim
                 spatialReference:fullExtent.spatialReference
             }
             }
-            break
-
             default:
             {
             return null
             }
-            break
         }
     }
 
@@ -278,7 +274,7 @@ const TablaResultCS = function({props, rows, columns, view, setControlForms, jim
      */
     const exportToCSVTS = function (data, fName) {
         //Objeto array para procesar la data
-        const csvDataArr = []
+
 
         //Procesar nombre archivo, estándar 'data'+'_'+'Anio'+'_'+'Mes'+'_'+'Dia'+'_'+'hh'+'_'+'mm'+'_'+'ss'
         if (fName)
@@ -349,6 +345,7 @@ const TablaResultCS = function({props, rows, columns, view, setControlForms, jim
       if (props.state === 'CLOSED') {
         retornarFormulario()
       }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [props.state])
   return (
     <>

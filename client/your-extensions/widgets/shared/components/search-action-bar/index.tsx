@@ -1,15 +1,3 @@
-/**
- * @fileoverview Componente de barra de acciones de búsqueda reutilizable.
- * Proporciona botones de búsqueda y limpieza con estados de carga y ayuda contextual.
- *
- * @module shared/components/search-action-bar
- * @requires jimu-core
- * @requires jimu-ui
- *
- * @author IGAC - DIP
- * @since 2024
- */
-
 /** @jsx jsx */
 import { React, jsx } from 'jimu-core'
 import { Button, /* Loading, */ Tooltip, Icon } from 'jimu-ui'
@@ -17,46 +5,98 @@ import HelpOutlined from 'jimu-icons/svg/outlined/suggested/help.svg'
 import './style.scss'
 
 /**
- * Propiedades del componente SearchActionBar.
- *
- * @interface SearchActionBarProps
+ * Props del componente {@link SearchActionBar}.
  */
 export interface SearchActionBarProps {
-  /** Callback ejecutado al hacer clic en el botón de búsqueda */
+  /**
+   * Función que se ejecuta al hacer clic en el botón de búsqueda.
+   */
   onSearch: () => void
-  /** Callback ejecutado al hacer clic en el botón de limpiar */
+
+  /**
+   * Función que se ejecuta al hacer clic en el botón de limpiar.
+   */
   onClear: () => void
-  /** Indica si la búsqueda está en progreso (muestra estado de carga) */
+
+  /**
+   * Indica si el componente está en estado de carga.
+   * Cuando es `true`, deshabilita los botones y cambia el texto del botón de búsqueda.
+   * @default false
+   */
   loading?: boolean
-  /** Deshabilita el botón de búsqueda */
+
+  /**
+   * Deshabilita el botón de búsqueda.
+   * @default false
+   */
   disableSearch?: boolean
-  /** Deshabilita el botón de limpiar */
+
+  /**
+   * Deshabilita el botón de limpiar.
+   * @default false
+   */
   disableClear?: boolean
-  /** Texto del botón de búsqueda */
+
+  /**
+   * Texto personalizado para el botón de búsqueda.
+   * @default "Buscar"
+   */
   searchLabel?: string
-  /** Texto del botón de limpiar */
+
+  /**
+   * Texto personalizado para el botón de limpiar.
+   * @default "Limpiar"
+   */
   clearLabel?: string
-  /** Texto de ayuda mostrado en tooltip */
+
+  /**
+   * Texto de ayuda contextual mostrado en un tooltip.
+   * Si está vacío, el ícono de ayuda no se renderiza.
+   * @default ""
+   */
   helpText?: string
-  /** Texto del botón de búsqueda cuando está en estado de carga */
-  searchLabelLoading?: string
+  /**
+   * Texto de error mostrado debajo de los botones.
+   * Si está vacío, no se renderiza ningún mensaje de error.
+   * @default ""
+   */
+  error?: string
 }
 
 /**
- * Barra de acciones de búsqueda con botones de buscar y limpiar.
- * Incluye soporte para estados de carga, deshabilitación y tooltip de ayuda.
+ * Barra de acciones reutilizable para componentes de búsqueda en widgets de
+ * ArcGIS Experience Builder.
+ *
+ * Proporciona:
+ * - Botón de **Buscar**
+ * - Botón de **Limpiar**
+ * - Ícono opcional de ayuda con tooltip
+ *
+ * Incluye manejo interno de estados `loading` y deshabilitación de botones,
+ * evitando ejecuciones accidentales mientras se procesa una búsqueda.
  *
  * @component
- * @param {SearchActionBarProps} props - Propiedades del componente
- * @returns {JSX.Element} Barra de acciones con botones de búsqueda y limpieza
+ * @param {SearchActionBarProps} props - Propiedades del componente.
+ * @returns {JSX.Element} Barra de acciones renderizada.
  *
  * @example
+ * ```tsx
  * <SearchActionBar
- *   onSearch={() => handleSearch()}
- *   onClear={() => handleClear()}
+ *   onSearch={handleSearch}
+ *   onClear={handleClear}
  *   loading={isLoading}
- *   helpText="Busca por nombre o código"
+ *   disableSearch={!formValid}
+ *   helpText="Ingrese un número predial válido"
  * />
+ * ```
+ */
+/**
+ * @date 2026-02-13
+ * @author Ing.CEF
+ * @param param0
+ * @dateUpdated 2026-02-17
+ * @changes inclusión clase estilo btnsContner, desde style.scss por medio de un div contenedor
+ * @returns {Object} HTML
  */
 export const SearchActionBar: React.FC<SearchActionBarProps> = ({
   onSearch,
@@ -67,14 +107,13 @@ export const SearchActionBar: React.FC<SearchActionBarProps> = ({
   searchLabel = 'Buscar',
   clearLabel = 'Limpiar',
   helpText = '',
-  searchLabelLoading = 'Buscando...'
+  error = ''
 }) => {
 
   /**
-   * Manejador del evento de búsqueda.
-   * Solo ejecuta si no está cargando y no está deshabilitado.
-   *
-   * @returns {void}
+   * Maneja la acción de búsqueda.
+   * Evita la ejecución si el componente está cargando
+   * o si el botón está deshabilitado.
    */
   const handleSearch = () => {
     if (!loading && !disableSearch) {
@@ -83,10 +122,8 @@ export const SearchActionBar: React.FC<SearchActionBarProps> = ({
   }
 
   /**
-   * Manejador del evento de limpieza.
-   * Solo ejecuta si no está deshabilitado.
-   *
-   * @returns {void}
+   * Maneja la acción de limpiar.
+   * Evita la ejecución si el botón está deshabilitado.
    */
   const handleClear = () => {
     if (!disableClear) {
@@ -95,38 +132,40 @@ export const SearchActionBar: React.FC<SearchActionBarProps> = ({
   }
 
   return (
-    <div className="search-action-bar">
+	<div className='btnsContner'>
+	    <div className="search-action-bar">
 
-      {helpText && (
-        <Tooltip title={helpText} placement="bottom">
-          <span className="help-icon-wrapper mr-2">
-            <Icon icon={HelpOutlined} size={16} />
-          </span>
-        </Tooltip>
+	      {helpText && (
+	        <Tooltip title={helpText} placement="bottom">
+	          <span className="help-icon-wrapper mr-2">
+	            <Icon icon={HelpOutlined} size={16} />
+	          </span>
+	        </Tooltip>
+	      )}
+
+
+	      <Button
+	        type="default"
+	        onClick={handleClear}
+	        disabled={disableClear || loading}
+	      >
+	        {clearLabel}
+	      </Button>
+
+	      <Button
+	        type="primary"
+	        onClick={handleSearch}
+	        disabled={disableSearch || loading}
+	      >
+	        {loading ? 'Buscando...' : searchLabel}
+	      </Button>
+
+	    </div>
+      {disableSearch && (
+        <div>
+          {error}
+        </div>
       )}
-
-
-      <Button
-        type="default"
-        onClick={handleClear}
-        disabled={disableClear || loading}
-      >
-        {clearLabel}
-      </Button>
-
-      <Button
-        type="primary"
-        onClick={handleSearch}
-        disabled={disableSearch || loading}
-      >
-        {/* Asi para cargar spinner dentro del boton sin que se mueva el texto
-        {loading && <Loading width={16} height={16} className="mr-2" />}
-        {searchLabel}
-      */}
-
-        {loading ? searchLabelLoading : searchLabel}
-      </Button>
-
-    </div>
+	</div>
   )
 }

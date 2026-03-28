@@ -7,7 +7,8 @@ import WidgetTree from './components/widgetTree'
 import * as projection from "@arcgis/core/geometry/projection"
 
 interface ServiciosModule {
-  urls: { tablaContenido: string }
+  //  urls: { tablaContenido: string }
+  urls: { SERVICIO_TABLA_CONTENIDO: string }
 }
 
 /**
@@ -22,6 +23,7 @@ const Widget = (props: AllWidgetProps<any>) => {
   const [servicios, setServicios] = useState<ServiciosModule | null>(null)
   const [utilsModule, setUtilsModule] = useState<any>(null)
   const [isCollapsed, setIsCollapsed] = useState<boolean>(false) // Estado para controlar si el widget está colapsado
+  const initialExtentRef = React.useRef<__esri.Extent | null>(null) // cef 20260310 Extent inicial del mapa.
 
   /**
    * En este metodo se referencia el mapa base
@@ -58,14 +60,219 @@ const Widget = (props: AllWidgetProps<any>) => {
    * realiza la consulta de la data tabla de contenido la primera vez que se renderiza el componente
    */
   useEffect(() => {
-
-    import('../../../api/servicios').then(modulo => {
-      setServicios(modulo)
+    import('../../../api/serviciosQuindio').then(modulo => {
+      setServicios(modulo) // Asigna el módulo importado al estado servicios
       // TraerDataTablaContenido(modulo)
     })
     import('../../../utils/module').then(modulo => { setUtilsModule(modulo) })
 
   }, [])
+
+  React.useEffect(() => { // cef 20260307
+    console.log("TOC layers:", groupedLayers)
+  }, [groupedLayers])
+
+
+  // escuchar cuando se agregan capas al mapa cef 20260307, ahora solo se agregan las capas que se añadan al grupo "Capas Temporales"
+  React.useEffect(() => {
+
+    const view = varJimuMapView?.view
+    if (!view) return
+
+    const map = view.map
+
+    const escucharGrupo = (group) => {
+
+      if (!group || group.type !== "group") return
+
+      const handle = group.layers.on("after-add", (event) => {
+
+        const layer = event.item
+
+        if (!layer) return
+
+        console.log("Capa temporal detectada:", layer.id)
+
+        agregarCapaTemporal(layer)
+
+      })
+
+      return handle
+    }
+
+    // escuchar cuando se agregue el grupo
+    const mapHandle = map.layers.on("after-add", (event) => {
+
+      const layer = event.item
+
+      if (layer.id === "capas-temporales") {
+        escucharGrupo(layer)
+      }
+
+    })
+
+    // si el grupo ya existe
+    const grupoExistente = map.findLayerById("capas-temporales")
+
+    let grupoHandle
+    if (grupoExistente) {
+      grupoHandle = escucharGrupo(grupoExistente)
+    }
+
+    return () => {
+      mapHandle.remove()
+      if (grupoHandle) grupoHandle.remove()
+    }
+
+  }, [varJimuMapView])
+
+  /**
+   * cef 20260310
+   * Guarda el extent inicial del mapa cuando la vista
+   * del mapa está disponible.
+   */
+  React.useEffect(() => {
+    const view = varJimuMapView?.view
+    if (!view) return
+
+    if (!initialExtentRef.current) {
+      initialExtentRef.current = view.extent.clone()
+    }
+  }, [varJimuMapView])
+
+
+  // insertar capa en "Capas Temporales"
+
+  const agregarCapaTemporal = (layer) => {
+
+    console.log("Insertando en TOC:", layer.title)
+
+    setGroupedLayers(prev => {
+
+      if (!prev) return prev
+
+      const grupo = prev.find(
+        t => t.NOMBRETEMATICA === "Capas Temporales"
+      )
+
+      const nuevaCapa = {
+        IDTEMATICA: Date.now(),
+        IDTEMATICAPADRE: grupo?.IDTEMATICA ?? -999,
+        IDCAPA: layer.id,
+        TITULOCAPA: layer.title,
+        URL: "temporal",
+        capasHijas: [],
+        capasNietas: [],
+        capasBisnietos: []
+      }
+
+      // 🟢 Si no existe el grupo lo creamos
+      if (!grupo) {
+
+        const nuevoGrupo = {
+          IDTEMATICA: -999,
+          NOMBRETEMATICA: "Capas Temporales",
+          IDTEMATICAPADRE: -1,
+          IDCAPA: null,
+          TITULOCAPA: "Capas Temporales",
+          URL: null,
+          capasHijas: [nuevaCapa],
+          capasNietas: [],
+          capasBisnietos: []
+        }
+
+        return [...prev, nuevoGrupo]
+      }
+
+      // evitar duplicados
+      if (grupo.capasHijas?.some(c => c.IDCAPA === layer.id)) {
+        return prev
+      }
+
+      return prev.map(t => {
+
+        if (t.NOMBRETEMATICA !== "Capas Temporales") return t
+
+        return {
+          ...t,
+          capasHijas: [...(t.capasHijas || []), nuevaCapa]
+        }
+
+      })
+
+    })
+
+  }
+
+  // cef 20260309
+  const eliminarCapaTemporal = (layerId: string) => {
+
+    const view = varJimuMapView?.view
+    if (!view) return
+
+    const map = view.map
+
+    const grupo = map.findLayerById("capas-temporales") as __esri.GroupLayer
+
+    if (grupo) {
+
+      const layer = grupo.layers.find(l => l.id === layerId)
+
+      if (layer) {
+        console.log("Eliminando capa del mapa:", layer.id)
+
+        grupo.remove(layer)
+      }
+
+      // si el grupo queda vacío lo eliminamos del mapa
+      if (grupo.layers.length === 0) {
+        console.log("Eliminando grupo capas-temporales")
+        map.remove(grupo)
+
+        // cef 20260310 restaurar extent inicial
+        const extent = initialExtentRef.current
+        if (extent) {
+          view.goTo(extent)
+        }
+
+      }
+    }
+
+    // actualizar TOC
+    setGroupedLayers(prev => {
+
+      if (!prev) return prev
+
+      const resultado = prev
+        .map(t => {
+
+          if (t.NOMBRETEMATICA !== "Capas Temporales") return t
+
+          const nuevasCapas = (t.capasHijas || []).filter(
+            c => c.IDCAPA !== layerId
+          )
+
+          return {
+            ...t,
+            capasHijas: nuevasCapas
+          }
+
+        })
+        // eliminar temática si queda vacía
+        .filter(t => {
+
+          if (t.NOMBRETEMATICA !== "Capas Temporales") return true
+
+          return (t.capasHijas?.length ?? 0) > 0
+
+        })
+
+      return resultado
+
+    })
+
+  }
+
 
   return (
     <div>
@@ -84,7 +291,11 @@ const Widget = (props: AllWidgetProps<any>) => {
           </button>
           {!isCollapsed && (
             <div className="w-100 p-3 contenedorTablaContenido" style={{ backgroundColor: 'var(--sys-color-primary)', color: 'var(--sys-color-on-primary)' }}>
-            <WidgetTree dataTablaContenido={groupedLayers} setDataTablaContenido={setGroupedLayers} varJimuMapView={varJimuMapView}/>
+              <WidgetTree
+                dataTablaContenido={groupedLayers}
+                setDataTablaContenido={setGroupedLayers}
+                eliminarCapaTemporal={eliminarCapaTemporal} //cef 20260309
+                varJimuMapView={varJimuMapView} />
             </div>
           )}
         </div>
@@ -99,8 +310,8 @@ export default Widget
 /**
    * En este meto se realiza la consulta del jeison de la tabla de contenido
    */
-export const getDataTablaContenido = async (servicios: { urls: { tablaContenido: string } }) => {
-  const url = servicios.urls.tablaContenido
+export const getDataTablaContenido = async (servicios: { urls: { SERVICIO_TABLA_CONTENIDO: string } }) => {
+  const url = servicios.urls.SERVICIO_TABLA_CONTENIDO
   let responseTablaDeContenido: TablaDeContenidoInterface[] = []
   // let responseTablaDeContenido: any[] = [];
   try {

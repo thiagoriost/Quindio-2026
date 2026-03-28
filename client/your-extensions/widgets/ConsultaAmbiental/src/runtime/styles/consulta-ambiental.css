@@ -1,0 +1,21 @@
+.consulta-ambiental-form {
+
+  display: grid;
+  grid-template-columns: 130px 1fr;
+  gap: 8px;
+  align-items: center;
+
+}
+
+.filtro-row {
+  display: contents;
+}
+
+.consulta-ambiental-form label {
+  font-weight: 500;
+}
+
+.date-disabled {
+  pointer-events: none;
+  opacity: 0.6;
+}

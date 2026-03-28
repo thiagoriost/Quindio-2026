@@ -15,11 +15,13 @@ import 'rc-slider/assets/index.css'; import 'react-tabs/style/react-tabs.css'
 import '../../styles/style.css'
 import '../../styles/styles_widgetTree.css'
 import { appActions, getAppStore } from 'jimu-core'
+import LegendDisplay from './LegendDisplay'
 
 interface Widget_Tree_Props {
     dataTablaContenido:CapasTematicas[]; // data ordenada
     varJimuMapView: JimuMapView; // referencia al mapa
     setDataTablaContenido: Dispatch<SetStateAction<CapasTematicas[]>> //  por el momento cuando se ajusta el VISIBLE de cada capa
+    eliminarCapaTemporal: (layerId: string) => void // cef 20260309
 }
 
 /**
@@ -27,8 +29,11 @@ interface Widget_Tree_Props {
  * @author Rigoberto Rios - rigoriosh@gmail.com
  * @param param0 segun interfac Widget_Tree_Props
  * @returns Widget_Tree
+ * 
+ * cef 20260309, se inluye el paso de la prop eliminarCapaTemporal
+ * 
  */
-const WidgetTree: React.FC<Widget_Tree_Props> = ({ dataTablaContenido, varJimuMapView, setDataTablaContenido }) => {
+const WidgetTree: React.FC<Widget_Tree_Props> = ({ dataTablaContenido, varJimuMapView, setDataTablaContenido, eliminarCapaTemporal }) => {
     const [expandedItems, setExpandedItems] = useState({}) // almacena los nodos que son expandibles
     const [checkedItems, setCheckedItems] = useState({}) // almacena los nodos que tienen la opcion de check y son checkeados
     const [searchQuery, setSearchQuery] = useState<string>('') // se utiliza para capturar la entrada del campo buscar capa
@@ -63,17 +68,21 @@ const WidgetTree: React.FC<Widget_Tree_Props> = ({ dataTablaContenido, varJimuMa
         /**
          * 1. Determina el ID de la capa (IDCAPA) considerando si es nieta o no.
          */
-        const IDCAPA = capa.capasNietas ? capa.capasNietas[0].IDCAPA : capa.IDCAPA
+        const IDCAPA = capa.capasNietas?.length ? capa.capasNietas[0].IDCAPA : capa.IDCAPA
+
+        // detectar capa temporal
+        const esTemporal = capa.URL === "temporal"
 
         /**
          * 2. Obtiene la referencia a la capa a desplegar en el mapa.
          */
-        const capaToDeployContextmenu = capa.URL ? capa : capa.capasNietas ? capa.capasNietas.length === 1 ? capa.capasNietas[0] : undefined : undefined
+        const capaToDeployContextmenu = capa.URL ? capa : capa.capasNietas ? capa.capasNietas.length === 1 ? capa.capasNietas[0] : undefined : esTemporal ? capa : undefined
 
         /**
          * 3. Actualiza el estado de checkedItems para reflejar el check/uncheck.
          */
         setCheckedItems(prevState => ({ ...prevState, [IDCAPA]: target.checked }))
+        if (!capaToDeployContextmenu) return
 
         /**
          * 4. Marca la propiedad VISIBLE de la capa según el check.
@@ -85,6 +94,19 @@ const WidgetTree: React.FC<Widget_Tree_Props> = ({ dataTablaContenido, varJimuMa
          */
         if (utilsModule?.logger()) console.log("handleCheck =>",{capa, target, IDCAPA, capaToDeployContextmenu})
 
+        if (esTemporal) {
+
+            // controlar visibilidad directamente en el mapa
+            const layer = varJimuMapView?.view?.map?.findLayerById(String(IDCAPA))
+
+            if (layer) {
+                layer.visible = target.checked
+            }
+
+            return
+        }
+
+        // lógica original para capas del servicio
         /**
          * 6. Actualiza la variable en memoria de capas activas (activeLayersRef).
          *    Si se activa, agrega la capa; si se desactiva, la elimina.
@@ -132,19 +154,21 @@ const WidgetTree: React.FC<Widget_Tree_Props> = ({ dataTablaContenido, varJimuMa
 
     /**
      * Metodo que controla el click derecho sobre una capa especifica para abrir el contextMenu
+     * cef 20260310, no menu contextual para capas temporles
      * @param e evento click
      * @param capa capa seleccionada
      */
-    const handleRightClick = (e: React.MouseEvent<HTMLDivElement>, capa: ItemResponseTablaContenido ) => {
+    const handleRightClick = (e: React.MouseEvent<HTMLDivElement, MouseEvent>, capa: ItemResponseTablaContenido) => {
         e.preventDefault()
         const capaToDeployContextmenu = capa.URL ? capa : capa.capasNietas ? capa.capasNietas.length === 1 ? capa.capasNietas[0] : undefined : undefined
         if (capaToDeployContextmenu) {
+            if(capa?.IDTEMATICA === -999) return  // cef 20260310
             setContextMenu({
                 mouseX: e.clientX + 50,
                 mouseY: e.clientY - 70,
                 capa_Feature: {
                     capa: capaToDeployContextmenu,
-                    layer: featuresLayersDeployed.find(e => e.capa === capaToDeployContextmenu)?.layer
+                    layer: featuresLayersDeployed.filter(e => e.capa === capaToDeployContextmenu)[0]?.layer
                 }
             })
         }
@@ -156,13 +180,21 @@ const WidgetTree: React.FC<Widget_Tree_Props> = ({ dataTablaContenido, varJimuMa
      * @returns
      */
     const Nodo = ({ capa, level = 0 }) => {
+
+        //        const esTematica = !!capa.NOMBRETEMATICA // cef 20260306: se agrega esta variable para identificar si el nodo es una tematica o una capa
+
         const isExpanded = expandedItems[capa.IDTEMATICA]
         const hasChildren =
             (capa.capasHijas?.length >= 1) ||
             (capa.capasNietas?.length > 0 && capa.IDTEMATICAPADRE > 0) ||
             (capa.capasBisnietos?.length >= 1) || (searchQuery !== '' && !capa.URL)
 
-        const isChecked = capa.capasNietas ? capa.capasNietas[0].IDCAPA : capa.IDCAPA
+        //const isChecked = capa.capasNietas ? capa.capasNietas[0].IDCAPA : capa.IDCAPA // cef 20260306: 
+
+        const isChecked = // cef 20260306:
+            capa.capasNietas?.length
+                ? capa.capasNietas[0].IDCAPA
+                : capa.IDCAPA
 
         const displayName = ((capa.capasHijas?.length >= 1)
             || (capa.capasNietas?.length > 1)
@@ -171,6 +203,12 @@ const WidgetTree: React.FC<Widget_Tree_Props> = ({ dataTablaContenido, varJimuMa
             ? capa.NOMBRETEMATICA
             : capa.TITULOCAPA
 
+        /*       
+                const displayName = esTematica  // cef 20260306:
+                    ? capa.NOMBRETEMATICA
+                    : capa.TITULOCAPA
+        
+        */
         const renderChildren = () => (
             <>
                 {capa.capasHijas && capa.capasHijas.map(capa => (
@@ -202,6 +240,21 @@ const WidgetTree: React.FC<Widget_Tree_Props> = ({ dataTablaContenido, varJimuMa
                             />
                         ) : null
                     }
+
+                    {/* cef 20260309 BOTÓN ELIMINAR SOLO PARA CAPAS TEMPORALES*/}
+                    {capa.URL === "temporal" && capa.IDCAPA && (
+                        <button
+                            className="btn-remove-layer"
+                            onClick={(e) => {
+                                e.stopPropagation()
+                                eliminarCapaTemporal(capa.IDCAPA)
+                            }}
+                            title="Eliminar capa temporal"
+                        >
+                            ✖
+                        </button>
+                    )}
+
                     {displayName}
                 </div>
                 {isExpanded && hasChildren && renderChildren()}
@@ -233,7 +286,7 @@ const WidgetTree: React.FC<Widget_Tree_Props> = ({ dataTablaContenido, varJimuMa
           for (const capa of dataTablaContenido) {
 
             if (capa.URL && capa.TITULOCAPA.toLowerCase().startsWith(searchQuery.toLowerCase())) {
-              const existingNode = capasHijas.find(capaHija => capaHija.IDTEMATICA === capa.IDTEMATICA && capaHija.IDTEMATICAPADRE === capa.IDTEMATICAPADRE)
+              let existingNode = capasHijas.find(capaHija => capaHija.IDTEMATICA === capa.IDTEMATICA && capaHija.IDTEMATICAPADRE === capa.IDTEMATICAPADRE)
               if (existingNode) {
                 existingNode.capasNietas.push(capa)
               } else {
@@ -287,6 +340,17 @@ const WidgetTree: React.FC<Widget_Tree_Props> = ({ dataTablaContenido, varJimuMa
     const dibujaCapasSeleccionadas = (capasToRender: ItemResponseTablaContenido[], varJimuMapView: JimuMapView) => {
         if (utilsModule?.logger()) console.log("dibujaCapasSeleccionadas:",{capasToRender})
         capasToRender.forEach(capa =>{
+
+            // cef 20260309, validar la existencia de capasNietas antes de usarla.            
+            const capaReal = capa.NOMBRECAPA
+                ? capa
+                : capa.capasNietas?.[0]
+
+            if (!capaReal) {
+                console.warn("Capa inválida:", capa)
+                return
+            }
+
             const url = capa.URL?capa.URL:capa.capasNietas[0].URL
             const nombreCapa = capa.NOMBRECAPA?capa.NOMBRECAPA:capa.capasNietas[0].NOMBRECAPA
             const layer = new FeatureLayer({
@@ -310,11 +374,9 @@ const WidgetTree: React.FC<Widget_Tree_Props> = ({ dataTablaContenido, varJimuMa
      */
     const removerFeatureLayer = (capa: ItemResponseTablaContenido) => {
         if (featuresLayersDeployed.length > 0) {
-            const layerObj = featuresLayersDeployed.find(({capa: capaDeployed}) => (capaDeployed.IDCAPA ? capaDeployed.IDCAPA : capaDeployed.capasNietas[0].IDCAPA) === (capa.IDCAPA ? capa.IDCAPA : capa.capasNietas[0].IDCAPA))
-            if (layerObj) {
-                varJimuMapView.view.map.remove(layerObj.layer)
-            }
-            setFeaturesLayersDeployed(featuresLayersDeployed.filter(item => item.capa.IDCAPA !== (capa.IDCAPA ? capa.IDCAPA : capa.capasNietas[0].IDCAPA)))
+            const layer = featuresLayersDeployed.filter(({capa: capaDeployed}) => (capaDeployed.IDCAPA ? capaDeployed.IDCAPA : capaDeployed.capasNietas[0].IDCAPA) == (capa.IDCAPA ? capa.IDCAPA : capa.capasNietas[0].IDCAPA))[0].layer
+            varJimuMapView.view.map.remove(layer)
+            setFeaturesLayersDeployed(featuresLayersDeployed.filter(item => item.capa.IDCAPA != (capa.IDCAPA ? capa.IDCAPA : capa.capasNietas[0].IDCAPA)))
             varJimuMapView.view.zoom = varJimuMapView.view.zoom - 0.00000001
         }
     }
@@ -397,6 +459,7 @@ const WidgetTree: React.FC<Widget_Tree_Props> = ({ dataTablaContenido, varJimuMa
      */
     useEffect(() => {
         const {capasVisibles} = recorreTodasLasCapasTablaContenido(dataTablaContenido)
+        if (utilsModule?.logger()) console.log("Capas visibles al iniciar WidgetTree:",{capasVisibles})
         setCapasSelectd( capasVisibles )
         dibujaCapasSeleccionadas(capasVisibles, varJimuMapView)
 
@@ -422,14 +485,53 @@ const WidgetTree: React.FC<Widget_Tree_Props> = ({ dataTablaContenido, varJimuMa
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
+
+    // cef 20260306: este useEffect se encarga de detectar si en la data de la tabla de contenido
+    //  existen capas temporales y prender su check sin importar si el usuario las busco o no, 
+    // esto con el fin de evitar que el usuario prenda y apague varias veces el check de las 
+    // capas temporales para que estas se muestren en el mapa, ya que estas capas no siguen la 
+    // logica tradicional de prender/apagar con el check, sino que se prenden directamente en el 
+    // mapa al prender su check y se apagan directamente en el mapa al apagar su check, sin pasar 
+    // por la logica tradicional de dibujar/remover capa del mapa, por lo que es necesario prender 
+    // su check desde un inicio para que el usuario tenga la experiencia de prender/apagar la capa 
+    // temporal desde el check sin importar si esta fue buscada o no
+
+    React.useEffect(() => {
+
+        if (!dataTablaContenido?.length) return
+
+        const temporales = dataTablaContenido
+            .find(t => t.NOMBRETEMATICA === "Capas Temporales")
+            ?.capasHijas || []
+
+        temporales.forEach(capa => {
+
+            if (!checkedItems[capa.IDCAPA]) {
+
+                setCheckedItems(prev => ({
+                    ...prev,
+                    [capa.IDCAPA]: true
+                }))
+
+            }
+
+        })
+
+    }, [dataTablaContenido])
+
     return (
         <div style={{height:'inherit'}}>
              {utilsModule?.logger() && <button type="button" onClick={showState}>GetState</button>}
             <Tabs>
-                <TabList>
-                    <Tab>Lista de Capas</Tab>
+                <TabList className="custom-tab-list">
+                    <Tab className="custom-tab" selectedClassName="custom-tab--selected">Lista de Capas</Tab>
                     {
-                        capasSelectd.length>0 && <Tab>Orden de Capas</Tab>
+                        capasSelectd.length>0 && (
+                            <>
+                                <Tab className="custom-tab" selectedClassName="custom-tab--selected">Orden de Capas</Tab>
+                                <Tab className="custom-tab" selectedClassName="custom-tab--selected">Leyendas</Tab>
+                            </>
+                        )
                     }
                 </TabList>
 
@@ -464,11 +566,23 @@ const WidgetTree: React.FC<Widget_Tree_Props> = ({ dataTablaContenido, varJimuMa
                 </TabPanel>
                 {
                     capasSelectd.length>0 &&
-                        <TabPanel>
-                            <div className="checked-layers tab-order-capas">
-                                <DragAndDrop items={featuresLayersDeployed} setItems={setFeaturesLayersDeployed} setBanderaRefreshCapas={setBanderaRefreshCapas}/>
-                            </div>
-                        </TabPanel>
+                        (
+                            <>
+                                <TabPanel>
+                                    <div className="checked-layers tab-order-capas">
+                                        <DragAndDrop items={featuresLayersDeployed} setItems={setFeaturesLayersDeployed} setBanderaRefreshCapas={setBanderaRefreshCapas}/>
+                                    </div>
+                                </TabPanel>
+                                <TabPanel>
+                                    <LegendDisplay activeLayerUrls={capasSelectd.map(capa => {
+                                        const url = capa.URL ? capa.URL : capa.capasNietas ? capa.capasNietas[0].URL : '';
+                                        const nombreCapa = capa.NOMBRECAPA ? capa.NOMBRECAPA : capa.capasNietas ? capa.capasNietas[0].NOMBRECAPA : '';
+                                        return url && nombreCapa ? `${url}/${nombreCapa}` : url;
+                                        })}
+                                    />
+                                </TabPanel>
+                            </>
+                        )
                 }
             </Tabs>
             <ContexMenu contextMenu={contextMenu} setContextMenu={setContextMenu} varJimuMapView={varJimuMapView}/>
@@ -486,7 +600,7 @@ const recorreTodasLasCapasTablaContenido = (dataTablaContenido: CapasTematicas[]
     const capasVisibles: ItemResponseTablaContenido[] = []
     const clonedDataTablaContenido: CapasTematicas[] = JSON.parse(JSON.stringify(dataTablaContenido))
     const bucleRecursivo = (clonedDataTablaContenido) => {
-        clonedDataTablaContenido.forEach(capa => {
+        clonedDataTablaContenido.map(capa => {
             if (capa.URL && capa.VISIBLE && apagarCapas) {
                 capa.VISIBLE = false
             }

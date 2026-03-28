@@ -354,9 +354,9 @@ const SelectWidget = ({ props }) => {
       {
         widgetModules?.MODAL(mensajeModal, setMensajeModal)
       }
-      {
+      {/* {
         isLoading && widgetModules?.OUR_LOADING()
-      }
+      } */}
     </div>
   )
 }

@@ -1,0 +1,18 @@
+{
+  "name": "consultaEducacion",
+  "label": "Consulta Educación",
+  "type": "widget",
+  "version": "1.19.0",
+  "dependency": ["jimu-arcgis"],
+  "exbVersion": "1.19.0",
+  "author": "IGAC && rigorios8103@gmail.com",
+  "description": "",
+  "copyright": "Instituto Geográfico Agustín Codazzi (IGAC)",
+  "license": "",
+  "properties": {},
+  "translatedLocales": ["es"],
+  "defaultSize": { 
+    "width": 800,
+    "height": 500
+  }
+}

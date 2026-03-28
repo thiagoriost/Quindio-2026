@@ -1,28 +1,16 @@
-/**
- * @fileoverview Estilos del componente SearchActionBar.
- * Barra de acciones con botones de búsqueda y limpieza.
- *
- * @module shared/components/search-action-bar/styles
- * @author IGAC - DIP
- * @since 2024
- */
-
-// ===== BARRA DE ACCIONES =====
 .search-action-bar {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
   gap: 0.75rem;
   padding: 1rem;
   border-top: 1px solid #e0e0e0;
   background-color: #fff;
 
-  // Ancho mínimo para consistencia visual
   button {
     min-width: 110px;
   }
 }
 
-// ===== ICONO DE AYUDA =====
 .help-icon-wrapper {
   display: inline-flex;
   align-items: center;
@@ -33,4 +21,16 @@
   &:hover {
     opacity: 1;
   }
+}
+
+/*
+    Clase alusivo al contenedor de la botonera
+    @date 2026-02-17
+    @author IGAC - DIP
+    @remarks Definici�n aspecto distribuci�n botones, parte inferior widget
+*/
+.btnsContner{
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
 }

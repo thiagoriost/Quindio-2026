@@ -9,11 +9,14 @@
  */
 
 import { React } from 'jimu-core'
-import { Button, Label, Select, TextInput } from 'jimu-ui'
+const { useEffect, useState } = React
+import {Label, Select, TextInput } from 'jimu-ui'
 
 import { typeMSM } from '../../types/interfaceResponseConsultaSimple'
 import { urls } from '../../../../api/servicios'
-const { useEffect, useState } = React
+import { SearchActionBar } from '../../../../shared/components/search-action-bar'
+
+import '../../styles/style.css'
 
 /**
  * Componente FiltersCS - Gestiona los filtros del widget Consulta Simple.
@@ -175,7 +178,7 @@ const FiltersCS = function ({
         //if (utilsModule?.logger()) console.log("Contenido json SERV en petición =>", jsonSERV);
 
         //Invocación al método para obtener la información sobre el campo Temas
-        if (jsonSERV != undefined) {
+        if (jsonSERV !== undefined) {
           setJsonSERV(jsonSERV)
           getTemas(jsonSERV)
         }
@@ -211,13 +214,13 @@ const FiltersCS = function ({
    */
   function getTemas (jsonData) {
     const opcArr = []
-    let tipoRegistro, nodoPadre, urlServ, descrip: string
+    let tipoRegistro, nodoPadre, /* urlServ, */ descrip: string
     let idTema = -1
     for (let cont = 0; cont < jsonData.length; cont++) {
       tipoRegistro = jsonData[cont].type
       nodoPadre = jsonData[cont].parent
       idTema = jsonData[cont].id
-      urlServ = jsonData[cont].url
+      // urlServ = jsonData[cont].url
       descrip = jsonData[cont].text.toUpperCase()
 
       //Cargue de los tipos "tematica" con el nodo padre (nodoPadre) identificados con '#'
@@ -484,15 +487,15 @@ const FiltersCS = function ({
    * @updated 2024-06-19 - Fix seteo de valores de capa y URL
    */
   function getAtributosCapa (capa) {
-    let urlCapa: string
+    // const urlCapa: string
     let JsonAtrCapa: any = ''
     const AtrCapaArr: any = []
-    let urlCapaJson: string
+    // let urlCapaJson: string
 
     if (utilsModule?.logger()) console.log('Capa asociada =>', capa.target.value)
     //Construcción de la URL del servicio, a partir del identificador de capa traido desde el campo Capa
-    urlCapa = getUrlFromCapa(capa.target.value, capas)
-    urlCapaJson = urlCapa + '?f=json'
+    const urlCapa = getUrlFromCapa(capa.target.value, capas)
+    const urlCapaJson = urlCapa + '?f=json'
     if (utilsModule?.logger()) console.log('URL capa =>', urlCapaJson)
 
     //Inicialización controles
@@ -598,10 +601,10 @@ const FiltersCS = function ({
    * @since 2024-05-28
    * @updated 2024-06-25 - Fix para limpiar campo Atributo
    */
-  function limpiarCons (evt) {
+  function limpiarCons () {
     //State del control Tema
-    if (utilsModule?.logger()) console.log('Handle Evt en limpiar =>', evt.target.value)
-    setselTema({ selected: evt.target.value })
+    
+    setselTema(undefined) // Mostrar placeholder en Select Tema
     setTemas(temas)
     setSubtemas([])
     setGrupos([])
@@ -612,10 +615,6 @@ const FiltersCS = function ({
     setselAttr(undefined)
 
     //Rutina para limpiar capa del mapa
-    /*  setResponseConsultaSimple(null);
-      if (utilsModule?.logger()) console.log("Obj Geometria =>",view);
-      jimuMapView.view.map.remove(view); */
-
     limpiarCapaMapa()
   }
 
@@ -631,24 +630,24 @@ const FiltersCS = function ({
    * @since 2024-05-29
    * @updated 2024-06-25 - Validaciones de campos requeridos
    */
-  function consultaSimple (evt: { preventDefault: () => void }) {
+  function consultaSimple (/* evt: { preventDefault: () => void } */) {
     //if (utilsModule?.logger()) console.log("En pruebas...");
     setIsLoading(true)
-    evt.preventDefault()
+    // evt.preventDefault()
     setRenderMap(false)
     let cond = ''
 
     //Cargue valores filtros
-    /* //Tema
-        if (utilsModule?.logger()) console.log("Tema valor =>",selTema);
-        //Subtema
-        if (utilsModule?.logger()) console.log("Subtema valor =>",selSubtema);
-        //Grupo
-        if (utilsModule?.logger()) console.log("Grupo valor =>",selGrupo);
-        //Capa
-        if (utilsModule?.logger()) console.log("Capa valor =>",selCapas);
-        //Atributo
-        if (utilsModule?.logger()) console.log("Atributo valor =>",selAttr);   */
+    //Tema
+    if (utilsModule?.logger()) console.log("Tema valor =>",selTema);
+    //Subtema
+    if (utilsModule?.logger()) console.log("Subtema valor =>",selSubtema);
+    //Grupo
+    if (utilsModule?.logger()) console.log("Grupo valor =>",selGrupo);
+    //Capa
+    if (utilsModule?.logger()) console.log("Capa valor =>",selCapas);
+    //Atributo
+    if (utilsModule?.logger()) console.log("Atributo valor =>",selAttr);  
 
     //Condición campos alfanuméricos
     //const cond = selAttr + "=" +"'"+txtValor+"'";
@@ -724,7 +723,7 @@ const FiltersCS = function ({
 
   useEffect(() => {
     if (props.state === 'CLOSED') {
-      limpiarCons({ target: { value: '' } })
+      limpiarCons()
     }
   }, [props.state])
 
@@ -736,7 +735,7 @@ const FiltersCS = function ({
   }, [])
 
   return (
-        <form onSubmit={consultaSimple}>
+        <form onSubmit={consultaSimple} className='consulta-simple-scroll'>
             <div className="mb-1">
               <Label size="default"> Tema </Label>
               <Select
@@ -829,27 +828,15 @@ const FiltersCS = function ({
                 <div className="mb-1">
                   <Label size="default"> Valor</Label>
                   <TextInput placeholder="Escriba patrón de búsqueda"
-                  onAcceptValue={function noRefCheck () {}}
+                  onAcceptValue={function noRefCheck () { /* empty */ }}
                   type="search" className="mb-4" required readOnly={txtValorState}
                   value={txtValor} onChange={handleChangevalorTxt}></TextInput>
                 </div>
-                <div className="btns">
-                  <Button
-                    htmlType="submit"
-                    size="default"
-                    type="default"
-                  >
-                    Consultar
-                  </Button>
-                  <Button
-                    htmlType="button"
-                    onClick={limpiarCons}
-                    size="default"
-                    type="default"
-                  >
-                    Limpiar
-                  </Button>
-                </div>
+                <SearchActionBar
+                    onSearch={consultaSimple}
+                    onClear={limpiarCons}
+                    helpText="Ingrese el valor a consultar y presione el botón de búsqueda para ejecutar la consulta simple con los filtros seleccionados."
+                />
               </>
             }
 

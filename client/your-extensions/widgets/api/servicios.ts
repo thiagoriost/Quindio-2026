@@ -193,6 +193,15 @@ const urls = {
     BASE: 'https://sigquindio.gov.co/arcgis/rest/services/QUINDIO_III/CartografiaBasica/MapServer',
     MUNICIPIOS: 75,
   },
+  PRUEBAS_SIG: {
+    BASE: 'https://pruebassig.igac.gov.co/server/rest/services/Indicadores_municipios/MapServer',
+    MUNICIPIOS: 0,
+  },
+
+  Catastro_Nuevo1: {
+    BASE: 'https://sigquindio.gov.co/arcgis/rest/services/QUINDIO_III/Catastro_Nuevo1/MapServer',
+  }
+ ,
 
 }
 

@@ -25,7 +25,7 @@ const initSelectIndicadores = {
 }
 
 const initLastLayerDeployed = { graphics: [], graphicsLayers: [] }
-const init_indiSelected = {
+const initIndiSelected = {
   value: 0,
   label: "",
   descripcion: "",
@@ -61,10 +61,9 @@ const TabIndicadores: React.FC<any> = ({
   jimuMapView,
 }) => {
   const [constantes, setConstantes] = useState<InterfaceConstantes | null>(null)
-  const [widgetModules, setWidgetModules] = useState<typeof import("../widgetsModule") | undefined>(undefined)
-  const [servicios, setServicios] =
-    useState<typeof import("../../api/servicios")>()
-  const [utilsModule, setUtilsModule] = useState<typeof import("../../utils/module") | undefined>(undefined)
+  const [widgetModules, setWidgetModules] = useState(undefined)
+  const [servicios, setServicios] = useState(undefined)
+  const [utilsModule, setUtilsModule] = useState(undefined)
   const [lastLayerDeployed, setLastLayerDeployed] = useState(initLastLayerDeployed)
   const [mensajeModal, setMensajeModal] = useState({
     deployed: false,
@@ -78,7 +77,7 @@ const TabIndicadores: React.FC<any> = ({
   const [poligonoSeleccionado, setPoligonoSeleccionado] = useState<inter_poligonoSeleccionado | undefined>(undefined)
   const [geometriaMunicipios, setGeometriaMunicipios] = useState<{ features: typeGeometria[] } | undefined>(undefined)
   const [geometriasDepartamentos, setGeometriasDepartamentos] = useState< interfa_geometriasDepartamentos | undefined >(undefined)
-  const [apuestaEstrategica, setApuestaEstrategica] = useState<any | undefined>(undefined)
+  const [apuestaEstrategica, setApuestaEstrategica] = useState<interf_SUBSISTEMA | undefined>(undefined)
   const [selectApuestaEstategica, setSelectApuestaEstategica] = useState<interf_APUESTA_ESTRATEGICA| undefined>(undefined)
   const [selectCategoriaTematica, setSelectCategoriaTematica] = useState<CategoriaTematica| undefined>(undefined)
   const [indicadores, setIndicadores] = useState< interfa_indicadores[]| null>(null)
@@ -88,7 +87,7 @@ const TabIndicadores: React.FC<any> = ({
   const [municipioSelect, setMunicipioSelect] = useState< { [key: string]: any; value: any } | undefined >(undefined)
   const [rangosLeyenda, setRangosLeyenda] = useState([])
   const [esriModules, setEsriModules] = useState<inter_EsriModules | undefined>(undefined)
-  const [es_Indicador, setEsIndicador] = useState("")
+  const [esIndicador, setEsIndicador] = useState("")
   //Estado para conservar la URL del servicio Nacional
   const [urlIndGetData, setUrlIndGetData] = useState(undefined)
   //Estado para conservar el criterio where, para los indicadores 3.1.5, 3.1.6 y 3.1.7
@@ -187,7 +186,7 @@ const TabIndicadores: React.FC<any> = ({
     await handleIndicadorSelectedContinua({
       indiSelected,
       target,
-      _es_Indicador: indicatorConfig._es_Indicador,
+      _esIndicador: indicatorConfig._esIndicador,
       geometrias: indicatorConfig.geometrias,
       urlIndicadorToGetData: indicatorConfig.urlIndicadorToGetData,
       outStatistics: indicatorConfig.outStatistics,
@@ -211,7 +210,7 @@ const TabIndicadores: React.FC<any> = ({
   ): InterfaceIndiSelected => {
     return (
       (indicadores?.find((e) => e.value === value) as InterfaceIndiSelected) ||
-      init_indiSelected
+      initIndiSelected
     )
   }
 
@@ -241,7 +240,7 @@ const TabIndicadores: React.FC<any> = ({
     geometriasDepartamentales: any
   ): IndicatorConfig => {
     const baseConfig = {
-      _es_Indicador: "Nacional",
+      _esIndicador: "Nacional",
       geometrias: geometriaMunicipios,
       urlIndicadorToGetData:
         servicios?.urls.indicadoresNaci[indiSelected?.urlNal],
@@ -254,7 +253,7 @@ const TabIndicadores: React.FC<any> = ({
     indiSelected?.label.includes("3.1.6") || indiSelected?.label.includes("3.1.7"))) {
       return {
         ...baseConfig,
-        _es_Indicador: "es=1.7.",
+        _esIndicador: "es=1.7.",
         geometrias: geometriasDepartamentales,
         urlIndicadorToGetData:
           servicios?.urls.indicadoresDepartal[indiSelected.urlDepartal],
@@ -300,7 +299,7 @@ const TabIndicadores: React.FC<any> = ({
   ) => {
     setSelectIndicadores(indiSelected)
     setEsIndicador(
-      config._es_Indicador === "es=1.7." ? "Departamental" : "Nacional"
+      config._esIndicador === "es=1.7." ? "Departamental" : "Nacional"
     )
   }
 
@@ -320,7 +319,7 @@ const TabIndicadores: React.FC<any> = ({
     _where = "1=1",
     indiSelected,
     target,
-    _es_Indicador,
+    _esIndicador,
     geometrias,
     urlIndicadorToGetData,
     outStatistics = "",
@@ -491,14 +490,14 @@ const TabIndicadores: React.FC<any> = ({
             geom = geometrias?.features?.find(
               (GM) => GM.attributes.mpcodigo === RIN.attributes.mpcodigo
             )
-          } else if (_es_Indicador == "es=1.7.") {
+          } else if (_esIndicador === "es=1.7.") {
             // las geometrias que vienen desde el servicio departamental, solo traen los rings, mas no el exteny demas, en comparacion con el municipal
             geom = geometrias?.features?.find(
               (GM) => GM.attributes.decodigo === RIN.attributes.cod_departamento
             )
           } else if (
-            _es_Indicador == "Nacional" ||
-            _es_Indicador == "Departamental"
+            _esIndicador === "Nacional" ||
+            _esIndicador === "Departamental"
           ) {
             const codMun = RIN.attributes.cod_municipio
               ? RIN.attributes.cod_municipio
@@ -559,7 +558,7 @@ const TabIndicadores: React.FC<any> = ({
         setIsLoading(false)
         return
       }
-      if (_es_Indicador == "Departamental") {
+      if (_esIndicador === "Departamental") {
         await poblarMunicipios({
           features: responseIndicador,
           targetDepartment: target.value,
@@ -617,18 +616,18 @@ const TabIndicadores: React.FC<any> = ({
         let extentAjustado: GeographicExtent | undefined = undefined
         if (
           regionSeleccionada === "Municipal" ||
-          (_es_Indicador == "Departamental" &&
+          (_esIndicador === "Departamental" &&
             responseIndicador[0].geometry?.extent)
         ) {
           if (utilsModule?.logger())
             { console.log({
-              _es_Indicador,
+              _esIndicador,
               dataToRenderGraphic,
               responseIndicador,
               geometryEngine,
             }) }
           extentAjustado =
-            responseIndicador.length == 1
+            responseIndicador.length === 1
               ? calculateExtent(responseIndicador[0].geometry.rings)
               : ajustarExtend({
                   dataToRenderGraphic,
@@ -637,8 +636,8 @@ const TabIndicadores: React.FC<any> = ({
                 })
           //console.log({extentAjustado})
         } else if (
-          _es_Indicador == "es=1.7." &&
-          regionSeleccionada == "Departamental"
+          _esIndicador === "es=1.7." &&
+          regionSeleccionada === "Departamental"
         ) {
           extentAjustado = calculateExtent(responseIndicador[0].geometry.rings)
         }
@@ -977,7 +976,7 @@ const TabIndicadores: React.FC<any> = ({
         deparmetSelected: itemSelected.denombre,
       },
       target,
-      _es_Indicador: tipoConsulta,
+      _esIndicador: tipoConsulta,
       geometrias: _geometrias,
       urlIndicadorToGetData,
       fieldValueToSetRangeCoropletico: selectIndicadores?.fieldValueDepartal,
@@ -1142,7 +1141,7 @@ const TabIndicadores: React.FC<any> = ({
         deparmetSelected: departmentSelect?.denombre,
       },
       target: { value: itemSelected?.value },
-      _es_Indicador: "Municipal",
+      _esIndicador: "Municipal",
       geometrias: geometriaMunicipios,
       urlIndicadorToGetData:
         servicios?.urls.indicadores[
@@ -1306,7 +1305,7 @@ const TabIndicadores: React.FC<any> = ({
             "Departamento",
             ""
           )}
-        {(es_Indicador == "Departamental" || es_Indicador == "Nacional") &&
+        {(esIndicador === "Departamental" || esIndicador === "Nacional") &&
           departmentSelect?.value &&
           municipios.length > 1 &&
           widgetModules?.INPUTSELECT(
@@ -1356,7 +1355,7 @@ const TabIndicadores: React.FC<any> = ({
                           ? `${rangosLeyenda[index][2]} : `
                           : ""
                       } ${rangosLeyenda[index][0]}     ${
-                        index == 0 ? "" : "-"
+                        index === 0 ? "" : "-"
                       }     ${rangosLeyenda[index][1]}`}
                     </li>
                   )
@@ -1493,9 +1492,9 @@ const TabIndicadores: React.FC<any> = ({
         {
           widgetModules?.MODAL(mensajeModal, setMensajeModal)
         }
-        {
+        {/* {
           isLoading && widgetModules?.OUR_LOADING()
-        }
+        } */}
     </div>
   )
 }
@@ -1631,11 +1630,18 @@ interface interf_APUESTA_ESTRATEGICA {
   label: string;
   descripcion: string;
   CATEGORIA_TEMATICA: CategoriaTematica[];
-  APUESTA_ESTRATEGICA:Array<{
+}
+
+interface interf_SUBSISTEMA {
+  value: number;
+  label: string;
+  descripcion: string;
+  APUESTA_ESTRATEGICA: Array<{
     value: number;
     label: string;
     descripcion: string;
-  }>
+    CATEGORIA_TEMATICA: CategoriaTematica[];
+  }>;
 }
 interface CategoriaTematica {
   value: string | number;
@@ -1652,7 +1658,7 @@ interface HandleIndicadorParams {
 }
 
 interface IndicatorConfig {
-  _es_Indicador: string;
+  _esIndicador: string;
   geometrias: any;
   urlIndicadorToGetData: string;
   outStatistics: string;

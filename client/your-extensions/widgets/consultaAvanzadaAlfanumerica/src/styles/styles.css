@@ -1,0 +1,78 @@
+@import '../../../utils/styles/presetsQuindio.css';
+
+.consulta-widget {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: var(--spacing-sm);
+  background-color: var(--bg-color-white);
+}
+
+.select {
+
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+.valuesBox {
+
+  width: 100%;
+  /* height: 80px; */
+}
+
+textarea {
+
+  width: 100%;
+  height: 40px;
+}
+
+.operators {
+
+  display: grid;
+  grid-template-columns: repeat(4,1fr);
+  gap: 4px;
+  margin: 10px 0;
+}
+
+.operators button {
+
+  border-radius: 10px;
+  border: 1px solid #888;
+  background: #eee;
+}
+
+.actions {
+
+  display: flex;
+  justify-content: space-between;
+}
+
+.consultaAA-scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: var(--spacing-xs);
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+.consultaAA-scroll::-webkit-scrollbar {
+    width: 8px;
+}
+
+.consultaAA-scroll::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+    border-radius: var(--border-radius-lg);
+}
+
+.consultaAA-scroll::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+    border-radius: var(--border-radius-lg);
+}
+
+.consultaAA-scroll::-webkit-scrollbar-thumb:hover {
+    background: var(--scrollbar-thumb-hover);
+}

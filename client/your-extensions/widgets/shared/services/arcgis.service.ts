@@ -1,67 +1,70 @@
-/**
- * @fileoverview Servicio para interactuar con servicios de ArcGIS REST API.
- * Proporciona métodos especializados para consultas a capas de ArcGIS Server.
- *
- * @module shared/services/arcgis-service
- * @requires shared/models/api-response
- * @requires shared/services/http-service
- *
- * @author IGAC - DIP
- * @since 2024
- */
-
-import type { ApiResponse } from '../models/api-response.model'
+import { ApiResponse } from '../models/api-response.model'
 import { HttpService } from './http.service'
 
 /**
- * Servicio especializado para consultas a ArcGIS REST API.
- * Simplifica las consultas a capas de FeatureServer/MapServer.
- *
- * @class ArcgisService
- *
- * @example
- * const arcgis = new ArcgisService()
- * const response = await arcgis.queryLayer<FeatureSet>(
- *   'https://services.arcgis.com/myserver/MapServer',
- *   0,
- *   { where: "ESTADO = 'Activo'", outFields: 'OBJECTID,NOMBRE' }
- * )
+ * Servicio especializado para interactuar con capas ArcGIS REST.
+ * Encapsula la construcción de URLs para consultas tipo `query`
+ * y delega la ejecución HTTP al {@link HttpService}.
  */
 export class ArcgisService {
 
-  /** Instancia del servicio HTTP para realizar peticiones */
-  private readonly http = new HttpService()
+  /**
+   * Instancia interna del servicio HTTP.
+   * @private
+   */
+  private http = new HttpService()
 
   /**
-   * Realiza una consulta (query) a una capa de ArcGIS Server.
-   * Construye automáticamente la URL con los parámetros de consulta.
+   * Ejecuta una consulta (`query`) sobre una capa ArcGIS REST.
    *
-   * @template T - Tipo de datos esperado en la respuesta (ej: FeatureSet)
-   * @param {string} baseUrl - URL base del servicio (MapServer/FeatureServer)
-   * @param {number} layerId - ID de la capa a consultar
-   * @param {Object} params - Parámetros de la consulta
-   * @param {string} [params.where='1=1'] - Cláusula WHERE de SQL
-   * @param {string} [params.outFields='*'] - Campos a retornar
-   * @param {boolean} [params.returnGeometry=true] - Si incluir geometría
-   * @returns {Promise<ApiResponse<T>>} Respuesta con features o error
+   * Construye automáticamente la URL con los parámetros necesarios
+   * y realiza una petición GET al endpoint:
+   * `{baseUrl}/{layerId}/query`
+   *
+   * @template T Tipo esperado en la respuesta (generalmente
+   * `ArcGisQueryResponse` u otro modelo personalizado).
+   *
+   * @param {string} baseUrl URL base del servicio ArcGIS
+   * (ej: https://servidor/arcgis/rest/services/MiServicio/MapServer).
+   *
+   * @param {number} layerId ID numérico de la capa dentro del servicio.
+   *
+   * @param {Object} params Parámetros opcionales de la consulta.
+   * @param {string} [params.where='1=1'] Expresión SQL para filtrar registros.
+   * @param {string} [params.outFields='*'] Campos a retornar separados por coma.
+   * @param {boolean} [params.returnGeometry=true] Indica si se debe incluir la geometría.
+   *
+   * @param {boolean} [showAlert=true] Indica si el {@link HttpService}
+   * debe mostrar alertas automáticas ante errores.
+   *
+   * @param {AbortSignal} [signal] Señal opcional para cancelar la petición.
+   * Permite abortar la consulta desde el componente o hook que la invoque.
+   *
+   * @returns {Promise<ApiResponse<T>>}
+   * Promesa con la respuesta tipada del servidor envuelta en `ApiResponse`.
    *
    * @example
-   * // Consultar predios activos
-   * const predios = await arcgis.queryLayer<FeatureSet>(
-   *   'https://services.arcgis.com/predios/MapServer',
+   * ```ts
+   * const response = await arcgisService.queryLayer<ArcGisQueryResponse>(
+   *   urls.MiServicio.BASE,
    *   0,
-   *   {
-   *     where: "ESTADO = 'Activo'",
-   *     outFields: 'OBJECTID,CODIGO,PROPIETARIO',
-   *     returnGeometry: false
-   *   }
+   *   { where: "CODIGO='123'", returnGeometry: true },
+   *   true,
+   *   signal
    * )
+   * ```
    */
-  async queryLayer<T>(baseUrl: string, layerId: number, params: {
-    where?: string
-    outFields?: string
-    returnGeometry?: boolean
-  }): Promise<ApiResponse<T>> {
+  async queryLayer<T>(
+    baseUrl: string,
+    layerId: number,
+    params: {
+      where?: string
+      outFields?: string
+      returnGeometry?: boolean
+    },
+    showAlert: boolean = true,
+    signal?: AbortSignal
+  ): Promise<ApiResponse<T>> {
 
     const {
       where = '1=1',
@@ -77,6 +80,6 @@ export class ArcgisService {
       &f=json
     `.replace(/\s/g, '')
 
-    return this.http.get<T>(url)
+    return this.http.get<T>(url, showAlert, signal)
   }
 }

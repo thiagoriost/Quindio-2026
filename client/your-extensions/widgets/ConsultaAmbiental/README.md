@@ -1,0 +1,29 @@
+
+
+PRUEBAS:
+
+
+Calidad del Agua
+
+capa: https://sigquindio.gov.co/arcgis/rest/services/QUINDIO_III/AmbientalAlfanumerico/MapServer/0/
+
+RIO ESPEJO
+La Tebaida
+1277942400000 = 2 de julio de 2010 A las 00:00:00 UTC
+
+1277942400 son los segundos.
+000 son los milisegundos adicionales.
+
+Where final
+  IDMUNICIPIO = '63401' AND NOMBREESTACION = 'RIO ESPEJO' AND FECHA BETWEEN DATE '2010-07-02 00:00:00' AND DATE '2023-03-31 00:00:00'
+
+  No dá error, pero datos vacio, pq? Limites en las fechas timestamp.
+  IDMUNICIPIO = '63401' AND NOMBREESTACION = 'RIO ESPEJO' 
+  AND FECHA BETWEEN TIMESTAMP '2010-07-02 00:00:00' AND TIMESTAMP '2023-03-31 23:59:59' vacio
+
+
+ERROR:
+IDMUNICIPIO = '63401' AND NOMBREESTACION = 'RIO ESPEJO' AND FECHA BETWEEN 1277942400000 AND DATE 1277987600000 Failed to execute query.
+
+
+IDMUNICIPIO = '63401' AND NOMBREESTACION = 'RIO ESPEJO' AND FECHA BETWEEN DATE '2010-07-02' AND DATE '2023-03-31'
