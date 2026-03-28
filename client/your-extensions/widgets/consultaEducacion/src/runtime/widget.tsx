@@ -21,8 +21,10 @@ import { SearchActionBar } from "../../../shared/components/search-action-bar";
 import { loadLayers } from "../../../shared/services/queryMapServer.service"
 import { WIDGET_IDS } from "../../../shared/constants/widget-ids";
 import { clearPoint } from "../../../../widgets/utils/module"
+import esriRequest from "@arcgis/core/request"
 import { urls} from "../../../api/serviciosQuindio"
 import OurLoading from '../../../commonWidgets/our_loading/OurLoading'
+import DetalleEstablecimiento from './detalleEstablecimiento'
 import '../styles/styles.css'
 import { MUNICIPIOS_QUINDIO } from '../../../shared/constants/municipiosQuindio';
 
@@ -30,9 +32,7 @@ import { MUNICIPIOS_QUINDIO } from '../../../shared/constants/municipiosQuindio'
 interface interfaceConsultaPor { id: number, name: string, url: string }
 interface interfaceCategories { id: number, name: string }
 interface interfaceMunicipio { IDMUNICIPIO: string, MUNICIPIO: string }
-interface interfaceEstablecimiento { NOMBREESTABLECIMIENTO: string, CODIGOESTABLECIMIENTO: string,  DIRECCION: string, JORNADA: string, IMAGEN: string, geometry: __esri.Geometry }
-
-
+interface interfaceEstablecimiento { NOMBREESTABLECIMIENTO: string, CODIGOESTABLECIMIENTO: string,  DIRECCION: string, JORNADA: string, IMAGEN: string, geometry: __esri.Geometry, IDSECTOR: string, IDZONA: string, IDTIPOSEDE: string, IDGRUPO: string }
 
 const Widget = (props: AllWidgetProps<any>) => {
   /**
@@ -58,6 +58,7 @@ const Widget = (props: AllWidgetProps<any>) => {
   const [verAtributos, setVerAtributos] = React.useState(false)
   const [cloneFeatures, setCloneFeatures] = React.useState<any[]>([])
   const [featuresDibujados, setFeaturesDibujados] = React.useState<__esri.Graphic[]>([])
+  const [domainsMap, setDomainsMap] = React.useState<Record<string, Record<number, string>>>({})
   const consultaPor = [{
     id: 0,
     name: "Consulta educación",
@@ -175,12 +176,26 @@ const Widget = (props: AllWidgetProps<any>) => {
     setSelectedMunicipio(null)
     // obtener los municipios asociados a la categoria seleccionada y poblar el select de municipios
     const { url } = consultaPorSeleccionada
-    const municipiosUrl = `${url}/${id}`
-    setUrlLayerSelected(municipiosUrl) // almacenar la url de la capa seleccionada para usarla luego en la consulta de los municipios    
-    console.log({ municipiosUrl })
+    const URL_LAYER_SELECTED = `${url}/${id}`
+    setUrlLayerSelected(URL_LAYER_SELECTED) // almacenar la url de la capa seleccionada para usarla luego en la consulta de los municipios    
+    console.log({ URL_LAYER_SELECTED })
     setLoading(true)
     try {
-      const features = await ejecutarConsulta({ returnGeometry: false, campos: ["IDMUNICIPIO", "NOMBREESTABLECIMIENTO ","CODIGOESTABLECIMIENTO", "DIRECCION", "IDNIVELEDUCACION","IDSECTOR", "IDZONA", "IDJORNADA", "IDTIPOSEDE", "IMAGEN", "IDGRUPO"], url: municipiosUrl, where: "1=1" })
+      // Cargar los domains de la capa seleccionada para resolver códigos a nombres
+      const layerMeta = await esriRequest(URL_LAYER_SELECTED, { query: { f: "json" }, responseType: "json" })
+      const fields = layerMeta.data?.fields as any[] ?? []
+      const domains: Record<string, Record<number, string>> = {}
+      fields.forEach(field => {
+        if (field.domain?.type === "codedValue" && field.domain.codedValues) {
+          domains[field.name] = {}
+          field.domain.codedValues.forEach((cv: { code: number, name: string }) => {
+            domains[field.name][cv.code] = cv.name
+          })
+        }
+      })
+      console.log({layerMeta,fields, domains})
+      setDomainsMap(domains)
+      const features = await ejecutarConsulta({ returnGeometry: false, campos: ["IDMUNICIPIO", "NOMBREESTABLECIMIENTO ","CODIGOESTABLECIMIENTO", "DIRECCION", "IDNIVELEDUCACION","IDSECTOR", "IDZONA", "IDJORNADA", "IDTIPOSEDE", "IMAGEN", "IDGRUPO"], url: URL_LAYER_SELECTED, where: "1=1" })
       console.log({ features })
       // eliminar duplicados por IDMUNICIPIO y ordenar alfabeticamente por MUNICIPIO
       const uniqueMap = new Map<string, string>()
@@ -213,16 +228,21 @@ const Widget = (props: AllWidgetProps<any>) => {
     setSelectedEstablecimiento(null)
     setLoading(true)
     try {
-      const features = await ejecutarConsulta({ returnGeometry: true, campos: ["NOMBREESTABLECIMIENTO","CODIGOESTABLECIMIENTO","DIRECCION","JORNADA","IMAGEN"], url: urlLayerSelected, where: `IDMUNICIPIO='${id}'` })
-      console.log({ features })
+      const features = await ejecutarConsulta({ returnGeometry: true, campos: ["IDSECTOR","IDZONA","IDTIPOSEDE","IDGRUPO","NOMBREESTABLECIMIENTO","CODIGOESTABLECIMIENTO","DIRECCION","IDJORNADA","IMAGEN"], url: urlLayerSelected, where: `IDMUNICIPIO='${id}'` })
       const lista: interfaceEstablecimiento[] = features.map(f => ({
         NOMBREESTABLECIMIENTO: f.attributes.NOMBREESTABLECIMIENTO as string,
         CODIGOESTABLECIMIENTO: f.attributes.CODIGOESTABLECIMIENTO as string,
         DIRECCION: f.attributes.DIRECCION as string,
-        JORNADA: f.attributes.JORNADA as string,
         IMAGEN: f.attributes.IMAGEN as string,
+        JORNADA: domainsMap?.IDJORNADA?.[f.attributes.IDJORNADA] ?? String(f.attributes.IDJORNADA),
+        IDSECTOR: domainsMap?.IDSECTOR?.[f.attributes.IDSECTOR] ?? String(f.attributes.IDSECTOR),
+        IDZONA: domainsMap?.IDZONA?.[f.attributes.IDZONA] ?? String(f.attributes.IDZONA),
+        IDTIPOSEDE: domainsMap?.IDTIPOSEDE?.[f.attributes.IDTIPOSEDE] ?? String(f.attributes.IDTIPOSEDE),
+        IDGRUPO: domainsMap?.IDGRUPO?.[f.attributes.IDGRUPO] ?? String(f.attributes.IDGRUPO),
+        
         geometry: f.geometry.clone() as __esri.Geometry
       })).sort((a, b) => a.NOMBREESTABLECIMIENTO.localeCompare(b.NOMBREESTABLECIMIENTO))
+      console.log({ features, lista })
       setEstablecimientos(lista.length > 0 ? lista : null)
     } catch (err) {
       console.error("Error obteniendo datos del municipio seleccionado:", err)
@@ -255,7 +275,7 @@ const Widget = (props: AllWidgetProps<any>) => {
     const urlCapa = urls.SERVICIO_EDUCACION_ALFANUMERICO + "/0";
     const campos = ["NOMBREESTABLECIMIENTO", "NIT", "LABORATORIOS", "SALONESCONFERENCIAS", "NUMEROCOMPUTADORES", "ACCESOINTERNET", "WEBSITE", "PROGRAMASESPECIALES", "NUMEROESTUDIANTES", "NUMERODOCENTES", "ZONASRECREATIVAS", "ICFECS", "PRIMERAPELLIDO", "SEGUNDOAPELLIDO", "NOMBRE", "OBJECTID", "CODIGOESTABLECIMIENTO"
     ];
-    const features = await ejecutarConsulta({ returnGeometry: true, campos, url: urlCapa, where: `CODIGOESTABLECIMIENTO='${selectedEstablecimiento.CODIGOESTABLECIMIENTO}'` })
+    const features = await ejecutarConsulta({ returnGeometry: true, campos, url: urlCapa, where: `CODIGOESTABLECIMIENTO='${selectedEstablecimiento.CODIGOESTABLECIMIENTO}' and NOMBREESTABLECIMIENTO='${selectedEstablecimiento.NOMBREESTABLECIMIENTO}'` })
     console.log({ features, selectedMunicipio, selectedEstablecimiento })
     // dibujar los features obtenidos en el mapa
     if (features?.length) {
@@ -325,40 +345,11 @@ const Widget = (props: AllWidgetProps<any>) => {
           
           <div className="consulta-widget consulta-scroll loading-host">            
             {verAtributos ? (
-              <div className="detalle-establecimiento">
-                {cloneFeatures?.[0]?.attributes?.IMAGEN && cloneFeatures[0].attributes.IMAGEN !== " " && (
-                  <div className="establecimiento-img-container">
-                    <img src={cloneFeatures[0].attributes.IMAGEN} alt="Imagen del establecimiento" />
-                  </div>
-                )}
-
-                <h3 className="detalle-titulo">{selectedEstablecimiento?.NOMBREESTABLECIMIENTO}</h3>
-
-                <div className="detalle-campos">
-                  {(cloneFeatures?.[0]?.attributes?.NOMBRE || cloneFeatures?.[0]?.attributes?.PRIMERAPELLIDO || cloneFeatures?.[0]?.attributes?.SEGUNDOAPELLIDO) && (
-                    <div className="detalle-campo">
-                      <span className="detalle-label">Contacto</span>
-                      <span className="detalle-value">{`${cloneFeatures?.[0]?.attributes?.NOMBRE || ''} ${cloneFeatures?.[0]?.attributes?.PRIMERAPELLIDO || ''} ${cloneFeatures?.[0]?.attributes?.SEGUNDOAPELLIDO || ''}`.trim()}</span>
-                    </div>
-                  )}
-
-                  {cloneFeatures?.[0]?.attributes?.DIRECCION && (
-                    <div className="detalle-campo">
-                      <span className="detalle-label">Dirección</span>
-                      <span className="detalle-value">{selectedEstablecimiento?.DIRECCION}</span>
-                    </div>
-                  )}
-
-                  {selectedEstablecimiento?.JORNADA && (
-                    <div className="detalle-campo">
-                      <span className="detalle-label">Jornada</span>
-                      <span className="detalle-value">{selectedEstablecimiento.JORNADA}</span>
-                    </div>
-                  )}
-                </div>
-
-                <button className="detalle-btn-volver" onClick={() => setVerAtributos(false)}>Parámetros</button>
-              </div>
+              <DetalleEstablecimiento
+                cloneFeatures={cloneFeatures}
+                selectedEstablecimiento={selectedEstablecimiento}
+                onVolver={() => setVerAtributos(false)}
+              />
             ) 
             : <div>
               {/* Consultar por */}
@@ -414,7 +405,7 @@ const Widget = (props: AllWidgetProps<any>) => {
 
                   {municipios?.map(mun => (
                       <Option key={mun.IDMUNICIPIO} value={mun.IDMUNICIPIO}>
-                          {mun.IDMUNICIPIO}
+                          {mun.MUNICIPIO}
                       </Option>
                   ))}
               </Select>
