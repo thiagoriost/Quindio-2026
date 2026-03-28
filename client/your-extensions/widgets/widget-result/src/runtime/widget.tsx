@@ -688,51 +688,53 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
 
         throw new Error("Tipo de geometría no soportado")
     }
-  /**
-   * Validación de mapa configurado en el widget.
-   */
+  
+    /**
+     * Validación de mapa configurado en el widget. cef 20250325
+     */
+
+    const hasFeatures = data?.features && data.features.length > 0
 
   if (!props.useMapWidgetIds?.length) {
     return (
       <div>
-        {!open && (
+        {!open && hasFeatures && (
           <button className="widget-result-floating-btn" onClick={() => setOpen(true)} title="Mostrar resultados">
-                        <span className="widget-result-floating-icon">
-                            {/* SVG tabla */}
-                            <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <rect x="4" y="6" width="20" height="16" rx="3" fill="var(--color-primary-light)" stroke="var(--color-primary-light)" strokeWidth="2" />
-                                <rect x="4" y="11" width="20" height="1.5" fill="var(--color-primary-light)" />
-                                <rect x="10" y="6" width="1.5" height="16" fill="var(--color-primary-light)" />
-                                <rect x="16.5" y="6" width="1.5" height="16" fill="var(--color-primary-light)" />
-                            </svg>
-                        </span>
-                    </button>
-                )}
-                {open && (
-                    <div className="widget-result-floating-panel">
-                        <div className="widget-result-header">
-                            Resultados
-                            <button className="widget-result-close-btn" onClick={() => setOpen(false)} title="Cerrar">×</button>
-                        </div>
-                        <div className="widget-result-content">
-                            Debe seleccionar un Map Widget en la configuración.
-                        </div>
-                    </div>
-                )}
+            <span className="widget-result-floating-icon">
+                {/* SVG tabla */}
+                <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="4" y="6" width="20" height="16" rx="3" fill="var(--color-primary-light)" stroke="var(--color-primary-light)" strokeWidth="2" />
+                    <rect x="4" y="11" width="20" height="1.5" fill="var(--color-primary-light)" />
+                    <rect x="10" y="6" width="1.5" height="16" fill="var(--color-primary-light)" />
+                    <rect x="16.5" y="6" width="1.5" height="16" fill="var(--color-primary-light)" />
+                </svg>
+            </span>
+        </button>
+        )}
+        {open && hasFeatures && (
+            <div className="widget-result-floating-panel">
+                <div className="widget-result-header">
+                    Resultados
+                    <button className="widget-result-close-btn" onClick={() => setOpen(false)} title="Cerrar">×</button>
+                </div>
+                <div className="widget-result-content">
+                    Debe seleccionar un Map Widget en la configuración.
+                </div>
             </div>
+        )}
+        </div>
         )
     }
 
-    /**
-     * Validación de mapa configurado en el widget. cef 20250325
-     */
-    if (!props.useMapWidgetIds?.length) {
+    
+
+    /* if (!props.useMapWidgetIds?.length) {
         return (
             <div style={{ padding: 16 }}>
                 Debe seleccionar un Map Widget en la configuración.
             </div>
         )
-    }
+    } */
 
     return (
         <div>

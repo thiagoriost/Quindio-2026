@@ -24,12 +24,13 @@ import { clearPoint } from "../../../../widgets/utils/module"
 import { urls} from "../../../api/serviciosQuindio"
 import OurLoading from '../../../commonWidgets/our_loading/OurLoading'
 import '../styles/styles.css'
+import { MUNICIPIOS_QUINDIO } from '../../../shared/constants/municipiosQuindio';
 
 
 interface interfaceConsultaPor { id: number, name: string, url: string }
 interface interfaceCategories { id: number, name: string }
 interface interfaceMunicipio { IDMUNICIPIO: string, MUNICIPIO: string }
-interface interfaceEstablecimiento { NOMBREESTABLECIMIENTO: string, DIRECCION: string, JORNADA: string, IMAGEN: string, geometry: __esri.Geometry }
+interface interfaceEstablecimiento { NOMBREESTABLECIMIENTO: string, CODIGOESTABLECIMIENTO: string,  DIRECCION: string, JORNADA: string, IMAGEN: string, geometry: __esri.Geometry }
 
 
 
@@ -159,18 +160,6 @@ const Widget = (props: AllWidgetProps<any>) => {
     
   }, [props])
 
- /*
-  ==========================
-  LOAD LAYERS ON WIDGET OPEN
-  ==========================
-  */
-
-  React.useEffect(() => {
-
-    
-
-  }, [])
-
   /*
   ==========================
   EVENT HANDLERS
@@ -191,15 +180,15 @@ const Widget = (props: AllWidgetProps<any>) => {
     console.log({ municipiosUrl })
     setLoading(true)
     try {
-      const features = await ejecutarConsulta({ returnGeometry: false, campos: ["IDMUNICIPIO", "MUNICIPIO"], url: municipiosUrl, where: "1=1" })
+      const features = await ejecutarConsulta({ returnGeometry: false, campos: ["IDMUNICIPIO", "NOMBREESTABLECIMIENTO ","CODIGOESTABLECIMIENTO", "DIRECCION", "IDNIVELEDUCACION","IDSECTOR", "IDZONA", "IDJORNADA", "IDTIPOSEDE", "IMAGEN", "IDGRUPO"], url: municipiosUrl, where: "1=1" })
       console.log({ features })
       // eliminar duplicados por IDMUNICIPIO y ordenar alfabeticamente por MUNICIPIO
       const uniqueMap = new Map<string, string>()
       features.forEach(f => {
         const idMun = f.attributes.IDMUNICIPIO as string
-        const nombre = f.attributes.MUNICIPIO as string
         if (!uniqueMap.has(idMun)) {
-          uniqueMap.set(idMun, nombre)
+          const municipio = MUNICIPIOS_QUINDIO.find(m => m.IDMUNICIPI === idMun)
+          uniqueMap.set(idMun, municipio?.NOMBRE ?? idMun)
         }
       })
       const municipiosList: interfaceMunicipio[] = Array.from(uniqueMap, ([IDMUNICIPIO, MUNICIPIO]) => ({ IDMUNICIPIO, MUNICIPIO }))
@@ -224,10 +213,11 @@ const Widget = (props: AllWidgetProps<any>) => {
     setSelectedEstablecimiento(null)
     setLoading(true)
     try {
-      const features = await ejecutarConsulta({ returnGeometry: true, campos: ["NOMBREESTABLECIMIENTO","DIRECCION","JORNADA","IMAGEN"], url: urlLayerSelected, where: `IDMUNICIPIO='${id}'` })
+      const features = await ejecutarConsulta({ returnGeometry: true, campos: ["NOMBREESTABLECIMIENTO","CODIGOESTABLECIMIENTO","DIRECCION","JORNADA","IMAGEN"], url: urlLayerSelected, where: `IDMUNICIPIO='${id}'` })
       console.log({ features })
       const lista: interfaceEstablecimiento[] = features.map(f => ({
         NOMBREESTABLECIMIENTO: f.attributes.NOMBREESTABLECIMIENTO as string,
+        CODIGOESTABLECIMIENTO: f.attributes.CODIGOESTABLECIMIENTO as string,
         DIRECCION: f.attributes.DIRECCION as string,
         JORNADA: f.attributes.JORNADA as string,
         IMAGEN: f.attributes.IMAGEN as string,
@@ -263,10 +253,9 @@ const Widget = (props: AllWidgetProps<any>) => {
       setFeaturesDibujados([])
     }
     const urlCapa = urls.SERVICIO_EDUCACION_ALFANUMERICO + "/0";
-    const where = "1=1";
     const campos = ["NOMBREESTABLECIMIENTO", "NIT", "LABORATORIOS", "SALONESCONFERENCIAS", "NUMEROCOMPUTADORES", "ACCESOINTERNET", "WEBSITE", "PROGRAMASESPECIALES", "NUMEROESTUDIANTES", "NUMERODOCENTES", "ZONASRECREATIVAS", "ICFECS", "PRIMERAPELLIDO", "SEGUNDOAPELLIDO", "NOMBRE", "OBJECTID", "CODIGOESTABLECIMIENTO"
     ];
-    const features = await ejecutarConsulta({ returnGeometry: true, campos, url: urlCapa, where: `NOMBREESTABLECIMIENTO='${selectedEstablecimiento.NOMBREESTABLECIMIENTO}'` })
+    const features = await ejecutarConsulta({ returnGeometry: true, campos, url: urlCapa, where: `CODIGOESTABLECIMIENTO='${selectedEstablecimiento.CODIGOESTABLECIMIENTO}'` })
     console.log({ features, selectedMunicipio, selectedEstablecimiento })
     // dibujar los features obtenidos en el mapa
     if (features?.length) {
@@ -425,7 +414,7 @@ const Widget = (props: AllWidgetProps<any>) => {
 
                   {municipios?.map(mun => (
                       <Option key={mun.IDMUNICIPIO} value={mun.IDMUNICIPIO}>
-                          {mun.MUNICIPIO}
+                          {mun.IDMUNICIPIO}
                       </Option>
                   ))}
               </Select>

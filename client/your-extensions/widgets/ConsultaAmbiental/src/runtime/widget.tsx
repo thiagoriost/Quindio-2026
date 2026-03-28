@@ -70,7 +70,7 @@ const Widget = (props: any) => {
         fields?: any[]
     }
 
-    const { execute, cancelAll } = useCancelableHttp()
+    const { execute } = useCancelableHttp()
 
     const catalogosEspeciales = {
         subcategoriasEstaciones: SUBCATEGORIAS_ESTACIONES,
@@ -97,10 +97,10 @@ const Widget = (props: any) => {
 
     const handlers = {
 
-        onChangeAreaTematica: async () => {
+        onChangeAreaTematica:  () => {
             handlers.cargarMunicipios_All()
         },
-        onChangeSubcategoria: async (subcategoria, configFiltro, filtros) => {
+        onChangeSubcategoria:  (subcategoria, configFiltro, filtros) => {
             console.log("onChangeSubcategoria:filtros ", filtros)
             const categoriaId = filtros.categoria
 
@@ -178,7 +178,7 @@ const Widget = (props: any) => {
 
                 },
         */
-        onChangeNombre: async (nombre, configFiltro, filtros) => { // 20260321 se usa ahore onChangeEstacion
+        onChangeNombre:  (nombre, configFiltro, filtros) => { // 20260321 se usa ahore onChangeEstacion
 
             console.log("onChangeNombre >>>", { nombre, filtros })
 
@@ -591,7 +591,7 @@ const Widget = (props: any) => {
 
             setLoading(false)
         },
-        filtrarMunicipios: async () => {
+        filtrarMunicipios:  () => {
             console.log('Filtrar Municipios...')
         },
 
@@ -617,63 +617,6 @@ const Widget = (props: any) => {
         }
     }
 
-    const consultarEstaciones_ant = async (filters) => {
-
-        const { subcategoria, nombre, municipio } = filters
-
-        const params = {
-            subcategoria,
-            nombre,
-            municipio,
-        }
-
-        let urlBaser: string
-        let layerId: number
-
-        try {
-
-            if (subcategoria === "metereologica") {
-                urlBaser = urls.Ambiental_T2025.BASE,
-                    layerId = urls.Ambiental_T2025.Estaciones_climaticas
-            } else if (subcategoria === "limnigrafica") {
-                urlBaser = urls.Ambiental_T_Ajustado.BASE,
-                    layerId = urls.Ambiental_T_Ajustado.Estaciones_limnigraficas
-            }
-
-            const where = `IDMUNICIPIO = '${municipio}' AND UPPER(NOMBRE) = '${nombre.toUpperCase()}'`
-
-            const response = await realizarConsulta(urlBaser, layerId, where)
-
-            if (!response.success) return
-
-            const resultado = response.data
-
-            if (!resultado.features || resultado.features.length === 0) {
-                alertService.warning(
-                    'Sin resultados',
-                    'No se encontraron resultados para los criterios seleccionados'
-                )
-                return
-            }
-
-            const features = response.data?.features || []
-
-            const spatialReference = response.data?.spatialReference
-
-            const fields = response.data?.fields.map(f => ({
-                name: f.name,
-                alias: f.alias
-            }))
-
-            abrirTablaResultados(features, fields, spatialReference)
-
-        } catch (error) {
-
-            console.error("Error consultando estaciones", error)
-
-        }
-
-    }
 
     const consultarEstaciones = async (filters: any) => {
         const { subcategoria, nombre, municipio } = filters
@@ -733,23 +676,10 @@ const Widget = (props: any) => {
 
     const consultarPuntosDeCalidad = async (filters: any) => {
 //        const { subcategoria, nombre, municipio, fechaInicio, fechaFin } = filters;
-        const { subcategoria, nombre, idMunicipio, fechaInicio, fechaFin } = filters
+        const { subcategoria, nombre, idMunicipio } = filters
 
         const urlBase = urls.AmbientalAlfanumerico.BASE
         let layerId: number = 0
-
-        const formatDateOnly = (ts: number, offsetDays = 0) => {
-            const d = new Date(ts)
-
-            // mover días (clave de tu solución)
-            d.setDate(d.getDate() + offsetDays)
-
-            const yyyy = d.getFullYear()
-            const mm = String(d.getMonth() + 1).padStart(2, '0')
-            const dd = String(d.getDate()).padStart(2, '0')
-
-            return `${yyyy}-${mm}-${dd}`
-        }
         try {
             //
             if (subcategoria === "calidadagua") {
@@ -816,7 +746,7 @@ const Widget = (props: any) => {
     const consultarPrediosDeReforestacion = async (filters: any) => {
 
 //        const { subcategoria, nombre, municipio } = filters;
-        const { subcategoria, nombre, idMunicipio } = filters
+        const { idMunicipio } = filters
 
         const urlBase = urls.AmbientalAlfanumerico.BASE
         const layerId = urls.AmbientalAlfanumerico.V_PREDIOREFORESTACION
@@ -879,7 +809,7 @@ const Widget = (props: any) => {
         )
     }
 
-    const onBuscar = async () => {
+    const onBuscar = () => {
         console.log("onBuscar:Filtros enviados", filters)
 
         try {
@@ -914,7 +844,7 @@ const Widget = (props: any) => {
 
         const urlBase = urls.AmbientalAlfanumerico.BASE
 
-        const categoria = CATEGORIAS.find(c => c.idCategoria == filters.categoria)
+        const categoria = CATEGORIAS.find(c => c.idCategoria === filters.categoria)
         const layerId = categoria?.layerId
 
         const campoFiltro1 = categoria?.campoFiltro1
@@ -932,7 +862,7 @@ const Widget = (props: any) => {
         try {
             setLoading(true)
 
-            if (1 === 1) {
+
                 const response = await realizarConsulta(urlBase, layerId, where)
                 // Si hubo error HTTP o servidor → ya se mostró alerta
 
@@ -979,7 +909,7 @@ const Widget = (props: any) => {
                 )
 
                 //verGraficos(features, fields, spatialReference as __esri.SpatialReference) // con amCharts
-            }
+
 
         } finally {
             setLoading(false)
@@ -1015,33 +945,12 @@ const Widget = (props: any) => {
             )
         )
     }
-    const verGraficos = (features: any[], fields: any[], spatialReference?: __esri.SpatialReference) => {
 
-        const dataGrafico = [
-            { categoria: "Licencia", valor: 10 },
-            { categoria: "Permiso", valor: 5 }
-        ]
-
-        getAppStore().dispatch(appActions.openWidget(widgetChartId))
-
-        getAppStore().dispatch(
-            appActions.widgetStatePropChange(
-                widgetChartId,
-                'chartData',
-                {
-                    sourceWidgetId: props.id,
-                    data: dataGrafico,
-                    categoryField: 'categoria',
-                    valueField: 'valor',
-                    type: 'bar'
-                }
-            )
-        )
-    }
 
     const onLimpiar = () => {
 
         clearFilters()
+        abrirTablaResultados([], [], null, false)
 
     }
 
