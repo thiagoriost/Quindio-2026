@@ -3,6 +3,7 @@ export interface LayerInfo {
   name: string
   nameServicio?: string
   url?: string
+  nameOriginal?: string
 }
 
 export interface MapServiceResponse {

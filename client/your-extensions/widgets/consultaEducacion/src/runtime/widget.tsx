@@ -25,14 +25,23 @@ import esriRequest from "@arcgis/core/request"
 import { urls} from "../../../api/serviciosQuindio"
 import OurLoading from '../../../commonWidgets/our_loading/OurLoading'
 import DetalleEstablecimiento from './detalleEstablecimiento'
+import FormEducacion from './formEducacion'
+import FormIndicadores from './formIndicadores'
 import '../styles/styles.css'
 import { MUNICIPIOS_QUINDIO } from '../../../shared/constants/municipiosQuindio';
 
 
 interface interfaceConsultaPor { id: number, name: string, url: string }
 interface interfaceCategories { id: number, name: string }
+interface interfaceIndicadores { id: number, name: string }
 interface interfaceMunicipio { IDMUNICIPIO: string, MUNICIPIO: string }
 interface interfaceEstablecimiento { NOMBREESTABLECIMIENTO: string, CODIGOESTABLECIMIENTO: string,  DIRECCION: string, JORNADA: string, IMAGEN: string, geometry: __esri.Geometry, IDSECTOR: string, IDZONA: string, IDTIPOSEDE: string, IDGRUPO: string }
+
+export const INDICADORES = {
+  "ConsultaEducacion": "Consulta educación",
+  "ConsultaPorIndicadores": "Consulta por indicadores",
+
+}
 
 const Widget = (props: AllWidgetProps<any>) => {
   /**
@@ -49,7 +58,15 @@ const Widget = (props: AllWidgetProps<any>) => {
 
   const [consultaPorSeleccionada, setConsultaPorSeleccionada] = React.useState< interfaceConsultaPor | null>({name: "", id: null, url: ""})
   const [categories, setCategories] = React.useState<interfaceCategories[] | null>(null)
+  const [indicadores, setIndicadores] = React.useState<interfaceIndicadores[] | null>(null)
   const [selectedCategory, setSelectedCategory] = React.useState<number | null>(null)
+  const [selectedIndicador, setSelectedIndicador] = React.useState<number | null>(null)
+  const [niveles, setNiveles] = React.useState<string[] | null>(null)
+  const [selectedNivel, setSelectedNivel] = React.useState<string | null>(null)
+  const [sectores, setSectores] = React.useState<string[] | null>(null)
+  const [selectedSector, setSelectedSector] = React.useState<string | null>(null)
+  const [anios, setAnios] = React.useState<string[] | null>(null)
+  const [selectedAnio, setSelectedAnio] = React.useState<string | null>(null)
   const [municipios, setMunicipios] = React.useState<interfaceMunicipio[] | null>(null)
   const [selectedMunicipio, setSelectedMunicipio] = React.useState<interfaceMunicipio | null>(null)
   const [urlLayerSelected, setUrlLayerSelected] = React.useState<string | null>(null)
@@ -59,13 +76,16 @@ const Widget = (props: AllWidgetProps<any>) => {
   const [cloneFeatures, setCloneFeatures] = React.useState<any[]>([])
   const [featuresDibujados, setFeaturesDibujados] = React.useState<__esri.Graphic[]>([])
   const [domainsMap, setDomainsMap] = React.useState<Record<string, Record<number, string>>>({})
+  const [camposIndicador, setCamposIndicador] = React.useState<string[] | null>(null)
+  const NAMES = ["Infraestructura", "Cobertura" ,   "Cupos ofertados","Eficiencia interna", "Tasa de Analfabetismo Dep", "Tasa de Analfabetismo Mun"];
+
   const consultaPor = [{
     id: 0,
-    name: "Consulta educación",
+    name: INDICADORES.ConsultaEducacion,
     url: urls.SERVICIO_EDUCACION
   }, {
     id: 1,
-    name: "Consulta por indicadores",
+    name: INDICADORES.ConsultaPorIndicadores,
     url: urls.SERVICIO_EDUCACION_ALFANUMERICO
   }];
 
@@ -80,8 +100,23 @@ const Widget = (props: AllWidgetProps<any>) => {
     const response = await realizarQuery(selected.url, selected.name)
     //  poblar el campo categoria con la información presente en response.layers 
     if (response && response.layers) {
-      const categories = response.layers.map((layer: LayerInfo) => ({id: layer.id, name: layer.name}))
-      setCategories(categories.length > 0 ? categories : null)
+      if(selected.name === INDICADORES.ConsultaEducacion){
+        const categories = response.layers.map((layer: LayerInfo) => ({ id: layer.id, name: layer.name }))
+        //categories ordenadas por name alfabeticamente
+        categories.sort((a: interfaceCategories, b: interfaceCategories) => a.name.localeCompare(b.name))
+        console.log({categories})
+        setCategories(categories.length > 0 ? categories : null)
+      }else if(selected.name === INDICADORES.ConsultaPorIndicadores){
+        response.layers.forEach((layer: LayerInfo, index: number) => {
+          layer.nameOriginal = layer.name
+          if (index < NAMES.length) {
+            layer.name = NAMES[index]
+          }
+        })
+        const indicadoresList = response.layers.map((layer: LayerInfo) => ({ id: layer.id, name: layer.name  || layer.nameOriginal }))
+        setIndicadores(indicadoresList.length > 0 ? indicadoresList : null)
+        console.log({indicadoresList})
+      }
     }
   }
 
@@ -167,7 +202,7 @@ const Widget = (props: AllWidgetProps<any>) => {
   ==========================
   */
   const handleCategoriesChange = async (e: { target: { value: any; }; }) => {
-    if (!categories) return
+    if (!categories || e.target.value === "") return
     const id = Number(e.target.value)
     const selected = categories?.find(c => c.id === id)
     console.log({ selected })
@@ -195,7 +230,11 @@ const Widget = (props: AllWidgetProps<any>) => {
       })
       console.log({layerMeta,fields, domains})
       setDomainsMap(domains)
-      const features = await ejecutarConsulta({ returnGeometry: false, campos: ["IDMUNICIPIO", "NOMBREESTABLECIMIENTO ","CODIGOESTABLECIMIENTO", "DIRECCION", "IDNIVELEDUCACION","IDSECTOR", "IDZONA", "IDJORNADA", "IDTIPOSEDE", "IMAGEN", "IDGRUPO"], url: URL_LAYER_SELECTED, where: "1=1" })
+      let campos = ["IDMUNICIPIO", "NOMBREESTABLECIMIENTO ","CODIGOESTABLECIMIENTO", "DIRECCION", "IDNIVELEDUCACION","IDSECTOR", "IDZONA", "IDJORNADA", "IDTIPOSEDE", "IMAGEN", "IDGRUPO"]
+      if(URL_LAYER_SELECTED === 'https://sigquindio.gov.co/arcgis/rest/services/QUINDIO_III/EducacionAlfanumerico/MapServer/1'){
+        campos = fields.map(f => f.name)
+      }
+      const features = await ejecutarConsulta({ returnGeometry: false, campos, url: URL_LAYER_SELECTED, where: "1=1" })
       console.log({ features })
       // eliminar duplicados por IDMUNICIPIO y ordenar alfabeticamente por MUNICIPIO
       const uniqueMap = new Map<string, string>()
@@ -216,6 +255,46 @@ const Widget = (props: AllWidgetProps<any>) => {
       setLoading(false)
     }
   }
+
+  const handleIndicadorChange = async (e: { target: { value: any; }; }) => {
+    const id = e.target.value
+    if (id === "") {
+      setSelectedIndicador(null)
+      setNiveles(null)
+      setSectores(null)
+      setAnios(null)
+      setSelectedNivel(null)
+      setSelectedSector(null)
+      setSelectedAnio(null)
+      return
+     }
+    setLoading(true)
+    try {
+      const features = await ejecutarConsulta({ returnGeometry: false, campos: ["*"], url: `${consultaPorSeleccionada.url}/${id}`, where: "1=1" })
+      console.log({features})
+      if (features.length > 0) {
+        const attrs = Object.keys(features[0].attributes)
+        console.log({camposIndicador:attrs})
+        setCamposIndicador(attrs)
+      }
+      const uniqueNiveles = [...new Set(features.map(f => f.attributes.NIVEL as string).filter(Boolean))].sort()
+      const uniqueSectores = [...new Set(features.map(f => f.attributes.SECTOR as string).filter(Boolean))].sort()
+      const uniqueAnios = [...new Set(features.map(f => f.attributes.ANIO as string).filter(Boolean))].sort()
+      setNiveles(uniqueNiveles.length > 0 ? uniqueNiveles : null)
+      setSectores(uniqueSectores.length > 0 ? uniqueSectores : null)
+      setAnios(uniqueAnios.length > 0 ? uniqueAnios : null)
+      setSelectedNivel(null)
+      setSelectedSector(null)
+      setSelectedAnio(null)
+      setSelectedIndicador(id ? Number(id) : null)
+    } catch (err) {
+      console.error("Error obteniendo datos del indicador:", err)
+      setError("Ocurrió un error al obtener los datos del indicador.")
+    } finally {
+      setLoading(false)
+    }
+  }
+
 
   const handleMunicipioChange = async(e: { target: { value: any; }; }) => {
     if (!municipios) return
@@ -263,8 +342,8 @@ const Widget = (props: AllWidgetProps<any>) => {
   }
 
   const buscar = async () => {
-    if (!selectedEstablecimiento) {
-      setError("Por favor seleccione un establecimiento para realizar la búsqueda.")
+    if (!selectedEstablecimiento && !selectedIndicador) {
+      setError("Por favor seleccione un establecimiento o un indicador para realizar la búsqueda.")
       return
     }
     // limpiar geometrías previamente dibujadas
@@ -272,11 +351,29 @@ const Widget = (props: AllWidgetProps<any>) => {
       limpiarFeaturesDibujados(varJimuMapView, featuresDibujados)
       setFeaturesDibujados([])
     }
-    const urlCapa = urls.SERVICIO_EDUCACION_ALFANUMERICO + "/0";
-    const campos = ["NOMBREESTABLECIMIENTO", "NIT", "LABORATORIOS", "SALONESCONFERENCIAS", "NUMEROCOMPUTADORES", "ACCESOINTERNET", "WEBSITE", "PROGRAMASESPECIALES", "NUMEROESTUDIANTES", "NUMERODOCENTES", "ZONASRECREATIVAS", "ICFECS", "PRIMERAPELLIDO", "SEGUNDOAPELLIDO", "NOMBRE", "OBJECTID", "CODIGOESTABLECIMIENTO"
-    ];
-    const features = await ejecutarConsulta({ returnGeometry: true, campos, url: urlCapa, where: `CODIGOESTABLECIMIENTO='${selectedEstablecimiento.CODIGOESTABLECIMIENTO}' and NOMBREESTABLECIMIENTO='${selectedEstablecimiento.NOMBREESTABLECIMIENTO}'` })
+    let urlCapa, campos, where
+    if(consultaPorSeleccionada?.name === INDICADORES.ConsultaEducacion){
+      urlCapa = urls.SERVICIO_EDUCACION_ALFANUMERICO + `/0`
+      campos = ["NOMBREESTABLECIMIENTO", "NIT", "LABORATORIOS", "SALONESCONFERENCIAS", "NUMEROCOMPUTADORES", "ACCESOINTERNET", "WEBSITE", "PROGRAMASESPECIALES", "NUMEROESTUDIANTES", "NUMERODOCENTES", "ZONASRECREATIVAS", "ICFECS", "PRIMERAPELLIDO", "SEGUNDOAPELLIDO", "NOMBRE", "OBJECTID", "CODIGOESTABLECIMIENTO"
+      ]
+      where = `CODIGOESTABLECIMIENTO='${selectedEstablecimiento.CODIGOESTABLECIMIENTO}' and NOMBREESTABLECIMIENTO='${selectedEstablecimiento.NOMBREESTABLECIMIENTO}'`
+    }else if(consultaPorSeleccionada?.name === INDICADORES.ConsultaPorIndicadores){
+       urlCapa = urls.SERVICIO_EDUCACION_ALFANUMERICO + `/${selectedIndicador}`
+       campos = camposIndicador ? camposIndicador.filter(c => c !== "geometry") : ["*"]
+       console.log({indicadores, selectedIndicador})
+       if (selectedIndicador === 1) { // para la consulta por indicador "cobertura"
+        where = `NIVEL='${selectedNivel ?? ""}' and SECTOR='${selectedSector ?? ""}' and ANIO='${selectedAnio ?? ""}'`        
+       }
+    }
+    // const urlCapa = urls.SERVICIO_EDUCACION_ALFANUMERICO + "/0";
+
+    const features = await ejecutarConsulta({ returnGeometry: true, campos, url: urlCapa, where })
     console.log({ features, selectedMunicipio, selectedEstablecimiento })
+    // si la longitud de los features obtenidos es menor a 1, mostrar mensaje de error indicando que no se encontraron resultados para la consulta realizada
+    if (features.length < 1) {
+      setError("No se encontraron resultados para la consulta realizada.")
+      return
+    }
     // dibujar los features obtenidos en el mapa
     if (features?.length) {
       const graphics = features
@@ -295,44 +392,47 @@ const Widget = (props: AllWidgetProps<any>) => {
       // centrar el mapa en el primer feature obtenido
       varJimuMapView.view.goTo({ target: features[0].geometry, zoom: 15 })
     }
-    const URL_ARCHIVOS_QUINDIO = urls.URL_ARCHIVOS_QUINDIO
-    // construir la url de la imagen del establecimiento utilizando la propiedad IMAGEN y la constante URL_ARCHIVOS_QUINDIO
-    const imagenUrl = selectedEstablecimiento.IMAGEN !== " " ? `${URL_ARCHIVOS_QUINDIO}${selectedEstablecimiento.IMAGEN}` : null
 
-    // ajusta los campos para que cumplan la estructura esperada por el vidget resultados
-    const camposResultados = [
-      { name: "NOMBREESTABLECIMIENTO", alias: "Nombre establecimiento" },
-      { name: "CODIGOESTABLECIMIENTO", alias: "Código" },
-      { name: "NIT", alias: "NIT" },
-      { name: "DIRECCION", alias: "Dirección" },
-      { name: "JORNADA", alias: "Jornada" },
-      { name: "LABORATORIOS", alias: "Laboratorios" },
-      { name: "SALONESCONFERENCIAS", alias: "Salones conferencias" },
-      { name: "NUMEROCOMPUTADORES", alias: "Computadores" },
-      { name: "ACCESOINTERNET", alias: "Acceso internet" },
-      { name: "WEBSITE", alias: "Sitio web" },
-      { name: "PROGRAMASESPECIALES", alias: "Programas especiales" },
-      { name: "NUMEROESTUDIANTES", alias: "Número estudiantes" },
-      { name: "NUMERODOCENTES", alias: "Número docentes" },
-      { name: "ZONASRECREATIVAS", alias: "Zonas recreativas" },
-      { name: "ICFECS", alias: "ICFES" },
-      { name: "NOMBRE", alias: "Nombre contacto" },
-      { name: "PRIMERAPELLIDO", alias: "Primer apellido" },
-      { name: "SEGUNDOAPELLIDO", alias: "Segundo apellido" },
-      // { name: "IMAGEN", alias: "Imagen" },
-    ]
-    const cloneFeatures = features
-      .filter(f => f?.geometry)
-      .map(f => ({
-        attributes: { ...f.attributes, IMAGEN: imagenUrl },
-        geometry: f.geometry.toJSON()
-      }))
-    setCloneFeatures(cloneFeatures)
-    console.log({cloneFeatures})
-    // abrir el widget de resultados y mostrar la información del establecimiento seleccionado
-    abrirTablaResultados(cloneFeatures, camposResultados, props, widgetResultId, varJimuMapView.view.spatialReference)
-    // cambiar a la pestaña de vista atributos en donde se debe mostrar la información del establecimiento seleccionado
-    setVerAtributos(true)
+    if(consultaPorSeleccionada?.name === INDICADORES.ConsultaEducacion){
+      const URL_ARCHIVOS_QUINDIO = urls.URL_ARCHIVOS_QUINDIO
+      // construir la url de la imagen del establecimiento utilizando la propiedad IMAGEN y la constante URL_ARCHIVOS_QUINDIO
+      const imagenUrl = selectedEstablecimiento.IMAGEN !== " " ? `${URL_ARCHIVOS_QUINDIO}${selectedEstablecimiento.IMAGEN}` : null
+      // ajusta los campos para que cumplan la estructura esperada por el vidget resultados
+      const camposResultados = [
+        { name: "NOMBREESTABLECIMIENTO", alias: "Nombre establecimiento" },
+        { name: "CODIGOESTABLECIMIENTO", alias: "Código" },
+        { name: "NIT", alias: "NIT" },
+        { name: "DIRECCION", alias: "Dirección" },
+        { name: "JORNADA", alias: "Jornada" },
+        { name: "LABORATORIOS", alias: "Laboratorios" },
+        { name: "SALONESCONFERENCIAS", alias: "Salones conferencias" },
+        { name: "NUMEROCOMPUTADORES", alias: "Computadores" },
+        { name: "ACCESOINTERNET", alias: "Acceso internet" },
+        { name: "WEBSITE", alias: "Sitio web" },
+        { name: "PROGRAMASESPECIALES", alias: "Programas especiales" },
+        { name: "NUMEROESTUDIANTES", alias: "Número estudiantes" },
+        { name: "NUMERODOCENTES", alias: "Número docentes" },
+        { name: "ZONASRECREATIVAS", alias: "Zonas recreativas" },
+        { name: "ICFECS", alias: "ICFES" },
+        { name: "NOMBRE", alias: "Nombre contacto" },
+        { name: "PRIMERAPELLIDO", alias: "Primer apellido" },
+        { name: "SEGUNDOAPELLIDO", alias: "Segundo apellido" },
+        // { name: "IMAGEN", alias: "Imagen" },
+      ]
+      const cloneFeatures = features
+        .filter(f => f?.geometry)
+        .map(f => ({
+          attributes: { ...f.attributes, IMAGEN: imagenUrl },
+          geometry: f.geometry.toJSON()
+        }))
+      setCloneFeatures(cloneFeatures)
+      console.log({cloneFeatures})
+      // abrir el widget de resultados y mostrar la información del establecimiento seleccionado
+      abrirTablaResultados(cloneFeatures, camposResultados, props, widgetResultId, varJimuMapView.view.spatialReference)
+      // cambiar a la pestaña de vista atributos en donde se debe mostrar la información del establecimiento seleccionado
+      setVerAtributos(true)
+    }
+
   }  
   
 
@@ -371,63 +471,43 @@ const Widget = (props: AllWidgetProps<any>) => {
                   ))}
               </Select>
 
-              {/* Categoria */}
+              {/* Indicador */}
+              {
+                consultaPorSeleccionada?.name === INDICADORES.ConsultaEducacion && (
+                  <FormEducacion
+                    loading={loading}
+                    categories={categories}
+                    selectedCategory={selectedCategory}
+                    onCategoriesChange={handleCategoriesChange}
+                    municipios={municipios}
+                    selectedMunicipio={selectedMunicipio}
+                    onMunicipioChange={handleMunicipioChange}
+                    establecimientos={establecimientos}
+                    selectedEstablecimiento={selectedEstablecimiento}
+                    onEstablecimientoChange={handleEstablecimientoChange}
+                  />
+                )
+              }
 
-              <Label>Categoria</Label>
-
-              <Select
-                  value={selectedCategory ?? ""}
-                  disabled={loading}
-                  onChange={handleCategoriesChange}
-              >
-                  <Option value="">
-                      {loading ? 'Cargando ...' : 'Seleccione...'}
-                  </Option>
-
-                  {categories?.map(field => (
-                      <Option key={field.id} value={field.id}>
-                          {field.name}
-                      </Option>
-                  ))}
-              </Select>
-
-              {/* Municipio */}
-
-              <Label>Municipio</Label>
-              <Select
-                  value={selectedMunicipio?.IDMUNICIPIO ?? ""}
-                  disabled={loading}
-                  onChange={handleMunicipioChange}
-              >
-                  <Option value="">
-                      {loading ? 'Cargando ...' : 'Seleccione...'}
-                  </Option>
-
-                  {municipios?.map(mun => (
-                      <Option key={mun.IDMUNICIPIO} value={mun.IDMUNICIPIO}>
-                          {mun.MUNICIPIO}
-                      </Option>
-                  ))}
-              </Select>
-
-              {/* Atributo */}
-
-              <Label>Atributo</Label>
-              <Select
-                  value={selectedEstablecimiento?.NOMBREESTABLECIMIENTO ?? ""}
-                  disabled={loading}
-                  onChange={handleEstablecimientoChange}
-              >
-                  <Option value="">
-                      {loading ? 'Cargando ...' : 'Seleccione...'}
-                  </Option>
-
-                  {establecimientos?.map((est, idx) => (
-                      <Option key={idx} value={est.NOMBREESTABLECIMIENTO}>
-                          {est.NOMBREESTABLECIMIENTO}
-                      </Option>
-                  ))}
-              </Select>
+              {
+                consultaPorSeleccionada?.name === INDICADORES.ConsultaPorIndicadores && (
+                  <FormIndicadores
+                    loading={loading}
+                    indicadores={indicadores}
+                    selectedIndicador={selectedIndicador}
+                    onIndicadorChange={handleIndicadorChange}
+                    niveles={niveles}
+                    selectedNivel={selectedNivel}
+                    onNivelChange={(e) => setSelectedNivel(e.target.value || null)}
+                    sectores={sectores}
+                    selectedSector={selectedSector}
+                    onSectorChange={(e) => setSelectedSector(e.target.value || null)}
+                    anios={anios}
+                    selectedAnio={selectedAnio}
+                    onAnioChange={(e) => setSelectedAnio(e.target.value || null)}
+                  />
+                )
+              }
               
 
               {/* BOTONES */}
