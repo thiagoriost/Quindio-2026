@@ -378,15 +378,24 @@ const Widget = (props: AllWidgetProps<any>) => {
     if (features?.length) {
       const graphics = features
         .filter(f => f?.geometry)
-        .map(f => new Graphic({
-          geometry: f.geometry,
-          symbol: {
-            type: "simple-marker",
-            style: "circle",
-            color: "red",
-            size: "12px"
-          } as any
-        }))
+        .map(f => {
+          let symbol: any
+          if (f.geometry.type === "polygon") {
+            symbol = {
+              type: "simple-fill",
+              color: [255, 0, 0, 0.25],
+              outline: { color: "red", width: 2 }
+            }
+          } else {
+            symbol = {
+              type: "simple-marker",
+              style: "circle",
+              color: "red",
+              size: "12px"
+            }
+          }
+          return new Graphic({ geometry: f.geometry, symbol })
+        })
       varJimuMapView.view.graphics.addMany(graphics)
       setFeaturesDibujados(graphics)
       // centrar el mapa en el primer feature obtenido
