@@ -105,7 +105,7 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
     /**
      * estado para el gráfico //cef 20260313
      */
-    const [chartData, setChartData] = React.useState<any[]>([])
+    // const [chartData, setChartData] = React.useState<any[]>([])
 
 
     /**
@@ -695,6 +695,19 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
 
     const hasFeatures = data?.features && data.features.length > 0
 
+    // cef 20260331 ancho dinámico del panel según cantidad de barras en gráfico
+    const getPanelWidth = (): string | undefined => {
+        if (viewMode === 'grafico' && data?.withGraphic?.graphicData) {
+            const barCount = data.withGraphic.graphicData.length
+            const barWidth = 50 // px por barra
+            const axisAndPadding = 100 // eje Y + márgenes
+            const calculated = barCount * barWidth + axisAndPadding
+            console.log({barCount, barWidth, axisAndPadding, calculated})
+            return `${Math.max(320, Math.min(calculated, window.innerWidth * 0.9)) >= 600 ? 600 : Math.max(320, Math.min(calculated, window.innerWidth * 0.9))}px`
+        }
+        return undefined // usa el ancho por defecto del CSS para modo tabla
+    }
+
   if (!props.useMapWidgetIds?.length) {
     return (
       <div>
@@ -761,7 +774,10 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
                 </button>
             )}
             {open && (
-                <div className="widget-result-floating-panel">
+                <div
+                    className="widget-result-floating-panel"
+                    style={getPanelWidth() ? { '--panel-width': getPanelWidth() } as React.CSSProperties : undefined}
+                >
                     <div className="widget-result-header">
                         Resultados
                         <button className="widget-result-close-btn" onClick={() => setOpen(false)} title="Cerrar">-</button>
@@ -771,7 +787,7 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
                         {/* BOTONES */}
                         {/* Barra superior */}
                         <div className="widget-result-toolbar-bar">
-                        {data?.withGraphic && (
+                        {data?.withGraphic?.showGraphic && (
                             <Button
                             size="sm"
                             type="primary"
@@ -790,28 +806,28 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
                         {/*  ÁREA ÚNICA COMPARTIDA */}
                         <div className="widget-result-view">
 
-                            {viewMode === 'grafico' && data?.withGraphic ? (
+                            {viewMode === 'grafico' && data?.withGraphic?.showGraphic ? (
                                 <ResultGraphic
-                                    data={data.graphicData}
-                                    type={data.graphicType}
-                                    title={data.graphicTitle || 'Sin título'}
+                                    data={data.withGraphic.graphicData}
+                                    type={data.withGraphic.graphicType}
+                                    title={data.withGraphic.graphicTitle || 'Sin título'}
                                 />
                             ) : (
-            <ResultTable
-              features={pagedFeatures}
-              fields={data.fields}
-              onExport={handleExport}
-              onSelectFeature={handleSelectFeature}
-              total={total}
-              page={page}
-              totalPages={totalPages}
-              setPage={setPage}
-              data={data} // cef 20260324 para mostrar botón de toggle si viene withGraphic
-              setViewMode={setViewMode} // cef 20260324 para toggle tabla/gráfico
-            />
-        )}
+                            <ResultTable
+                                features={pagedFeatures}
+                                fields={data.fields}
+                                onExport={handleExport}
+                                onSelectFeature={handleSelectFeature}
+                                total={total}
+                                page={page}
+                                totalPages={totalPages}
+                                setPage={setPage}
+                                data={data} // cef 20260324 para mostrar botón de toggle si viene withGraphic
+                                setViewMode={setViewMode} // cef 20260324 para toggle tabla/gráfico
+                                />
+                            )}
 
-    </div>
+                        </div>
 
             {/* FOOTER */}
             {(total > 4 && viewMode === 'tabla') && (                            
@@ -845,6 +861,12 @@ export const abrirTablaResultados = (
   props: any,
   widgetResultId: string,
   spatialReference?: any,
+  withGraphic?:{
+    showGraphic: boolean,
+    graphicData: any,
+    graphicType: string//"bar" | "pie",
+    graphicTitle?: string
+  }
 ) => {
   getAppStore().dispatch(
     appActions.widgetStatePropChange(
@@ -856,6 +878,7 @@ export const abrirTablaResultados = (
         features: features, // datos de las características a mostrar
         fields: fields, // campos a mostrar en la tabla de resultados
         spatialReference: spatialReference, // referencia espacial de los datos
+        withGraphic // información del gráfico asociado
       },
     ),
   );

@@ -40,8 +40,27 @@ interface interfaceEstablecimiento { NOMBREESTABLECIMIENTO: string, CODIGOESTABL
 export const INDICADORES = {
   "ConsultaEducacion": "Consulta educación",
   "ConsultaPorIndicadores": "Consulta por indicadores",
-
 }
+
+export const LEYENDA_COROPLETICO_QUINDIO = [{
+          colorFondo: "252,3,3,0.4",
+          colorLine: "252,3,3,1",
+          label: "0 a 1000",
+          minimo: 0,
+          maximo: 1000
+      }, {
+          colorFondo: "246,254,6,0.4",
+          colorLine: "246,254,6,1",
+          label: "1001 a 5000",
+          minimo: 1001,
+          maximo: 5000
+      }, {
+          colorFondo: "81,175,51,0.4",
+          colorLine: "81,175,51,1",
+          label: "Mayor a 5000",
+          minimo: 5001,
+          maximo: 50000000
+      }];
 
 const Widget = (props: AllWidgetProps<any>) => {
   /**
@@ -375,16 +394,29 @@ const Widget = (props: AllWidgetProps<any>) => {
       return
     }
     // dibujar los features obtenidos en el mapa
+    const esCoropletico = consultaPorSeleccionada?.name === INDICADORES.ConsultaPorIndicadores && selectedIndicador === 1
     if (features?.length) {
       const graphics = features
         .filter(f => f?.geometry)
         .map(f => {
           let symbol: any
           if (f.geometry.type === "polygon") {
-            symbol = {
-              type: "simple-fill",
-              color: [255, 0, 0, 0.25],
-              outline: { color: "red", width: 2 }
+            if (esCoropletico) {
+              const valor = Number(f.attributes.TOTALESTUDIANTES) || 0
+              const rango = LEYENDA_COROPLETICO_QUINDIO.find(l => valor >= l.minimo && valor <= l.maximo) ?? LEYENDA_COROPLETICO_QUINDIO[0]
+              const colorFondo = rango.colorFondo.split(",").map(Number)
+              const colorLine = rango.colorLine.split(",").map(Number)
+              symbol = {
+                type: "simple-fill",
+                color: colorFondo,
+                outline: { color: colorLine, width: 2 }
+              }
+            } else {
+              symbol = {
+                type: "simple-fill",
+                color: [255, 0, 0, 0.25],
+                outline: { color: "red", width: 2 }
+              }
             }
           } else {
             symbol = {
@@ -399,15 +431,25 @@ const Widget = (props: AllWidgetProps<any>) => {
       varJimuMapView.view.graphics.addMany(graphics)
       setFeaturesDibujados(graphics)
       // centrar el mapa en el primer feature obtenido
-      varJimuMapView.view.goTo({ target: features[0].geometry, zoom: 15 })
+      esCoropletico !?? varJimuMapView.view.goTo({ target: features[0].geometry, zoom: 15 })
     }
 
+    let camposResultados,_cloneFeatures, withGraphic={
+        showGraphic: false,
+        graphicData: [
+            { name: "ejemplo_1", value: 65 },
+            { name: "ejemplo_2", value: 80 },
+            { name: "ejemplo_3", value: features.length }
+        ],
+        graphicType: "bar",
+        graphicTitle: 'Gráfico de ejemplo'
+    }
     if(consultaPorSeleccionada?.name === INDICADORES.ConsultaEducacion){
       const URL_ARCHIVOS_QUINDIO = urls.URL_ARCHIVOS_QUINDIO
       // construir la url de la imagen del establecimiento utilizando la propiedad IMAGEN y la constante URL_ARCHIVOS_QUINDIO
       const imagenUrl = selectedEstablecimiento.IMAGEN !== " " ? `${URL_ARCHIVOS_QUINDIO}${selectedEstablecimiento.IMAGEN}` : null
       // ajusta los campos para que cumplan la estructura esperada por el vidget resultados
-      const camposResultados = [
+      camposResultados = [
         { name: "NOMBREESTABLECIMIENTO", alias: "Nombre establecimiento" },
         { name: "CODIGOESTABLECIMIENTO", alias: "Código" },
         { name: "NIT", alias: "NIT" },
@@ -428,19 +470,37 @@ const Widget = (props: AllWidgetProps<any>) => {
         { name: "SEGUNDOAPELLIDO", alias: "Segundo apellido" },
         // { name: "IMAGEN", alias: "Imagen" },
       ]
-      const cloneFeatures = features
+      _cloneFeatures = features
         .filter(f => f?.geometry)
         .map(f => ({
           attributes: { ...f.attributes, IMAGEN: imagenUrl },
           geometry: f.geometry.toJSON()
         }))
-      setCloneFeatures(cloneFeatures)
-      console.log({cloneFeatures})
-      // abrir el widget de resultados y mostrar la información del establecimiento seleccionado
-      abrirTablaResultados(cloneFeatures, camposResultados, props, widgetResultId, varJimuMapView.view.spatialReference)
+      setCloneFeatures(_cloneFeatures)
+      console.log({_cloneFeatures})
       // cambiar a la pestaña de vista atributos en donde se debe mostrar la información del establecimiento seleccionado
       setVerAtributos(true)
+    }else if(esCoropletico){
+      camposResultados = camposIndicador ? camposIndicador.map(c => ({ name: c, alias: c })) : [{ name: "OBJECTID", alias: "OBJECTID" }]
+      _cloneFeatures = features.map(f => ({ attributes: f.attributes, geometry: f.geometry.toJSON() }))
+      const fixDataToRenderGrafic = features.map(f => ({ name: MUNICIPIOS_QUINDIO.find(m => m.IDMUNICIPI === f.attributes.IDMUNICIPIO)?.NOMBRE, value: Number(f.attributes.TOTALESTUDIANTES) || 0 }))
+      withGraphic = {
+        showGraphic: true,
+        graphicData: fixDataToRenderGrafic,
+        graphicType: "bar",
+        graphicTitle: `Cobertura de educación en el año ${selectedAnio ?? ""} por ${selectedNivel ? "nivel educativo" : "sector"}`
+      }
+
     }
+    // abrir el widget de resultados y mostrar la información del establecimiento seleccionado
+    abrirTablaResultados(
+      _cloneFeatures,
+      camposResultados,
+      props,
+      widgetResultId,
+      varJimuMapView.view.spatialReference,      
+      withGraphic
+    )
 
   }  
   

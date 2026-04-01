@@ -25,7 +25,7 @@ import { urls } from '../../../api/serviciosQuindio'
 const Widget = (props: any) => {
 
     const widgetResultId = WIDGET_IDS.RESULT
-    const widgetChartId = WIDGET_IDS.CHART
+    // const widgetChartId = WIDGET_IDS.CHART
 
     const outputDs = props.outputDataSources?.[0] // 20260317
 
