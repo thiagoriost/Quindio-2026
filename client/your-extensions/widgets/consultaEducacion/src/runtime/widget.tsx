@@ -214,12 +214,6 @@ const Widget = (props: AllWidgetProps<any>) => {
       setEstablecimientos(null)
     } 
     
-    console.log(1111, "consulta educacion")
-    abrirWidgetLeyenda({
-      widgetleyendaId: WIDGET_IDS.LEYENDA,
-      props,
-        data: LEYENDA_COROPLETICO_QUINDIO.map(l => ({ label: l.label, colorFondo: l.colorFondo, colorLine: l.colorLine }))
-    })
     
   }, [props])
 
@@ -498,7 +492,13 @@ const Widget = (props: AllWidgetProps<any>) => {
         graphicType: "bar",
         graphicTitle: `Cobertura de educación en el año ${selectedAnio ?? ""} por ${selectedNivel ? "nivel educativo" : "sector"}`
       }
-
+      
+      abrirWidgetLeyenda({
+        widgetleyendaId: WIDGET_IDS.LEYENDA,
+        props,
+        title: "Cobertura de estudiantes", // título que se mostrará en el widget de resultados
+        data: LEYENDA_COROPLETICO_QUINDIO.map(l => ({ label: l.label, colorFondo: l.colorFondo, colorLine: l.colorLine }))
+      })
     }
     // abrir el widget de resultados y mostrar la información del establecimiento seleccionado
     abrirTablaResultados(

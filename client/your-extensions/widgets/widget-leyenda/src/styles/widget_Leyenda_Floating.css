@@ -124,6 +124,10 @@
 
 /* ---- Leyenda panel (expanded) ---- */
 .widget-leyenda-panel {
+  position: fixed;
+  bottom: 500px;
+  right: 30px;
+  z-index: 10000;
   background: var(--bg-color-white, #fff);
   border: 1px solid #ccc;
   border-radius: 4px;
@@ -148,6 +152,11 @@
   padding: 6px 10px;
   font-size: 0.95rem;
   font-weight: 600;
+  cursor: grab;
+  user-select: none;
+}
+.widget-leyenda-header:active {
+  cursor: grabbing;
 }
 
 .widget-leyenda-close-btn {

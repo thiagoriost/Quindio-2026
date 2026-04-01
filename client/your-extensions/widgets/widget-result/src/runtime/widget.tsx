@@ -765,10 +765,11 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
                     <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         {/* SVG tabla */}
                         <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <rect x="4" y="6" width="20" height="16" rx="3" fill="var(--color-primary-light)" stroke="var(--color-primary-light)" strokeWidth="2" />
-                            <rect x="4" y="11" width="20" height="1.5" fill="var(--color-primary-light)" />
-                            <rect x="10" y="6" width="1.5" height="16" fill="var(--color-primary-light)" />
-                            <rect x="16.5" y="6" width="1.5" height="16" fill="var(--color-primary-light)" />
+                            <rect x="4" y="6" width="20" height="16" rx="2" fill="var(--color-primary-light)" stroke="var(--color-primary-light)" strokeWidth="2" />
+                            <line x1="4" y1="11" x2="24" y2="11" stroke="var(--color-primary)" strokeWidth="1.5" />
+                            <line x1="4" y1="16" x2="24" y2="16" stroke="var(--color-primary)" strokeWidth="1.5" />
+                            <line x1="11" y1="6" x2="11" y2="22" stroke="var(--color-primary)" strokeWidth="1.5" />
+                            <line x1="18" y1="6" x2="18" y2="22" stroke="var(--color-primary)" strokeWidth="1.5" />
                         </svg>
                     </span>
                 </button>

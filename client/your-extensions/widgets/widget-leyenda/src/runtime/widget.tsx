@@ -41,6 +41,40 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
     // Estado para mostrar/ocultar el panel flotante
     const [open, setOpen] = React.useState(true)
 
+    // Estado para la posición del panel (drag)
+    const [panelPos, setPanelPos] = React.useState<{ x: number; y: number } | null>(null)
+    const draggingRef = React.useRef(false)
+    const dragOffsetRef = React.useRef({ x: 0, y: 0 })
+
+    /**
+     * Inicia el arrastre del panel al hacer mousedown sobre el header.
+     */
+    const onDragStart = (e: React.MouseEvent) => {
+        // Ignorar si se hizo clic en el botón de minimizar
+        if ((e.target as HTMLElement).closest('.widget-leyenda-close-btn')) return
+        e.preventDefault()
+        draggingRef.current = true
+        const panel = (e.currentTarget as HTMLElement).parentElement
+        const rect = panel.getBoundingClientRect()
+        dragOffsetRef.current = { x: e.clientX - rect.left, y: e.clientY - rect.top }
+
+        const onMouseMove = (ev: MouseEvent) => {
+            if (!draggingRef.current) return
+            const newX = Math.max(0, Math.min(ev.clientX - dragOffsetRef.current.x, window.innerWidth - rect.width))
+            const newY = Math.max(0, Math.min(ev.clientY - dragOffsetRef.current.y, window.innerHeight - rect.height))
+            setPanelPos({ x: newX, y: newY })
+        }
+
+        const onMouseUp = () => {
+            draggingRef.current = false
+            document.removeEventListener('mousemove', onMouseMove)
+            document.removeEventListener('mouseup', onMouseUp)
+        }
+
+        document.addEventListener('mousemove', onMouseMove)
+        document.addEventListener('mouseup', onMouseUp)
+    }
+
     console.log('widget-leyenda ID:', props.id)
     console.log('MapWidgetIds:', props.useMapWidgetIds)
 
@@ -126,78 +160,6 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
     }, [data])
 
 
-    /**
-     * Valida si un objeto de referencia espacial tiene información utilizable por ArcGIS JS API.
-     * Se considera válida cuando trae wkid, latestWkid o wkt.
-     */
-    const isValidSpatialReference = (spatialReference: any): spatialReference is __esri.SpatialReference => {
-      if (!spatialReference || typeof spatialReference !== 'object') return false
-
-      return Number.isFinite(spatialReference.wkid)
-        || Number.isFinite(spatialReference.latestWkid)
-        || typeof spatialReference.wkt === 'string'
-    }
-
-    
-
-    /**
-     * Resuelve la referencia espacial para una geometría priorizando:
-     * 1) geometry.spatialReference válida,
-     * 2) data.spatialReference válida,
-     * 3) spatialReference fallback de la vista.
-     */
-    const resolveSpatialReference = (geometry: any, fallback: __esri.SpatialReference) => {
-      if (isValidSpatialReference(geometry?.spatialReference)) {
-        return geometry.spatialReference
-      }
-
-      if (isValidSpatialReference(data?.spatialReference)) {
-        return data.spatialReference
-      }
-
-      return fallback
-    }
-
-    /**
-     * Construye una geometría de ArcGIS (Polygon, Point o Polyline)
-     * a partir de un objeto crudo proveniente de resultados.
-     */
-    const buildGeometry = (geometry: any, fallbackSpatialReference: __esri.SpatialReference) => {
-      if (!geometry) return null
-
-      const geometryType = geometry.type
-        || (geometry.rings ? 'polygon' : null)
-        || (geometry.paths ? 'polyline' : null)
-        || (geometry.x != null && geometry.y != null ? 'point' : null)
-
-      if (!geometryType) return null
-
-      const spatialReference = resolveSpatialReference(geometry, fallbackSpatialReference)
-
-      if (geometryType === 'polygon' && geometry.rings) {
-        return new Polygon({
-          rings: geometry.rings,
-          spatialReference
-        })
-      }
-
-      if (geometryType === 'point' && geometry.x != null && geometry.y != null) {
-        return new Point({
-          x: geometry.x,
-          y: geometry.y,
-          spatialReference
-        })
-      }
-
-      if (geometryType === 'polyline' && geometry.paths) {
-        return new Polyline({
-          paths: geometry.paths,
-          spatialReference
-        })
-      }
-
-      return null
-    }
 
     
 
@@ -302,8 +264,11 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
 
             {/* Panel expandido de la leyenda */}
             {open && legendItems.length > 0 && (
-                <div className="widget-leyenda-panel">
-                    <div className="widget-leyenda-header">
+                <div
+                    className="widget-leyenda-panel"
+                    style={panelPos ? { left: panelPos.x, top: panelPos.y, right: 'auto', bottom: 'auto' } : undefined}
+                >
+                    <div className="widget-leyenda-header" onMouseDown={onDragStart}>
                         Leyenda
                         <button className="widget-leyenda-close-btn" onClick={() => setOpen(false)} title="Minimizar">−</button>
                     </div>
@@ -315,8 +280,8 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
                                     <span
                                         className="widget-leyenda-swatch"
                                         style={{
-                                            backgroundColor: `rgba(${item.colorFondo})`,
-                                            borderColor: `rgba(${item.colorLine})`
+                                            backgroundColor: `rgba(${item.colorLine})`,
+                                            borderColor: `rgba(${item.colorFondo})`
                                         }}
                                     />
                                     <span className="widget-leyenda-label">{item.label}</span>
@@ -338,10 +303,12 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
  * @param props Props del widget emisor para registrar sourceWidgetId.
  * @param spatialReference Referencia espacial asociada a los resultados.
  * @param widget-leyendaId Id del widget-result en el layout.
+ * @param title Título que se mostrará en el widget de resultados.
  */
 export const abrirWidgetLeyenda = ({
     widgetleyendaId,
     props,
+    title,
     data
 }) => {
   getAppStore().dispatch(
@@ -350,7 +317,7 @@ export const abrirWidgetLeyenda = ({
       "results", // nombre de la propiedad que se va a actualizar en el estado del widget
       {
         sourceWidgetId: props.id, // id del widget que envía los datos (este widget)
-        title: "Resultados de prueba", // título que se mostrará en el widget de resultados
+        title, // título que se mostrará en el widget de resultados
         data
       },
     ),
