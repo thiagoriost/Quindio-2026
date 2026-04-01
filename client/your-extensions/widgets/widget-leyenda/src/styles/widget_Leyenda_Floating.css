@@ -98,7 +98,31 @@
   width: 100%;
 }
 
-/* ---- Leyenda panel ---- */
+/* ---- Leyenda floating button (minimized) ---- */
+.widget-leyenda-floating-btn {
+  position: fixed;
+  bottom: 320px;
+  right: 10px;
+  z-index: 9999;
+  background: var(--color-primary, #5a6e2e);
+  color: var(--bg-color-white, #fff);
+  border: none;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.widget-leyenda-floating-btn:hover {
+  background: var(--color-primary-hover, #4a5c26);
+}
+
+/* ---- Leyenda panel (expanded) ---- */
 .widget-leyenda-panel {
   background: var(--bg-color-white, #fff);
   border: 1px solid #ccc;
@@ -108,6 +132,11 @@
   max-width: 260px;
   overflow: hidden;
   font-family: Arial, sans-serif;
+  animation: widgetLeyendaFadeIn 0.25s;
+}
+@keyframes widgetLeyendaFadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 .widget-leyenda-header {

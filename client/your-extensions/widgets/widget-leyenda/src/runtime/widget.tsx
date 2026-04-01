@@ -272,44 +272,6 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
     console.log({data})
     if (!data) return
 
-    
-    
-
-  /* if (!props.useMapWidgetIds?.length) {
-    return (
-      <div>
-        <h1>rigo</h1>
-        {!open && (
-          <button className="widget-result-floating-btn" onClick={() => setOpen(true)} title="Mostrar resultados">
-            <span className="widget-result-floating-icon">
-                
-                <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <rect x="4" y="6" width="20" height="16" rx="3" fill="var(--color-primary-light)" stroke="var(--color-primary-light)" strokeWidth="2" />
-                    <rect x="4" y="11" width="20" height="1.5" fill="var(--color-primary-light)" />
-                    <rect x="10" y="6" width="1.5" height="16" fill="var(--color-primary-light)" />
-                    <rect x="16.5" y="6" width="1.5" height="16" fill="var(--color-primary-light)" />
-                </svg>
-            </span>
-        </button>
-        )}
-        {open && (
-            <div className="widget-result-floating-panel">
-                <div className="widget-result-header">
-                    Resultados
-                    <button className="widget-result-close-btn" onClick={() => setOpen(false)} title="Cerrar">×</button>
-                </div>
-                <div className="widget-result-content">
-                    Debe seleccionar un Map Widget en la configuración.
-                </div>
-            </div>
-        )}
-        </div>
-        )
-    } */
-
-    
-    
-
     const legendItems: Array<{ label: string; colorFondo: string; colorLine: string }> = data?.data ?? []
 
     return (
@@ -322,11 +284,28 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
                 />
             </div>
 
+            {/* Botón flotante para expandir cuando está minimizado */}
+            {!open && legendItems.length > 0 && (
+                <button className="widget-leyenda-floating-btn" onClick={() => setOpen(true)} title="Mostrar leyenda">
+                    <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <line x1="3" y1="6" x2="10" y2="6" />
+                            <line x1="3" y1="12" x2="10" y2="12" />
+                            <line x1="3" y1="18" x2="10" y2="18" />
+                            <rect x="14" y="4" width="4" height="4" rx="1" />
+                            <rect x="14" y="10" width="4" height="4" rx="1" />
+                            <rect x="14" y="16" width="4" height="4" rx="1" />
+                        </svg>
+                    </span>
+                </button>
+            )}
+
+            {/* Panel expandido de la leyenda */}
             {open && legendItems.length > 0 && (
                 <div className="widget-leyenda-panel">
                     <div className="widget-leyenda-header">
                         Leyenda
-                        <button className="widget-leyenda-close-btn" onClick={() => setOpen(false)} title="Cerrar">×</button>
+                        <button className="widget-leyenda-close-btn" onClick={() => setOpen(false)} title="Minimizar">−</button>
                     </div>
                     <div className="widget-leyenda-content">
                         {data?.title && <div className="widget-leyenda-title">{data.title}</div>}
@@ -348,7 +327,7 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
                 </div>
             )}
     </div>
-  );
+  )
 }
 
 /**
