@@ -5,7 +5,7 @@
  * mediante el store global de Experience Builder.
  */
 
-export interface ChartDataItem {  // cef 20260320
+export interface ChartDataItem {// cef 20260320
   name: string;
   value: number;
 }
@@ -39,7 +39,12 @@ export interface ResultPayload {
   valorBusqueda?: string
 
   /** Indica si muestra grafico cef 20260320 */
-  withGraphic?: boolean
+  withGraphic?: {
+    showGraphic: boolean
+    graphicData: ChartDataItem[]
+    graphicType: string
+    graphicTitle?: string
+  }
 
    // cef 20260320
   graphicData?: ChartDataItem[];

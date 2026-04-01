@@ -695,7 +695,7 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
 
     const hasFeatures = data?.features && data.features.length > 0
 
-    // cef 20260331 ancho dinámico del panel según cantidad de barras en gráfico
+    // RRH 20260331 ancho dinámico del panel según cantidad de barras en gráfico
     const getPanelWidth = (): string | undefined => {
         if (viewMode === 'grafico' && data?.withGraphic?.graphicData) {
             const barCount = data.withGraphic.graphicData.length
@@ -703,7 +703,7 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
             const axisAndPadding = 100 // eje Y + márgenes
             const calculated = barCount * barWidth + axisAndPadding
             console.log({barCount, barWidth, axisAndPadding, calculated})
-            return `${Math.max(320, Math.min(calculated, window.innerWidth * 0.9)) >= 600 ? 600 : Math.max(320, Math.min(calculated, window.innerWidth * 0.9))}px`
+            return `${Math.max(320, Math.min(calculated, window.innerWidth * 0.9)) >= 300 ? 300 : Math.max(320, Math.min(calculated, window.innerWidth * 0.9))}px`
         }
         return undefined // usa el ancho por defecto del CSS para modo tabla
     }
@@ -776,7 +776,7 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
             {open && (
                 <div
                     className="widget-result-floating-panel"
-                    style={getPanelWidth() ? { '--panel-width': getPanelWidth() } as React.CSSProperties : undefined}
+                    // style={getPanelWidth() ? { '--panel-width': getPanelWidth() } as React.CSSProperties : undefined}
                 >
                     <div className="widget-result-header">
                         Resultados
@@ -787,25 +787,24 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
                         {/* BOTONES */}
                         {/* Barra superior */}
                         <div className="widget-result-toolbar-bar">
-                        {data?.withGraphic?.showGraphic && (
-                            <Button
-                            size="sm"
-                            type="primary"
-                            onClick={() => {
-                                setViewMode?.(viewMode === "tabla" ? "grafico" : "tabla")
-                            }}
-                            >
-                            {viewMode === "tabla" ? "Ver Gráfico" : "Ver Tabla"}
-                            </Button>
-                        )}
-                        { viewMode === 'tabla' &&
-                        (<Button size="sm" type="primary" className="widget-result-export-btn" onClick={handleExport}>
-                            Exportar tabla
-                        </Button>)}
+                            {data?.withGraphic?.showGraphic && (
+                                <Button
+                                size="sm"
+                                type="primary"
+                                onClick={() => {
+                                    setViewMode?.(viewMode === "tabla" ? "grafico" : "tabla")
+                                }}
+                                >
+                                {viewMode === "tabla" ? "Ver Gráfico" : "Ver Tabla"}
+                                </Button>
+                            )}
+                            { viewMode === 'tabla' &&
+                            (<Button size="sm" type="primary" className="widget-result-export-btn" onClick={handleExport}>
+                                Exportar tabla
+                            </Button>)}
                         </div>
                         {/*  ÁREA ÚNICA COMPARTIDA */}
                         <div className="widget-result-view">
-
                             {viewMode === 'grafico' && data?.withGraphic?.showGraphic ? (
                                 <ResultGraphic
                                     data={data.withGraphic.graphicData}
@@ -828,19 +827,18 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
                             )}
 
                         </div>
-
-            {/* FOOTER */}
-            {(total > 4 && viewMode === 'tabla') && (                            
-              <ResultFooter
-                total={total}
-                page={page}
-                totalPages={totalPages}
-                onPrev={() => setPage((prev) => Math.max(1, prev - 1))}
-                onNext={() => setPage((prev) => Math.min(totalPages, prev + 1))}
-              />
-            )}
-          </div>
-        </div>
+                        {/* FOOTER */}
+                        {(total > 4 && viewMode === 'tabla') && (                            
+                        <ResultFooter
+                            total={total}
+                            page={page}
+                            totalPages={totalPages}
+                            onPrev={() => setPage((prev) => Math.max(1, prev - 1))}
+                            onNext={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+                        />
+                        )}
+                    </div>
+                </div>
       )}
     </div>
   );

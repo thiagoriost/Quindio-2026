@@ -25,7 +25,12 @@ interface Props {
   onChangeView?: (view: 'tabla' | 'grafico') => void
   withGraphic?: boolean
   data?: {
-    withGraphic?: boolean
+    withGraphic?: {
+      showGraphic: boolean
+      graphicData: any[]
+      graphicType: string
+      graphicTitle?: string
+    }
   }
   setViewMode?: (view: 'tabla' | 'grafico') => void
 }

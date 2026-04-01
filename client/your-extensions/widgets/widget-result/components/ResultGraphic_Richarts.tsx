@@ -41,10 +41,11 @@ import {
   Pie,
   Legend
 } from "recharts"
+import "../src/styles/widgetResultFloating.css"
 
 interface Props {
   data: any[];
-  type?: "bar" | "pie";
+  type?: string //"bar" | "pie";
   xKey?: string;
   yKey?: string;
   title?: string;
@@ -56,22 +57,20 @@ const ResultGraphic = ({ data, type = "bar", xKey = "name", yKey = "value", titl
   if (!data || data.length === 0) return null
 
   return (
-    <div
+    <div className="widget-result-graphic">
 
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        height: '100%',
-        minHeight: 0
-      }}
-    >
-
+    {/* TÍTULO */}
+      {title && (
+        <div className="widget-result-graphic-title">
+          {title}
+        </div>
+      )}
       {/* GRÁFICO */}
-      <div style={{ flex: 1, minHeight: 0 }}>
+      <div className="widget-result-graphic-chart">
         <ResponsiveContainer width="100%" height="100%">
           {type === "bar" ? (
-            <BarChart data={data}>
-              <XAxis dataKey={xKey} />
+            <BarChart data={data} barSize={Math.max(20, Math.min(50, 300 / data.length))} margin={{ bottom: 40 }}>
+              <XAxis dataKey={xKey} angle={-45} textAnchor="end" interval={0} height={60} />
               <YAxis />
               <Tooltip />
               <Bar dataKey={yKey} fill="#b59b00" />
@@ -94,25 +93,6 @@ const ResultGraphic = ({ data, type = "bar", xKey = "name", yKey = "value", titl
         </ResponsiveContainer>
       </div>
 
-      {/* TÍTULO */}
-      {title && (
-        <div
-          style={{
-            flex: '0 0 auto',
-            textAlign: 'center',
-            fontSize: 13,
-            marginTop: 8, //  separa del gráfico
-            marginBottom: 10, //  separa del borde inferior
-            color: '#444',
-            paddingTop: 4,
-            borderTop: '1px solid #eee', // línea sutil
-            fontWeight: 500,
-            letterSpacing: 0.3
-          }}
-        >
-          {title}
-        </div>
-      )}
     </div>
   )
 }

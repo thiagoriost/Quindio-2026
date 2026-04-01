@@ -29,6 +29,7 @@ import FormEducacion from './formEducacion'
 import FormIndicadores from './formIndicadores'
 import '../styles/styles.css'
 import { MUNICIPIOS_QUINDIO } from '../../../shared/constants/municipiosQuindio';
+import { abrirWidgetLeyenda } from '../../../widget-leyenda/src/runtime/widget';
 
 
 interface interfaceConsultaPor { id: number, name: string, url: string }
@@ -211,7 +212,14 @@ const Widget = (props: AllWidgetProps<any>) => {
       setSelectedMunicipio(null)
       setSelectedEstablecimiento(null)
       setEstablecimientos(null)
-    }  
+    } 
+    
+    console.log(1111, "consulta educacion")
+    abrirWidgetLeyenda({
+      widgetleyendaId: WIDGET_IDS.LEYENDA,
+      props,
+        data: LEYENDA_COROPLETICO_QUINDIO.map(l => ({ label: l.label, colorFondo: l.colorFondo, colorLine: l.colorLine }))
+    })
     
   }, [props])
 
