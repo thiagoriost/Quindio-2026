@@ -48,31 +48,3 @@ textarea {
   display: flex;
   justify-content: space-between;
 }
-
-.consultaAA-scroll {
-    flex: 1 1 auto;
-    min-height: 0;
-    overflow-y: auto;
-    overflow-x: hidden;
-    padding-right: var(--spacing-xs);
-    scrollbar-width: thin;
-    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
-}
-
-.consultaAA-scroll::-webkit-scrollbar {
-    width: 8px;
-}
-
-.consultaAA-scroll::-webkit-scrollbar-track {
-    background: var(--scrollbar-track);
-    border-radius: var(--border-radius-lg);
-}
-
-.consultaAA-scroll::-webkit-scrollbar-thumb {
-    background: var(--scrollbar-thumb);
-    border-radius: var(--border-radius-lg);
-}
-
-.consultaAA-scroll::-webkit-scrollbar-thumb:hover {
-    background: var(--scrollbar-thumb-hover);
-}

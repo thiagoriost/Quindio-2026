@@ -22,7 +22,9 @@ import {
     SUBCATEGORIAS_PUNTOSDECALIDAD,
     toOptions
 } from './config/consulta-ambiental.config'
-import { abrirTablaResultados } from '../../../widget-result/src/runtime/widget'
+import { abrirTablaResultados, limpiarYCerrarWidgetResultados } from '../../../widget-result/src/runtime/widget'
+import './styles/consulta-ambiental.css'
+
 
 const Widget = (props: any) => {
 
@@ -47,8 +49,6 @@ const Widget = (props: any) => {
         categorias: toOptions(CATEGORIAS, "categoria", "idCategoria"),
         subcategorias: [],
         nombres: [],
-
-        //        anios: generarAnios(),
         municipios: [],
 
     })
@@ -87,6 +87,18 @@ const Widget = (props: any) => {
         console.log("Mapa listo:", jimuMapView)
 
     }, [jimuMapView])
+
+    /**
+     * Efecto que limpia el punto y restaura la vista inicial cuando el widget se cierra.
+     */
+    React.useEffect(() => {
+    if (props.state === 'CLOSED') {
+        clearFilters()
+        setMensaje(null)
+        limpiarYCerrarWidgetResultados(widgetResultId)
+    }  
+    
+    }, [props])
 
     const handlers = {
 
@@ -157,7 +169,7 @@ const Widget = (props: any) => {
             const categoria = CATEGORIAS.find(c => c.idCategoria === categoriaId)
             const categoriaNombre = categoria?.categoria?.toLowerCase()
 
-            console.log("categoriaNombre >>> ", categoriaNombre)
+            console.log("cargarSubcategorias >>> ", categoriaNombre)
 
             // revisar si hay caso especial, aplica para estaciones y puntos de calidad
             const casoEspecialNombre = filtro.casosEspeciales?.[categoriaNombre]
@@ -167,7 +179,7 @@ const Widget = (props: any) => {
 
             if (casoEspecialNombre) {
 
-                const datos = catalogosEspeciales[casoEspecialNombre]
+                const datos = catalogosEspeciales[casoEspecialNombre as keyof typeof catalogosEspeciales]
 
                 setOpciones(prev => ({
                     ...prev,
@@ -210,7 +222,7 @@ const Widget = (props: any) => {
             }))
         },
         cargarTramitesAmbientalesPredios: async (categoriaId: number) => { // subcategoria
-
+            console.log("cargarTramitesAmbientalesPredios >>> ", categoriaId)
             const urlBase = urls.AmbientalAlfanumerico.BASE
             const layerId = urls.AmbientalAlfanumerico.TRAMITESCATASTRO // DESCRIPCIONVALOR
 
@@ -248,7 +260,7 @@ const Widget = (props: any) => {
             const urlBase = urls.Ambiental.BASE
             let layerId = null
             const outField = "NOMBRE, IDMUNICIPIO"
-            const outFieldsMunipios = "IDMUNICIPIO, MUNICIPIO"
+
             if (idSubcategoria === "metereologica") { // Metereológica
                 layerId = urls.Ambiental.Estaciones_climaticas
 
@@ -475,7 +487,7 @@ const Widget = (props: any) => {
                     {
                         where,
                         outFields,
-                        extraParams: 'returnDistinctValues=true&orderByFields=' + outFields,
+                        // extraParams: 'returnDistinctValues=true&orderByFields=' + outFields,
                         returnGeometry: false
                     },
                     true,
@@ -511,13 +523,14 @@ const Widget = (props: any) => {
             layerId: number,
             outField: string,
         ): Promise<ApiResponse<ArcGisQueryResponse>> => {
+            console.log("consultarMapServer >>> ", { urlBase, layerId, outField })
             return await execute((signal) =>
                 arcgisService.queryLayer<ArcGisQueryResponse>(
                     urlBase,
                     layerId,
                     {
                         outFields: outField,
-                        extraParams: 'returnDistinctValues=true&orderByFields=' + outField,
+                        // extraParams: 'returnDistinctValues=true&orderByFields=' + outField,
                         returnGeometry: false
                     },
                     true,
@@ -541,7 +554,7 @@ const Widget = (props: any) => {
             }))
     }
     const consultarPrediosDeReforestacion = async (filters: any) => {
-
+        console.log("consultarPrediosDeReforestacion >>> ", filters)
         //        const { subcategoria, nombre, municipio } = filters;
         const { idMunicipio } = filters
 
@@ -592,6 +605,9 @@ const Widget = (props: any) => {
         where: string,
     ): Promise<ApiResponse<ArcGisQueryResponse>> => {
 
+        console.log("realizarConsulta >>> ", { urlBase, layerId, where })
+
+
         return await execute((signal) =>
             arcgisService.queryLayer<ArcGisQueryResponse>(
                 urlBase,
@@ -607,7 +623,7 @@ const Widget = (props: any) => {
     }
 
     const onBuscar = async () => {
-
+console.log('onBuscar:', filters)
         const { categoria } = filters
 
         if (categoria === 3) { // Trámites ambientales
@@ -695,7 +711,7 @@ const Widget = (props: any) => {
                     'Sin resultados',
                     'No se encontraron resultados para los criterios seleccionados'
                 )
-                // abrirTablaResultados([], [], null, false) // cef 20260326 limpiar consulta anterior
+                limpiarYCerrarWidgetResultados(widgetResultId)
                 return
             }
 
@@ -735,72 +751,20 @@ const Widget = (props: any) => {
         }
     }
 
-    /* const abrirTablaResultados = (
-        features: any[],
-        fields: any[],
-        spatialReference?:
-            __esri.SpatialReference,
-        withGraphic?: boolean,
-        graphicData?: any[],
-        graphicType?: "bar" | "pie",
-        graphicTitle?: string
-    ) => {
-
-        const isEmpty = !features || features.length === 0 // cef 20260326
-
-        getAppStore().dispatch(appActions.openWidget(widgetResultId))
-
-        getAppStore().dispatch(
-            appActions.widgetStatePropChange(
-                widgetResultId,
-                'results',
-                {
-                    sourceWidgetId: props.id,
-                    features: isEmpty ? [] : features,
-                    fields: isEmpty ? [] : fields,
-                    spatialReference,
-                    withGraphic: isEmpty ? false : withGraphic,
-                    graphicTitle: isEmpty ? undefined : graphicTitle,
-                    graphicData: isEmpty ? [] : graphicData,
-                    graphicType: isEmpty ? undefined : graphicType
-                }
-            )
-        )
-    } */
-    /*
-    const verGraficos = (features: any[], fields: any[], spatialReference?: __esri.SpatialReference) => {
-
-        const dataGrafico = [
-            { categoria: "Licencia", valor: 10 },
-            { categoria: "Permiso", valor: 5 }
-        ]
-
-        getAppStore().dispatch(appActions.openWidget(widgetChartId))
-
-        getAppStore().dispatch(
-            appActions.widgetStatePropChange(
-                widgetChartId,
-                'chartData',
-                {
-                    sourceWidgetId: props.id,
-                    data: dataGrafico,
-                    categoryField: 'categoria',
-                    valueField: 'valor',
-                    type: 'bar'
-                }
-            )
-        )
-    }
-    */
     const onLimpiar = () => {
         clearFilters()
-        setMensaje(null)
-        // abrirTablaResultados([], [], null, false) // cef 20260326 limpiar consulta anterior
+        setMensaje("Filtros limpiados")
+        setTimeout(() => limpiarYCerrarWidgetResultados(widgetResultId), 5000)
+        
     }
 
+    React.useEffect(() => {
+      console.log({filters, opciones})
+    }, [])
+    
     return (
 
-        <div className="consulta-ambiental">
+        <div style={{height: '100%', padding: '5px', boxSizing: 'border-box'}}>
 
             {/* Componente de acceso al MapView cef 20250327 */}
             <JimuMapViewComponent
@@ -810,26 +774,28 @@ const Widget = (props: any) => {
                 }}
             />
 
-            <FiltrosClasificacion
-                filtros={filters}
-                setFiltro={setFilter}
-                opciones={opciones}
-                handlers={handlers}
-            />
-            {/* Mensaje */}
-            {mensaje && (
-                <div style={{ marginTop: 4, color: 'red', fontSize: 12 }}>
-                    {mensaje}
-                </div>
-            )}
-            <br />
-            <SearchActionBar
-                onSearch={onBuscar}
-                onClear={onLimpiar}
-                loading={loading}
-                disableSearch={loading}
-                helpText="Esta funcionalidad permite realizar consultas relacionadas de categorias ambientales"
-            />
+            <div className="consulta-widget consulta-scroll">
+              <FiltrosClasificacion
+                  filtros={filters}
+                  setFiltro={setFilter}
+                  opciones={opciones}
+                  handlers={handlers}
+              />
+              {/* Mensaje */}
+              {mensaje && (
+                  <div style={{ marginTop: 4, color: 'red', fontSize: 12 }}>
+                      {mensaje}
+                  </div>
+              )}
+              <br />
+              <SearchActionBar
+                  onSearch={onBuscar}
+                  onClear={onLimpiar}
+                  loading={loading}
+                  disableSearch={loading}
+                  helpText="Esta funcionalidad permite realizar consultas relacionadas de categorias ambientales"
+              />
+            </div>
         </div>
 
     )

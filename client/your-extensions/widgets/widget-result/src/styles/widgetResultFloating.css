@@ -36,14 +36,11 @@
   right: 50px;
   z-index: 10000;
 
-  /* width: var(--panel-width, max-content); */
   width: max-content; 
   max-width: 40vw;        
   min-width: 500px;
-  height: 100%;
-  /* height: max-content; */
+  height: auto;
   max-height: 40vh;
-  /* min-height: 500px; */
   background: var(--bg-color-white);
   border-radius: 5px;
   box-shadow: 0 4px 24px var(--shadow-light);
@@ -51,6 +48,13 @@
   display: flex;
   flex-direction: column;
   animation: widgetResultFadeIn 0.25s;
+}
+
+/* Cuando muestra gráfico, el panel necesita más alto para que Recharts renderice bien */
+.widget-result-floating-panel.widget-result-panel--graphic {
+  max-height: 70vh;
+  min-height: 420px;
+  height: 60vh;
 }
 @keyframes widgetResultFadeIn {
   from {
@@ -129,10 +133,12 @@
 }
 
 .widget-result-view { /*cef 20260423*/
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
   overflow: hidden; 
   width: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 .widget-result-table-container {
@@ -147,9 +153,10 @@
 .widget-result-graphic {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  flex: 1 1 auto;
   min-height: 0;
   width: 100%;
+  height: 100%;
 }
 
 .widget-result-graphic-title {
@@ -166,6 +173,7 @@
 }
 
 .widget-result-graphic-chart {
-  flex: 1;
-  min-height: 0;
+  flex: 1 1 auto;
+  min-height: 280px;
+  width: 100%;
 }

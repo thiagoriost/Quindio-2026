@@ -1,7 +1,6 @@
 /** @jsx jsx */
 
-import { React, jsx } from 'jimu-core'
-import { Select } from 'jimu-ui'
+import { Select, Option, Label } from 'jimu-ui'
 import { DatePicker } from 'jimu-ui/basic/date-picker'
 import '../styles/consulta-ambiental.css'
 import { DEFINICION_FILTROS } from '../config/filtros.config'
@@ -22,30 +21,6 @@ interface Props {
     handlers?: any
 }
 
-/**
- * Definición completa del formulario
-const DEFINICION_FILTROS = [
-
-  { campo: "area", label: "Área", tipo: "select", opciones: "areas" },
-
-  { campo: "tematica", label: "Temática", tipo: "select", opciones: "tematicas", dependeDe: "area" },
-
-  { campo: "categoria", label: "Categoría", tipo: "select", opciones: "categorias", dependeDe: "tematica", onChange: "cargarSubcategorias" },
-
-  { campo: "subcategoria", label: "SubCategoría", tipo: "select", opciones: "subcategorias", dependeDe: "categoria" },
-
-  { campo: "nombre", label: "Nombre", tipo: "select", opciones: "nombres", dependeDe: "subcategoria" },
-
-  { campo: "anio", label: "Año", tipo: "select", opciones: "anios" },
-
-  { campo: "municipio", label: "Municipio", tipo: "select", opciones: "municipios" },
-
-  { campo: "fechaInicio", label: "Fecha inicio", tipo: "date" },
-
-  { campo: "fechaFin", label: "Fecha fin", tipo: "date" }
-
-]
- */
 
 export const FiltrosClasificacion = ({
     filtros,
@@ -56,9 +31,9 @@ export const FiltrosClasificacion = ({
 
     const renderOptions = (items: OptionItem[]) =>
         items?.map(op => (
-            <option key={op.value} value={op.value}>
+            <Option key={op.value} value={op.value}>
                 {op.label}
-            </option>
+            </Option>
         ))
 
     const renderFiltro = (filtro: { campo: string; label: string; tipo: string; opciones: string; onChange: string; root: boolean; dependeDe?: undefined; casosEspeciales?: undefined; condicion?: undefined; dependeDeCondicional?: undefined } | { campo: string; label: string; tipo: string; opciones: string; dependeDe: string; onChange: string; casosEspeciales: { estaciones: string; "puntos de calidad": string }; root?: undefined; condicion?: undefined; dependeDeCondicional?: undefined } | { campo: string; label: string; tipo: string; opciones: string; dependeDe: string; onChange: string; condicion: (filters: any) => boolean; root?: undefined; casosEspeciales?: undefined; dependeDeCondicional?: undefined } | { campo: string; label: string; tipo: string; opciones: string; onChange?: undefined; root?: undefined; dependeDe?: undefined; casosEspeciales?: undefined; condicion?: undefined; dependeDeCondicional?: undefined } | { campo: string; label: string; tipo: string; opciones: string; dependeDe: string; dependeDeCondicional: (filters: any) => "categoria" | "subcategoria"; onChange?: undefined; root?: undefined; casosEspeciales?: undefined; condicion?: undefined } | { campo: string; label: string; tipo: string; dependeDe: string; condicion: (filters: any) => boolean; opciones?: undefined; onChange?: undefined; root?: undefined; casosEspeciales?: undefined; dependeDeCondicional?: undefined }) => {
@@ -97,14 +72,12 @@ export const FiltrosClasificacion = ({
                         setFiltro(filtro.campo, value)
 
                         if (filtro.onChange && handlers?.[filtro.onChange]) {
-                            //handlers[filtro.onChange](value, filtro, filtros) // cef 20260321
                             handlers[filtro.onChange](value, filtro, filtros, setFiltro)
                         }
 
                     }}
                 >
-
-                    <option value="">Seleccione</option>
+                    <Option value="">Seleccione... </Option>
                     {renderOptions(opcionesFiltro)}
 
                 </Select>
@@ -146,7 +119,7 @@ export const FiltrosClasificacion = ({
         }
     }
     return (
-        <div className="consulta-ambiental-form">
+        <div className="consulta-widget consulta-scroll">
 
             {DEFINICION_FILTROS.map(filtro => {
 
@@ -156,7 +129,7 @@ export const FiltrosClasificacion = ({
 
                 return (
                     <div className="filtro-row" key={filtro.campo}>
-                        <label>{filtro.label}</label>
+                        <Label>{filtro.label}</Label>
                         {renderFiltro(filtro)}
                     </div>
                 )

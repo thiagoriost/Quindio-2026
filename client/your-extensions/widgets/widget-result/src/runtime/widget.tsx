@@ -776,8 +776,7 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
             )}
             {open && (
                 <div
-                    className="widget-result-floating-panel"
-                    // style={getPanelWidth() ? { '--panel-width': getPanelWidth() } as React.CSSProperties : undefined}
+                    className={`widget-result-floating-panel${viewMode === 'grafico' && data?.withGraphic?.showGraphic ? ' widget-result-panel--graphic' : ''}`}
                 >
                     <div className="widget-result-header">
                         Resultados
@@ -790,13 +789,13 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
                         <div className="widget-result-toolbar-bar">
                             {data?.withGraphic?.showGraphic && (
                                 <Button
-                                size="sm"
-                                type="primary"
-                                onClick={() => {
-                                    setViewMode?.(viewMode === "tabla" ? "grafico" : "tabla")
-                                }}
-                                >
-                                {viewMode === "tabla" ? "Ver Gráfico" : "Ver Tabla"}
+                                    size="sm"
+                                    type="primary"
+                                    onClick={() => {
+                                        setViewMode?.(viewMode === "tabla" ? "grafico" : "tabla")
+                                    }}
+                                    >
+                                    {viewMode === "tabla" ? "Ver Gráfico" : "Ver Tabla"}
                                 </Button>
                             )}
                             { viewMode === 'tabla' &&

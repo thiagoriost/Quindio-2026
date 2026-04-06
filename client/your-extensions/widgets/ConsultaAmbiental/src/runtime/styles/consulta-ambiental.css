@@ -1,3 +1,5 @@
+@import '../../../../utils/styles/presetsQuindio.css';
+
 .consulta-ambiental-form-ant {
   display: grid;
   grid-template-columns: 130px 1fr;
@@ -10,30 +12,6 @@
   display: contents;
 }
 
-/*
-.consulta-ambiental-form {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
- 
-}
-
-.filtro-row {
-  display: grid;
-  grid-template-columns: 130px 1fr;
-  gap: 8px;
-  align-items: center;
-}
-
-.consulta-ambiental-form label {
-  font-weight: 500;
-}
-
-.date-disabled {
-  pointer-events: none;
-  opacity: 0.6;
-}
-*/
 
 .consulta-ambiental-form {
   display: flex;
@@ -53,13 +31,11 @@
 }
 
 .filtro-row {
-  display: grid;
-  grid-template-columns: 100px 1fr;
-  /* 🔥 reduce ancho del label */
-  column-gap: 2px;
-  /* 🔥 casi pegado */
-  row-gap: 8px;
-  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  margin-bottom: 10px;
 }
 
 .consulta-ambiental-form label {
@@ -81,4 +57,36 @@
 
 .botonera {
   margin-top: 16px;
+}
+
+.consulta-widget {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: var(--spacing-sm);
+  background-color: var(--bg-color-white);
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+.consulta-widget::-webkit-scrollbar {
+  width: 8px;
+}
+
+.consulta-widget::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+  border-radius: var(--border-radius-lg);
+}
+
+.consulta-widget::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: var(--border-radius-lg);
+}
+
+.consulta-widget::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
 }

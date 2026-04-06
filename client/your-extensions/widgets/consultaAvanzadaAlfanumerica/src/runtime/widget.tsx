@@ -11,9 +11,9 @@
  */
 import { JimuMapViewComponent, type JimuMapView } from 'jimu-arcgis'
 import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer"
-import { executeQueryJSON } from "@arcgis/core/rest/query";
+
 import { React, type AllWidgetProps } from "jimu-core"
-import Query from "@arcgis/core/rest/support/Query";
+
 import { Label, Select, Option } from "jimu-ui";
 
 import { abrirTablaResultados, limpiarYCerrarWidgetResultados } from "../../../widget-result/src/runtime/widget";
@@ -183,8 +183,8 @@ const Widget = (props: AllWidgetProps<any>) => {
       const data = await response.json()
 
       const validFields = data.fields
-        .filter((f) => f.name !== "ESRI_OID" && f.name !== "SHAPE")
-        .map((f) => f.name)
+        .filter((f: { name: string; }) => f.name !== "ESRI_OID" && f.name !== "SHAPE")
+        .map((f: { name: string; }) => f.name)
 
       setFields(validFields)
       setUrlLayer(url)
@@ -200,7 +200,7 @@ const Widget = (props: AllWidgetProps<any>) => {
   ==========================
   */
 
-  const handleLayerChange = async (e) => {
+  const handleLayerChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     handleClear()
     const id = Number(e.target.value)
 
@@ -285,7 +285,7 @@ const Widget = (props: AllWidgetProps<any>) => {
       )}      {
       varJimuMapView && (
           
-          <div className="consulta-widget consultaAA-scroll loading-host">            
+          <div className="consulta-widget consulta-scroll loading-host">            
 
             {/* TEMA */}
 
