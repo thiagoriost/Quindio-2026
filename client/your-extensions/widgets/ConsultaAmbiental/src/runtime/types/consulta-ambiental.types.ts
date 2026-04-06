@@ -18,7 +18,10 @@ export interface ConsultaAmbientalFilters {
 
   fechaFin?: Date
 
-   idMunicipio?: string // cef 20260324
+  idMunicipio?: string // cef 20260324
+
+  subcategorianombre?: string
+
 }
 
 export interface OptionItem {

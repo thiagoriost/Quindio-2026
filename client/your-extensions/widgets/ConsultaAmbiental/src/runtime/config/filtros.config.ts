@@ -1,7 +1,7 @@
 /**
  * Jerarquía de cascada de filtros
  * Esto permitira limpiar filtros automáticamente cuando cambian los padres. IMPLEMENTAR
- * 
+ *
  */
 export const CASCADE_ORDER = [
   "area",
@@ -39,7 +39,7 @@ export const DEFINICION_FILTROS = [
     opciones: "subcategorias",
     dependeDe: "categoria",
     onChange: "onChangeSubcategoria",
-    condicion: (filters) => filters.categoria != 5, // categoria != 5 -> predios de reforestación
+    condicion: (filters: { categoria: number }) => filters.categoria !== 5, // categoria != 5 -> predios de reforestación
   },
 
   /*
@@ -53,9 +53,8 @@ export const DEFINICION_FILTROS = [
     tipo: "select",
     opciones: "nombres",
     dependeDe: "subcategoria",
-//    onChange: "onChangeNombre",
     onChange: "onChangeEstacion",
-    condicion: (filters) => filters.categoria === 1 || filters.categoria === 2, // 1=Estaciones ó 2=Puntos de calidad
+    condicion: (filters: { categoria: number }) => filters.categoria === 1 || filters.categoria === 2, // 1=Estaciones ó 2=Puntos de calidad
   },
   {
     campo: "anio",
@@ -70,7 +69,7 @@ export const DEFINICION_FILTROS = [
     tipo: "select",
     opciones: "municipios",
     dependeDe: 'subcategoria',
-    dependeDeCondicional: (filters) =>
+    dependeDeCondicional: (filters: { categoria: number }) =>
       filters.categoria === 5 ? "categoria" : "subcategoria" // 5='Predios de reforestación'
   },
   {
@@ -78,13 +77,13 @@ export const DEFINICION_FILTROS = [
     label: "Fecha inicio",
     tipo: "date",
     dependeDe: 'municipio',
-    condicion: (filters) => filters.categoria === 2, // 2=Puntos de calidad
+    condicion: (filters: { categoria: number }) => filters.categoria === 2, // 2=Puntos de calidad
   },
   {
     campo: "fechaFin",
     label: "Fecha fin",
     tipo: "date",
     dependeDe: 'municipio',
-    condicion: (filters) => filters.categoria === 2, // 2=Puntos de calidad
+    condicion: (filters: { categoria: number }) => filters.categoria === 2, // 2=Puntos de calidad
   }
 ]

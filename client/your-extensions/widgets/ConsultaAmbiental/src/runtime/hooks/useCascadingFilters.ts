@@ -1,6 +1,6 @@
 import { React } from 'jimu-core'
 
-export type ConsultaAmbientalFilters = {
+export interface ConsultaAmbientalFilters {
   area: number | null
   tematica: number | null
   categoria: number | null
@@ -11,6 +11,7 @@ export type ConsultaAmbientalFilters = {
   fechaInicio: number | null
   fechaFin: number | null
   idMunicipio: string | null
+  subcategorianombre: string | null
 }
 
 const INITIAL_FILTERS: ConsultaAmbientalFilters = {
@@ -23,7 +24,8 @@ const INITIAL_FILTERS: ConsultaAmbientalFilters = {
   anio: null,
   fechaInicio: null,
   fechaFin: null,
-  idMunicipio: null
+  idMunicipio: null,
+  subcategorianombre: null
 }
 
 export const useCascadingFilters = () => {

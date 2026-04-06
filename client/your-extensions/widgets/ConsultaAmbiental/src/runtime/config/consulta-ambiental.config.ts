@@ -63,8 +63,8 @@ export const SUBCATEGORIAS_PUNTOSDECALIDAD = [
     },
 ]
 
-export const toOptions = (data, labelField, valueField) =>
-    data.map(item => ({
+export const toOptions = (data: any[], labelField: string, valueField: string) =>
+    data.map((item: { [x: string]: any }) => ({
         label: item[labelField],
         value: item[valueField]
     }))

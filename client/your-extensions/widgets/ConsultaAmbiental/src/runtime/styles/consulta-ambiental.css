@@ -1,5 +1,4 @@
-.consulta-ambiental-form {
-
+.consulta-ambiental-form-ant {
   display: grid;
   grid-template-columns: 130px 1fr;
   gap: 8px;
@@ -7,8 +6,23 @@
 
 }
 
-.filtro-row {
+.filtro-row-ant {
   display: contents;
+}
+
+/*
+.consulta-ambiental-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+ 
+}
+
+.filtro-row {
+  display: grid;
+  grid-template-columns: 130px 1fr;
+  gap: 8px;
+  align-items: center;
 }
 
 .consulta-ambiental-form label {
@@ -18,4 +32,53 @@
 .date-disabled {
   pointer-events: none;
   opacity: 0.6;
+}
+*/
+
+.consulta-ambiental-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 12px;
+  /* separación lateral */
+}
+
+.filtro-row-ant {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  column-gap: 2px;
+  /* menos espacio entre label y control */
+  row-gap: 8px;
+  align-items: center;
+}
+
+.filtro-row {
+  display: grid;
+  grid-template-columns: 100px 1fr;
+  /* 🔥 reduce ancho del label */
+  column-gap: 2px;
+  /* 🔥 casi pegado */
+  row-gap: 8px;
+  align-items: center;
+}
+
+.consulta-ambiental-form label {
+  font-weight: 500;
+}
+
+.botonera_ {
+  margin-top: 16px;
+  /* separación del último filtro */
+  display: grid;
+  grid-template-columns: 105px 1fr;
+  /* igual que filtro-row */
+}
+
+.botonera-content_ {
+  grid-column: 2;
+  /* alinea con los selects */
+}
+
+.botonera {
+  margin-top: 16px;
 }

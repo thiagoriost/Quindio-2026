@@ -51,7 +51,7 @@ export const FiltrosExtras = ({
 
         <Select
           value={filtros.anio || ''}
-          onChange={(e) => setFiltro('anio', e.target.value)}
+          onChange={(e) => { setFiltro('anio', e.target.value) }}
         >
           <option value="">Seleccione</option>
           {renderOptions(opciones.anios)}
@@ -67,7 +67,7 @@ export const FiltrosExtras = ({
 
         <Select
           value={filtros.municipio || ''}
-          onChange={(e) => setFiltro('municipio', e.target.value)}
+          onChange={(e) => { setFiltro('municipio', e.target.value) }}
         >
           <option value="">Seleccione</option>
           {renderOptions(opciones.municipios)}
@@ -84,7 +84,7 @@ export const FiltrosExtras = ({
         <DatePicker
           runtime={true}
           selectedDate={filtros.fechaInicio ?? null}
-          onChange={(value) => setFiltro('fechaInicio', value)}
+          onChange={(value) => { setFiltro('fechaInicio', value) }}
         />
 
       </div>
@@ -98,7 +98,7 @@ export const FiltrosExtras = ({
         <DatePicker
           runtime={true}
           selectedDate={filtros.fechaFin ?? null}
-          onChange={(value) => setFiltro('fechaFin', value)}
+          onChange={(value) => { setFiltro('fechaFin', value) }}
         />
 
       </div>
