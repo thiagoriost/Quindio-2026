@@ -17,7 +17,7 @@ import { React, type AllWidgetProps } from "jimu-core"
 import { Label, Select, Option } from "jimu-ui";
 
 import { abrirTablaResultados, limpiarYCerrarWidgetResultados } from "../../../widget-result/src/runtime/widget";
-import { drawFeaturesOnMap, ejecutarConsulta, goToInitialExtent} from "../../../shared/utils/export.utils";
+import { drawFeaturesOnMap, ejecutarConsulta, goToInitialExtent, validaLoggerLocalStorage} from "../../../shared/utils/export.utils";
 import { LayerInfo } from "widgets/shared/types/types_consultaAvanzadaAlfanumerica"
 import { SearchActionBar } from "../../../shared/components/search-action-bar";
 import { loadLayers } from "../../../shared/services/queryMapServer.service"
@@ -138,7 +138,7 @@ const Widget = (props: AllWidgetProps<any>) => {
       try {
 
         const response = await loadLayers(urls.SERVICIO_CONSULTA_AVANZADA_ALFANUMERICA)
-        console.log({response})
+        if(validaLoggerLocalStorage('logger')) console.log({response})
 
         const nameTemas = ["Trámites", "Predios reserva", "Infraestructura educativa", "Clasificación del suelo",
           "Servicios Salud", "Capacidad instalada", "Servicios hospedajes"]
@@ -222,10 +222,10 @@ const Widget = (props: AllWidgetProps<any>) => {
     try {
       var where = "1=1", returnGeometry = true;
       const features = await ejecutarConsulta({returnGeometry, campos: fields, url: urlLayer, where})
-      console.log({features, fields})
+      if(validaLoggerLocalStorage('logger')) console.log({features, fields})
       const uniqueValues = Array.from(new Set(features.map(f => f.attributes[fieldSelected])))
       setValues(uniqueValues)
-      console.log({features,uniqueValues})
+      if(validaLoggerLocalStorage('logger')) console.log({features,uniqueValues})
       mostrarConsultaCAA({ features })
     } catch (err) {
       console.error("Error obteniendo valores:", err)
@@ -241,7 +241,7 @@ const Widget = (props: AllWidgetProps<any>) => {
     setError("")
     try {
       const features = await ejecutarConsulta({ returnGeometry: true, campos: fields, url: urlLayer, where: condition.trim() })
-      console.log("Resultados búsqueda:", features)
+      if(validaLoggerLocalStorage('logger')) console.log("Resultados búsqueda:", features)
       const graphicsLayer = await drawFeaturesOnMap({ features, spatialReference: varJimuMapView.view.spatialReference }, varJimuMapView, 16)
       setGraphicsLayer(graphicsLayer)
       const fieldsToShow = fields.map(f => ({ name: f, alias: f }))
@@ -253,7 +253,7 @@ const Widget = (props: AllWidgetProps<any>) => {
         }))
 
       const resultSpatialReference = features[0]?.geometry?.spatialReference || varJimuMapView.view.spatialReference
-      console.log({fieldsToShow, featuresFixed})
+      if(validaLoggerLocalStorage('logger')) console.log({fieldsToShow, featuresFixed})
       abrirTablaResultados(featuresFixed, fieldsToShow, props, widgetResultId, resultSpatialReference)
     } catch (err) {
       console.error("Error en búsqueda:", err)
@@ -268,7 +268,7 @@ const Widget = (props: AllWidgetProps<any>) => {
     const { features } = featureSet;
 
     if (!features?.length) {
-      console.log(
+      if(validaLoggerLocalStorage('logger')) console.log(
         "<B> Info </B>",
         "El campo seleccionado no contiene datos"
       );

@@ -1,5 +1,6 @@
 import { React } from "jimu-core"
 import { Label, Select, Option } from "jimu-ui"
+import { validaLoggerLocalStorage } from "../../../../shared/utils/export.utils"
 
 interface interfaceIndicadores { id: number, name: string }
 
@@ -34,7 +35,7 @@ const FormIndicadores = ({
   selectedAnio,
   onAnioChange
 }: FormIndicadoresProps) => {
-  console.log({
+  if (validaLoggerLocalStorage('logger')) { console.log({
     loading,
     indicadores,
     selectedIndicador,
@@ -44,7 +45,7 @@ const FormIndicadores = ({
     selectedSector,
     anios,
     selectedAnio,
-  })
+  }) }
   return (
     <>
       <Label>Indicador</Label>

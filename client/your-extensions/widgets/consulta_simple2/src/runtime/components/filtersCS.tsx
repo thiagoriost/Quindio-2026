@@ -17,6 +17,7 @@ import { urls } from '../../../../api/servicios'
 import { SearchActionBar } from '../../../../shared/components/search-action-bar'
 
 import '../../styles/style.css'
+import { validaLoggerLocalStorage } from '../../../../shared/utils/export.utils'
 
 /**
  * Componente FiltersCS - Gestiona los filtros del widget Consulta Simple.
@@ -110,10 +111,10 @@ const FiltersCS = function ({
    * @since 2024-05-22
    * @updated 2024-06-27 - Importación URL desde servicios.ts
    */
-  async function getJSONContenido (jsonSERV) {
-    console.log({ urls })
+  async function getJSONContenido (jsonSERV: object[]) {
+    if(validaLoggerLocalStorage('logger')) console.log({ urls })
     const urlServicioTOC = urls.tablaContenido
-    console.log({ urlServicioTOC })
+    if(validaLoggerLocalStorage('logger')) console.log({ urlServicioTOC })
 
     let /* nombreServicio, */ idTematica, idCapaMapa, idCapaDeServicio, nombreTematica, tituloCapa, urlMetadatoCapa, url: string
     let idTematicaPadre: any
@@ -197,9 +198,9 @@ const FiltersCS = function ({
    * @author IGAC - DIP
    * @since 2024-05-22
    */
-  function where (array, object) {
+  function where (array: any[], object: { [x: string]: any; id?: string }) {
     const keys = Object.keys(object)
-    return array.filter(item => keys.every(key => item[key] === object[key]))
+    return array.filter((item: { [x: string]: any }) => keys.every(key => item[key] === object[key]))
   }
 
   /**
@@ -212,7 +213,7 @@ const FiltersCS = function ({
    * @author IGAC - DIP
    * @since 2024-05-22
    */
-  function getTemas (jsonData) {
+  function getTemas (jsonData: string | any[]) {
     const opcArr = []
     let tipoRegistro, nodoPadre, /* urlServ, */ descrip: string
     let idTema = -1
@@ -247,7 +248,7 @@ const FiltersCS = function ({
    * @since 2023-05-23
    * @updated 2024-06-27 - Validación para evitar duplicados en campo Capa
    */
-  function getSubtemas (temas) {
+  function getSubtemas (temas: { target: { value: any } }) {
     let idParent: number = -1
     let type: string = ''
     let jsonSubtemas: any = ''
@@ -323,8 +324,8 @@ const FiltersCS = function ({
    * @author IGAC - DIP
    * @since 2024-06-27
    */
-  function procesaDuplic (capasArr) {
-    let newCapasArr = []
+  function procesaDuplic (capasArr: Array<{idCapa: number, nombreCapa: string, urlCapa: string}>) {
+    let newCapasArr: Array<{idCapa: number, nombreCapa: string, urlCapa: string}> = []
     newCapasArr = capasArr.filter((obj, index, self) =>
       index === self.findIndex((t) => (
         t.idCapa === obj.idCapa && t.nombreCapa === obj.nombreCapa && t.urlCapa === obj.urlCapa
@@ -343,7 +344,7 @@ const FiltersCS = function ({
    * @since 2023-05-23
    * @updated 2024-06-27 - Validación de duplicados y limpieza de mapa
    */
-  function getGrupoOrCapa (subtemas) {
+  function getGrupoOrCapa (subtemas: { target: { value: any } }) {
     let idParent: number = -1
     let type: string = ''
     let jsonSubtemas: any = ''
@@ -417,7 +418,7 @@ const FiltersCS = function ({
    * @since 2023-05-23
    * @updated 2024-06-27 - Validación de duplicados y limpieza de mapa
    */
-  function getCapaByGrupo (grupos) {
+  function getCapaByGrupo (grupos: { target: { value: any } }) {
     let idParent: number = -1
     let type: string = ''
     let jsonSubtemas: any = ''
@@ -486,7 +487,7 @@ const FiltersCS = function ({
    * @since 2024-05-24
    * @updated 2024-06-19 - Fix seteo de valores de capa y URL
    */
-  function getAtributosCapa (capa) {
+  function getAtributosCapa (capa: { target: { value: any } }) {
     // const urlCapa: string
     let JsonAtrCapa: any = ''
     const AtrCapaArr: any = []
@@ -541,7 +542,7 @@ const FiltersCS = function ({
    * @author IGAC - DIP
    * @since 2024-05-24
    */
-  function getUrlFromCapa (idCapa, capasArr) {
+  function getUrlFromCapa (idCapa: any, capasArr: string | any[]) {
     //Recorrido por el array
     for (let cont = 0; cont < capasArr.length; cont++) {
       if (safeParseInt(capasArr[cont].idCapa) === safeParseInt(idCapa)) {
@@ -562,7 +563,7 @@ const FiltersCS = function ({
    * @since 2024-05-27
    * @updated 2024-06-17 - Limpieza de capas del mapa
    */
-  function enableValor (evt) {
+  function enableValor (evt: { target: { value: any } }) {
     //State del control Valor
     setValorState(false)
 
@@ -584,7 +585,7 @@ const FiltersCS = function ({
    * @author IGAC - DIP
    * @since 2024-05-27
    */
-  const handleChangevalorTxt = function (event) {
+  const handleChangevalorTxt = function (event: { target: { value: any } }) {
     //if (utilsModule?.logger()) console.log("Estado actual =>",txtValorState);
     setValor(event.target.value)
   }
@@ -744,7 +745,7 @@ const FiltersCS = function ({
                   value={selTema}
                 >
                 {temas.map(
-                  (option) => (
+                  (option: { value: string | number | readonly string[]; label: string | number | boolean | React.ReactElement<any, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | React.ReactPortal }) => (
                       <option value={option.value}>{option.label}</option>
                   )
                 )}
@@ -760,7 +761,7 @@ const FiltersCS = function ({
                     value={selSubtema}>
                     {
                       subtemas.map(
-                        (option) => (
+                        (option: { idTematica: string | number | readonly string[]; nombreTematica: string | number | boolean | React.ReactElement<any, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | React.ReactPortal }) => (
                           <option value={option.idTematica}>{option.nombreTematica}</option>
                         )
                       )
@@ -779,7 +780,7 @@ const FiltersCS = function ({
                   >
                   {
                     grupos.map(
-                      (option) =>
+                      (option: { idTematica: string | number | readonly string[]; nombreTematica: string | number | boolean | React.ReactElement<any, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | React.ReactPortal }) =>
                       <option value={option.idTematica}>{option.nombreTematica}</option>
                     )
                   }
@@ -797,7 +798,7 @@ const FiltersCS = function ({
                     >
                     {
                       capas.map(
-                        (option) =>
+                        (option: { idCapa: string | number | readonly string[]; nombreCapa: string | number | boolean | React.ReactElement<any, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | React.ReactPortal }) =>
                         <option value={option.idCapa}>{option.nombreCapa}</option>
                       )
                     }
@@ -815,7 +816,7 @@ const FiltersCS = function ({
                   >
                     {
                       capasAttr.map(
-                        (option) =>
+                        (option: { alias: string | number | readonly string[]; name: string | number | boolean | React.ReactElement<any, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | React.ReactPortal }) =>
                           <option value={option.alias}>{option.name}</option>
                       )
                     }

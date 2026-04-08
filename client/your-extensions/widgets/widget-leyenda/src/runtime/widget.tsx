@@ -27,6 +27,7 @@ import { useOnWidgetClose } from '../../../shared/hooks/useOnWidgetClose';
 import { appActions, getAppStore } from 'jimu-core'
 import { WidgetState } from 'jimu-core'
 import '../styles/widget_Leyenda_Floating.css'
+import { validaLoggerLocalStorage } from '../../../shared/utils/export.utils'
 
 /**
  * widget-leyenda
@@ -75,8 +76,8 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
         document.addEventListener('mouseup', onMouseUp)
     }
 
-    console.log('widget-leyenda ID:', props.id)
-    console.log('MapWidgetIds:', props.useMapWidgetIds)
+    if(validaLoggerLocalStorage('logger')) console.log('widget-leyenda ID:', props.id)
+    if(validaLoggerLocalStorage('logger')) console.log('MapWidgetIds:', props.useMapWidgetIds)
 
     /**
      * Vista activa del mapa proporcionada por JimuMapViewComponent.
@@ -151,17 +152,12 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
      */
     React.useEffect(() => {
         if (!data) {
-            console.log(1111)
             graphicsLayerRef.current?.removeAll()
             
                 restoreInitialExtent()
             
         }
     }, [data])
-
-
-
-    
 
     /**
     * Efecto que se ejecuta cuando cambian los datos de resultados (`data`).
@@ -174,7 +170,7 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
 
         if (!features?.length) return
 
-        console.log("Resultados recibidos en widget-leyenda:", features)
+        if(validaLoggerLocalStorage('logger')) console.log("Resultados recibidos en widget-leyenda:", features)
         setOpen(true)
 
     }, [data])
@@ -184,7 +180,7 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
      * Evita que el widget permanezca abierto si no hay resultados.
      */
     React.useEffect(() => {
-        console.log(2222)
+        if(validaLoggerLocalStorage('logger')) console.log(2222)
         if (widgetState === WidgetState.Opened && !data) {
             getAppStore().dispatch(
                 appActions.closeWidget(props.id)
@@ -226,12 +222,8 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
      */
     useOnWidgetClose(props.id, onClose)
 
-
-
-    // if (!data) return null
-
-    console.log('Resultados recibidos en widget-leyenda:', data)
-    console.log({data})
+    if(validaLoggerLocalStorage('logger')) console.log('Resultados recibidos en widget-leyenda:', data)
+    if(validaLoggerLocalStorage('logger')) console.log({data})
     if (!data) return
 
     const legendItems: Array<{ label: string; colorFondo: string; colorLine: string }> = data?.data ?? []
@@ -310,6 +302,15 @@ export const abrirWidgetLeyenda = ({
     props,
     title,
     data
+}: {
+    widgetleyendaId: string;
+    props: any;
+    title: string;
+    data: {
+        label: string;
+        colorFondo: string;
+        colorLine: string;
+    }[];
 }) => {
   getAppStore().dispatch(
     appActions.widgetStatePropChange(

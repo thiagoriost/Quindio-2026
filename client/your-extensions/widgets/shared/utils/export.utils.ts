@@ -169,9 +169,9 @@ export const downloadBlob = (
   URL.revokeObjectURL(url)
 }
 
-export const drawFeaturesOnMap = async (response, jimuMapView, zoom = 15) => {
-  let geometry = null
-  let symbol = null
+export const drawFeaturesOnMap = async (response: { features: any; spatialReference: any }, jimuMapView: JimuMapView, zoom = 15) => {
+  let geometry: __esri.Point | __esri.Polygon | __esri.Polyline = null
+  let symbol: { type: string; color: string; outline: { color: string; width: number } } = null
   if (!response)
     { return }
   const { features, spatialReference } = response
@@ -188,8 +188,8 @@ export const drawFeaturesOnMap = async (response, jimuMapView, zoom = 15) => {
 
   const graphicsLayer = new GraphicsLayer()
 
-  features.forEach((feature) => {
-    console.log("Tipo geometría =>",feature.geometry)
+  for (const feature of features as Array<{ geometry: { rings: any; x: any; y: any; paths: any }; attributes: { [x: string]: any } }>) {
+    if (validaLoggerLocalStorage('logger')) console.log("Tipo geometría =>",feature.geometry)
     //Validación de un Polígono
     if (feature.geometry.rings) {
       // setTypeGraphMap("polygon")
@@ -220,7 +220,7 @@ export const drawFeaturesOnMap = async (response, jimuMapView, zoom = 15) => {
         spatialReference: spatialReference
       })
 
-      console.log("Objeto Point =>",point)
+      if (validaLoggerLocalStorage('logger')) console.log("Objeto Point =>",point)
 
       const outlPoint = new SimpleLineSymbol({
         color: [255, 255, 0], // Amarillo
@@ -273,7 +273,7 @@ export const drawFeaturesOnMap = async (response, jimuMapView, zoom = 15) => {
     })
 
     graphicsLayer.add(graphic)
-  })
+  }
 
   jimuMapView.view.map.add(graphicsLayer)
 
@@ -289,7 +289,7 @@ export const drawFeaturesOnMap = async (response, jimuMapView, zoom = 15) => {
  * Restaura la vista del mapa a la extensión y zoom iniciales.
  * @returns {void}
  */
-export const goToInitialExtent = (varJimuMapView, initialExtent, initialZoom) => {
+export const goToInitialExtent = (varJimuMapView: JimuMapView, initialExtent: any, initialZoom: number) => {
 
     if (!varJimuMapView || !initialExtent) return
 
@@ -332,18 +332,28 @@ export const ejecutarConsulta = async ({
       })
 
       const response = await executeQueryJSON(url, query)
-     console.log({response})
+     if (validaLoggerLocalStorage('logger')) console.log({response})
       return response.features
 
     } catch (error) {
 
       console.error("Error ejecutando consulta:", error)
 
-      console.log(
+      if (validaLoggerLocalStorage('logger')) { console.log(
         "<B> Info </B>",
         "No se logró completar la operación"
-      )
+      ) }
 
       throw error
     }
+  }
+
+  export const validaLoggerLocalStorage = (key: string): boolean => {
+    let loggerParsed = null
+    try {
+      loggerParsed = JSON.parse(localStorage.getItem(key))?.logger
+    } catch (e) {
+      loggerParsed = localStorage.getItem(key)
+    }
+    return loggerParsed === true
   }

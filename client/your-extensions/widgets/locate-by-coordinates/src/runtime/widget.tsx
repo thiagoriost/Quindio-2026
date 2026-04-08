@@ -18,6 +18,7 @@ import * as projection from "@arcgis/core/geometry/projection"
 import CoordinateForm from "./CoordinateForm"
 import { clearPoint, drawPoint } from "./mapActions"
 import { dmsToDecimal } from "./coordinateUtils"
+import { validaLoggerLocalStorage } from "../../../shared/utils/export.utils"
 
 const Widget = (props: AllWidgetProps<any>) => {
   /**
@@ -68,12 +69,12 @@ const Widget = (props: AllWidgetProps<any>) => {
    * @param {CoordinateType} type - Tipo de coordenada: "PLANAR", "GEOGRAPHIC_DECIMAL" o "GEOGRAPHIC_DMS"
    * @returns {Promise<void>}
    */
-  const handleLocate = async (data, type) => {
-    console.log("handleLocate", data, type)
+  const handleLocate = async (data: { x: any; y: any; lon: any; lat: any; latDeg: any; latMin: any; latSec: any; lonDeg: any; lonMin: any; lonSec: any }, type: string) => {
+    if(validaLoggerLocalStorage('logger')) console.log("handleLocate", data, type)
     if (!varJimuMapView) return
     // Log para depuración del estado de la vista y su propiedad map
-    console.log("varJimuMapView:", varJimuMapView)
-    console.log("varJimuMapView.view.map:", varJimuMapView && varJimuMapView?.view?.map)
+    if(validaLoggerLocalStorage('logger')) console.log("varJimuMapView:", varJimuMapView)
+    if(validaLoggerLocalStorage('logger')) console.log("varJimuMapView.view.map:", varJimuMapView && varJimuMapView?.view?.map)
     let point
     if (type === "PLANAR") {
       point = new Point({

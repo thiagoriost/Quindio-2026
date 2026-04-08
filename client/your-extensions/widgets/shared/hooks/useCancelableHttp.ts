@@ -1,5 +1,6 @@
 import { React } from 'jimu-core'
-import { ApiResponse } from '../models/api-response.model'
+import type { ApiResponse } from '../models/api-response.model'
+import { validaLoggerLocalStorage } from '../utils/export.utils'
 /**
  * Hook personalizado para ejecutar peticiones HTTP cancelables.
  *
@@ -20,7 +21,7 @@ export const useCancelableHttp = () => {
 
   /**
    * Referencia que almacena todos los AbortController activos.
-   * Cada vez que se ejecuta una petición, se crea un nuevo AbortController y se agrega a esta lista. 
+   * Cada vez que se ejecuta una petición, se crea un nuevo AbortController y se agrega a esta lista.
    */
   const controllersRef = React.useRef<AbortController[]>([])
 
@@ -45,7 +46,7 @@ export const useCancelableHttp = () => {
     requestFn: (signal: AbortSignal) => Promise<ApiResponse<T>>
   ): Promise<ApiResponse<T>> => {
 
-    // Se guarda el controller para poder cancelarlo luego    
+    // Se guarda el controller para poder cancelarlo luego
     const controller = new AbortController()
     controllersRef.current.push(controller)
 
@@ -76,8 +77,8 @@ export const useCancelableHttp = () => {
      *  - Cuando el widget se desmonta. "Cerrar"
      */
   const cancelAll = () => {
-    console.log('Cancelando todas las peticiones activas del widget...')
-    controllersRef.current.forEach(c => c.abort())
+    if (validaLoggerLocalStorage('logger')) console.log('Cancelando todas las peticiones activas del widget...')
+    controllersRef.current.forEach(c => { c.abort() })
     controllersRef.current = []
   }
 

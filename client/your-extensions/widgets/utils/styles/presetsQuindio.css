@@ -179,3 +179,9 @@
 .consulta-scroll::-webkit-scrollbar-thumb:hover {
     background: var(--scrollbar-thumb-hover);
 }
+
+
+.jimu-icon-img{
+   width: 30px !important;
+   height: 30px !important;
+}

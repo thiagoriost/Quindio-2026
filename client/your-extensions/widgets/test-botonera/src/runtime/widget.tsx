@@ -17,6 +17,7 @@ import { useState } from 'react'
 import { Select, Option, TextInput } from 'jimu-ui'
 import { SearchActionBar } from '../../../shared/components/search-action-bar'
 import './style.scss'
+import { validaLoggerLocalStorage } from '../../../shared/utils/export.utils'
 
 /**
  * Lista de municipios disponibles para selección.
@@ -52,8 +53,6 @@ const Widget = () => {
 
   /** @type {boolean} Indica si la búsqueda está en progreso */
   const [loading, setLoading] = useState(false)
-  /** @type {boolean} Indica si el formulario pasó la validación */
-  const [formValido, setFormValido] = useState(false)
 
   /**
    * Valida los campos del formulario.
@@ -90,11 +89,11 @@ const Widget = () => {
   const handleBuscar = () => {
 
     const esValido = validarFormulario()
-    setFormValido(esValido)
+
 
     if (!esValido) return
 
-    console.log('Buscar ejecutado correctamente')
+    if(validaLoggerLocalStorage('logger')) console.log('Buscar ejecutado correctamente')
 
     setLoading(true)
 
@@ -112,13 +111,13 @@ const Widget = () => {
    */
   const handleLimpiar = () => {
 
-    console.log('Formulario limpiado')
+    if(validaLoggerLocalStorage('logger')) console.log('Formulario limpiado')
 
     setMunicipio('')
     setZona('')
     setPredial('')
     setError('')
-    setFormValido(false)
+
   }
 
   return (

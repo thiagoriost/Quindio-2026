@@ -1,3 +1,5 @@
+import { validaLoggerLocalStorage } from "../utils/export.utils"
+
 /**
  * Tipos de alerta soportados por el sistema.
  */
@@ -84,7 +86,7 @@ class AlertService {
    * enviando el estado actual de las alertas.
    */
   private notify() {
-    this.listeners.forEach(l => l(this.alerts))
+    this.listeners.forEach(l => { l(this.alerts) })
   }
 
   /**
@@ -186,7 +188,7 @@ declare global {
  * Esto previene múltiples instancias en Experience Builder.
  */
 if (!window.__GLOBAL_ALERT_SERVICE__) {
-  console.log('AlertService creado (GLOBAL)')
+  if (validaLoggerLocalStorage('logger')) console.log('AlertService creado (GLOBAL)')
   window.__GLOBAL_ALERT_SERVICE__ = new AlertService()
 }
 
@@ -195,4 +197,4 @@ if (!window.__GLOBAL_ALERT_SERVICE__) {
  *
  * Puede ser importada en cualquier módulo de la aplicación.
  */
-export const alertService = window.__GLOBAL_ALERT_SERVICE__!
+export const alertService = window.__GLOBAL_ALERT_SERVICE__

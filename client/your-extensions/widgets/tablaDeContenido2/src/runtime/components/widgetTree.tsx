@@ -11,7 +11,8 @@ import type { JimuMapView } from 'jimu-arcgis'
 import { Button } from 'jimu-ui'
 import DragAndDrop from './DragAndDrop'
 import type { CapasTematicas, InterfaceContextMenu, InterfaceFeaturesLayersDeployed, ItemResponseTablaContenido, Tematicas } from '../../types/interfaces'
-import 'rc-slider/assets/index.css'; import 'react-tabs/style/react-tabs.css'
+import 'rc-slider/assets/index.css';
+import 'react-tabs/style/react-tabs.css'
 import '../../styles/style.css'
 import '../../styles/styles_widgetTree.css'
 import { appActions, getAppStore } from 'jimu-core'
@@ -313,7 +314,7 @@ const WidgetTree: React.FC<Widget_Tree_Props> = ({ dataTablaContenido, varJimuMa
 
         filtroRecursivo(dataTablaContenido, searchQuery)
         filtereddataTablaContenido[0].capasHijas = capasHijas
-        console.log(filtereddataTablaContenido)
+        if (utilsModule?.logger()) console.log(filtereddataTablaContenido)
         return filtereddataTablaContenido
       }
 
@@ -443,7 +444,7 @@ const WidgetTree: React.FC<Widget_Tree_Props> = ({ dataTablaContenido, varJimuMa
     }
 
     const showState = () => {
-        console.log({
+        if (utilsModule?.logger()) console.log({
             expandedItems,
             checkedItems,
             searchQuery,
@@ -481,7 +482,7 @@ const WidgetTree: React.FC<Widget_Tree_Props> = ({ dataTablaContenido, varJimuMa
 
     useEffect(() => {
         import('../../../../utils/module').then(modulo => { setUtilsModule(modulo) })
-        console.log({varJimuMapView})
+        if (utilsModule?.logger()) console.log({varJimuMapView})
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 

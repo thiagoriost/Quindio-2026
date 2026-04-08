@@ -10,6 +10,7 @@ import type MapView from "esri/views/MapView"
 import { executePrint } from "./printService"
 import { buildWebMapJson } from "./webmapBuilder"
 import type { PrintConfiguration } from "./types"
+import { validaLoggerLocalStorage } from "../../../shared/utils/export.utils"
 
 /**
  * Hook de React para gestionar la impresión de mapas en Experience Builder.
@@ -42,7 +43,7 @@ export const usePrint = (jimuMapView?: JimuMapView) => {
       setError(null)
 
       const webMapJson = buildWebMapJson(jimuMapView.view as MapView)
-      console.log("Iniciando impresión con config:", config)
+      if (validaLoggerLocalStorage('logger')) console.log("Iniciando impresión con config:", config)
 
       const result = await executePrint({
         webMapJson,

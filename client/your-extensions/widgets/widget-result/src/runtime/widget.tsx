@@ -44,6 +44,7 @@ import { i } from "motion/dist/react-m";
 import * as geometryJsonUtils from '@arcgis/core/geometry/support/jsonUtils'
 // cef 20260313
 import ResultGraphic from "../../components/ResultGraphic_Richarts";
+import { validaLoggerLocalStorage } from '../../../shared/utils/export.utils'
 
 /**
  * WidgetResult
@@ -62,8 +63,8 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
     // Estado para mostrar/ocultar el panel flotante
     const [open, setOpen] = React.useState(true)
 
-    console.log('WidgetResult ID:', props.id)
-    console.log('MapWidgetIds:', props.useMapWidgetIds)
+    if(validaLoggerLocalStorage('logger')) console.log('WidgetResult ID:', props.id)
+    if(validaLoggerLocalStorage('logger')) console.log('MapWidgetIds:', props.useMapWidgetIds)
 
     /**
      * Vista activa del mapa proporcionada por JimuMapViewComponent.
@@ -500,7 +501,7 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
 
         if (!features?.length) return
 
-        console.log("Resultados recibidos en WidgetResult:", features)
+        if(validaLoggerLocalStorage('logger')) console.log("Resultados recibidos en WidgetResult:", features)
         setOpen(true)
 
     }, [data])
@@ -555,8 +556,8 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
 
     if (!data) return null
 
-    console.log('Resultados recibidos en WidgetResult:', data)
-    console.log(data.features)
+    if(validaLoggerLocalStorage('logger')) console.log('Resultados recibidos en WidgetResult:', data)
+    if(validaLoggerLocalStorage('logger')) console.log(data.features)
 
     const total = data.features.length
     const totalPages = Math.max(1, Math.ceil(total / pageSize))
@@ -586,7 +587,7 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
      */
     //  const handleSelectFeature = (feature: __esri.Graphic) => {
     const handleSelectFeature = async (feature: any) => {
-        console.log('feature seleccionada:', feature)
+        if(validaLoggerLocalStorage('logger')) console.log('feature seleccionada:', feature)
 
         if (data?.temporalLayer) {
             await crearCapaTemporal(feature)
@@ -641,7 +642,7 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
         geometry: __esri.Geometry
     ): __esri.GraphicProperties["symbol"] => {
 
-        console.log('getSymbolByGeometry:', geometry.type);
+        if(validaLoggerLocalStorage('logger')) console.log('getSymbolByGeometry:', geometry.type)
         if (geometry.type === "polygon") {
             return {
                 type: "simple-fill",
@@ -702,7 +703,7 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
             const barWidth = 50 // px por barra
             const axisAndPadding = 100 // eje Y + márgenes
             const calculated = barCount * barWidth + axisAndPadding
-            console.log({barCount, barWidth, axisAndPadding, calculated})
+            if(validaLoggerLocalStorage('logger')) console.log({barCount, barWidth, axisAndPadding, calculated})
             return `${Math.max(320, Math.min(calculated, window.innerWidth * 0.9)) >= 300 ? 300 : Math.max(320, Math.min(calculated, window.innerWidth * 0.9))}px`
         }
         return undefined // usa el ancho por defecto del CSS para modo tabla

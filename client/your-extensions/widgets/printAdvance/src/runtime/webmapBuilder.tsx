@@ -5,6 +5,7 @@
  */
 
 import type MapView from "@arcgis/core/views/MapView"
+import { validaLoggerLocalStorage } from "../../../shared/utils/export.utils"
 
 /** Dominios de servicios externos que el servidor IGAC no puede acceder */
 const EXTERNAL_DOMAINS = [
@@ -97,7 +98,7 @@ export const buildWebMapJson = (view: MapView): any => {
     console.warn("No hay capas base accesibles desde el servidor IGAC. El mapa se imprimirá sin mapa base.")
   }
 
-  console.log("WebMap JSON generado:", webMap)
+  if (validaLoggerLocalStorage('logger')) console.log("WebMap JSON generado:", webMap)
   return webMap
 }
 

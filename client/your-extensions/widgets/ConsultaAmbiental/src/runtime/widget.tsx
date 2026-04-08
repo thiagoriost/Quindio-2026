@@ -24,6 +24,12 @@ import {
 } from './config/consulta-ambiental.config'
 import { abrirTablaResultados, limpiarYCerrarWidgetResultados } from '../../../widget-result/src/runtime/widget'
 import './styles/consulta-ambiental.css'
+import { validaLoggerLocalStorage } from '../../../shared/utils/export.utils'
+
+export const layersById = {
+    "cuenca_la_vieja_feature": "cuenca-la-vieja-feature",
+    "capas_temporales": "capas-temporales"
+}
 
 
 const Widget = (props: any) => {
@@ -39,7 +45,7 @@ const Widget = (props: any) => {
         clearFilters
     } = useCascadingFilters()
 
-    //    console.log("GLOBAL FILTERS:", filters)
+    //    if(validaLoggerLocalStorage('logger')) console.log("GLOBAL FILTERS:", filters)
 
     const [loading, setLoading] = React.useState(false)
 
@@ -84,7 +90,7 @@ const Widget = (props: any) => {
     React.useEffect(() => {
         if (!jimuMapView) return
 
-        console.log("Mapa listo:", jimuMapView)
+        if(validaLoggerLocalStorage('logger')) console.log("Mapa listo:", jimuMapView)
 
     }, [jimuMapView])
 
@@ -96,6 +102,17 @@ const Widget = (props: any) => {
         clearFilters()
         setMensaje(null)
         limpiarYCerrarWidgetResultados(widgetResultId)
+
+        // Limpiar capas dibujadas en el mapa
+        if (jimuMapView?.view) {
+            const map = jimuMapView.view.map
+            const layerIds = Object.keys(layersById)
+            if(validaLoggerLocalStorage('logger')) console.log({layerIds})
+            layerIds.forEach(id => {
+                const layer = map.findLayerById(layersById[id]) as __esri.FeatureLayer
+                if (layer) map.remove(layer)
+            })
+        }
     }  
     
     }, [props])
@@ -103,7 +120,7 @@ const Widget = (props: any) => {
     const handlers = {
 
         onChangeAreaTematica: (categoria: number) => {
-            console.log('onChangeAreaTematica:', categoria)
+            if(validaLoggerLocalStorage('logger')) console.log('onChangeAreaTematica:', categoria)
 
             handlers.cargarMunicipios_All()
 
@@ -113,7 +130,7 @@ const Widget = (props: any) => {
                 if (!jimuMapView?.view) return
 
                 const map = jimuMapView.view.map
-                const layer = map.findLayerById("cuenca-la-vieja-feature") as __esri.FeatureLayer
+                const layer = map.findLayerById(layersById.cuenca_la_vieja_feature) as __esri.FeatureLayer
 
                 if (layer) {
                     layer.visible = false
@@ -121,7 +138,7 @@ const Widget = (props: any) => {
             }
         },
         onChangeSubcategoria: (subcategoria: string, filtro: any, filtros: { categoria: any }, setFiltro: (arg0: string, arg1: any) => void) => {
-            console.log("onChangeSubcategoria:filtros ", filtros)
+            if(validaLoggerLocalStorage('logger')) console.log("onChangeSubcategoria:filtros ", filtros)
             const categoriaId = filtros.categoria
 
             // buscar el objeto completo (id + name)
@@ -156,9 +173,9 @@ const Widget = (props: any) => {
 
             const idMunicipio = estacion.idMunicipio
 
-            console.log("onChangeEstacion >>>", { nombreSeleccionado, filtros, setFiltro, idMunicipio })
-            console.log("idMunicipio:", idMunicipio)
-            console.log("municipios:", opciones.municipios)
+            if(validaLoggerLocalStorage('logger')) console.log("onChangeEstacion >>>", { nombreSeleccionado, filtros, setFiltro, idMunicipio })
+            if(validaLoggerLocalStorage('logger')) console.log("idMunicipio:", idMunicipio)
+            if(validaLoggerLocalStorage('logger')) console.log("municipios:", opciones.municipios)
 
             setFiltro("idMunicipio", String(idMunicipio))
 
@@ -169,13 +186,13 @@ const Widget = (props: any) => {
             const categoria = CATEGORIAS.find(c => c.idCategoria === categoriaId)
             const categoriaNombre = categoria?.categoria?.toLowerCase()
 
-            console.log("cargarSubcategorias >>> ", categoriaNombre)
+            if(validaLoggerLocalStorage('logger')) console.log("cargarSubcategorias >>> ", categoriaNombre)
 
             // revisar si hay caso especial, aplica para estaciones y puntos de calidad
             const casoEspecialNombre = filtro.casosEspeciales?.[categoriaNombre]
             const casoEspecial = filtro.casosEspeciales
-            console.log("casoEspecial >>> ", casoEspecial)
-            console.log("casoEspecialNombre >>> ", casoEspecialNombre)
+            if(validaLoggerLocalStorage('logger')) console.log("casoEspecial >>> ", casoEspecial)
+            if(validaLoggerLocalStorage('logger')) console.log("casoEspecialNombre >>> ", casoEspecialNombre)
 
             if (casoEspecialNombre) {
 
@@ -209,12 +226,12 @@ const Widget = (props: any) => {
         },
 
         cargarTramitesAmbientales: async () => { // subcategoria
-            //            console.log("cargarTramitesAmbientales >>> ")
+            //            if(validaLoggerLocalStorage('logger')) console.log("cargarTramitesAmbientales >>> ")
             const url = urls.DemandaRecursosNaturales._LAYERS
 
             const subcategorias = await getSubLayersOptions(url)
 
-            console.log("cargarTramitesAmbientales >>> ", subcategorias)
+            if(validaLoggerLocalStorage('logger')) console.log("cargarTramitesAmbientales >>> ", subcategorias)
 
             setOpciones(prev => ({
                 ...prev,
@@ -222,7 +239,7 @@ const Widget = (props: any) => {
             }))
         },
         cargarTramitesAmbientalesPredios: async (categoriaId: number) => { // subcategoria
-            console.log("cargarTramitesAmbientalesPredios >>> ", categoriaId)
+            if(validaLoggerLocalStorage('logger')) console.log("cargarTramitesAmbientalesPredios >>> ", categoriaId)
             const urlBase = urls.AmbientalAlfanumerico.BASE
             const layerId = urls.AmbientalAlfanumerico.TRAMITESCATASTRO // DESCRIPCIONVALOR
 
@@ -253,7 +270,7 @@ const Widget = (props: any) => {
 
         },
         cargarNombresEstaciones: async (idSubcategoria: string) => {
-            console.log("cargarNombresEstaciones >>> ", idSubcategoria)
+            if(validaLoggerLocalStorage('logger')) console.log("cargarNombresEstaciones >>> ", idSubcategoria)
 
             setLoading(true)
 
@@ -296,7 +313,7 @@ const Widget = (props: any) => {
                 idMunicipio: item.idMunicipio
             }))
 
-            console.log("nombres >>> ", opcionesNombres)
+            if(validaLoggerLocalStorage('logger')) console.log("nombres >>> ", opcionesNombres)
 
             setOpciones(prev => ({
                 ...prev,
@@ -307,7 +324,7 @@ const Widget = (props: any) => {
         },
 
         cargarNombresPuntosDeCalidad: async (idSubcategoria: string) => {
-            console.log('cargarNombresPuntosDeCalidad:', idSubcategoria)
+            if(validaLoggerLocalStorage('logger')) console.log('cargarNombresPuntosDeCalidad:', idSubcategoria)
 
             setLoading(true)
 
@@ -347,7 +364,7 @@ const Widget = (props: any) => {
                 idMunicipio: item.idMunicipio
             }))
 
-            console.log("nombres >>> ", opcionesNombres)
+            if(validaLoggerLocalStorage('logger')) console.log("nombres >>> ", opcionesNombres)
 
             setOpciones(prev => ({
                 ...prev,
@@ -359,7 +376,7 @@ const Widget = (props: any) => {
 
         },
         cargarNombres: async (subcategoria: string) => {
-            console.log("cargarNombres >>> ", subcategoria)
+            if(validaLoggerLocalStorage('logger')) console.log("cargarNombres >>> ", subcategoria)
 
             setLoading(true)
 
@@ -381,7 +398,7 @@ const Widget = (props: any) => {
         },
 
         cargarMunicipios_All: async () => {
-            console.log('Cargando municipios...')
+            if(validaLoggerLocalStorage('logger')) console.log('Cargando municipios...')
 
             setLoading(true)
 
@@ -421,7 +438,7 @@ const Widget = (props: any) => {
         },
 
         activarCuencaLaVieja: async () => {
-            console.log('activarCuencaLaVieja:', filters)
+            if(validaLoggerLocalStorage('logger')) console.log('activarCuencaLaVieja:', filters)
 
 
             if (!jimuMapView?.view) return
@@ -429,7 +446,7 @@ const Widget = (props: any) => {
             const view = jimuMapView.view
             const map = view.map
 
-            const layerId = "cuenca-la-vieja-feature"
+            const layerId = layersById.cuenca_la_vieja_feature
 
             // Config
             const urlBase = urls.CuencaLaVieja?.BASE
@@ -476,7 +493,7 @@ const Widget = (props: any) => {
             }
         },
         cargarMunicipios: async (where?: string, urlBase?: string, layerId?: number, outFields?: string) => {
-            console.log("cargarMunicipiosSegunNombres:")
+            if(validaLoggerLocalStorage('logger')) console.log("cargarMunicipiosSegunNombres:")
 
             setLoading(true)
 
@@ -516,14 +533,14 @@ const Widget = (props: any) => {
             setLoading(false)
         },
         filtrarMunicipios: () => {
-            console.log('Filtrar Municipios...')
+            if(validaLoggerLocalStorage('logger')) console.log('Filtrar Municipios...')
         },
         consultarMapServer: async (
             urlBase: string,
             layerId: number,
             outField: string,
         ): Promise<ApiResponse<ArcGisQueryResponse>> => {
-            console.log("consultarMapServer >>> ", { urlBase, layerId, outField })
+            if(validaLoggerLocalStorage('logger')) console.log("consultarMapServer >>> ", { urlBase, layerId, outField })
             return await execute((signal) =>
                 arcgisService.queryLayer<ArcGisQueryResponse>(
                     urlBase,
@@ -542,7 +559,7 @@ const Widget = (props: any) => {
 
     async function getSubLayersOptions(url: string): Promise<Array<{ label: string; value: number }>> {
 
-        console.log('getSubLayersOptions...')
+        if(validaLoggerLocalStorage('logger')) console.log('getSubLayersOptions...')
         const response = await fetch(url)
         const data = await response.json()
 
@@ -554,7 +571,7 @@ const Widget = (props: any) => {
             }))
     }
     const consultarPrediosDeReforestacion = async (filters: any) => {
-        console.log("consultarPrediosDeReforestacion >>> ", filters)
+        if(validaLoggerLocalStorage('logger')) console.log("consultarPrediosDeReforestacion >>> ", filters)
         //        const { subcategoria, nombre, municipio } = filters;
         const { idMunicipio } = filters
 
@@ -565,7 +582,7 @@ const Widget = (props: any) => {
             //            const where = `IDMUNICIPIO = '${municipio}'`;
             const where = `IDMUNICIPIO = '${idMunicipio}'`
 
-            console.log("consultarPrediosDeReporestacion:where >>> ", where)
+            if(validaLoggerLocalStorage('logger')) console.log("consultarPrediosDeReporestacion:where >>> ", where)
 
             const response = await realizarConsulta(urlBase, layerId, where)
 
@@ -605,7 +622,7 @@ const Widget = (props: any) => {
         where: string,
     ): Promise<ApiResponse<ArcGisQueryResponse>> => {
 
-        console.log("realizarConsulta >>> ", { urlBase, layerId, where })
+        if(validaLoggerLocalStorage('logger')) console.log("realizarConsulta >>> ", { urlBase, layerId, where })
 
 
         return await execute((signal) =>
@@ -623,7 +640,7 @@ const Widget = (props: any) => {
     }
 
     const onBuscar = async () => {
-console.log('onBuscar:', filters)
+if(validaLoggerLocalStorage('logger')) console.log('onBuscar:', filters)
         const { categoria } = filters
 
         if (categoria === 3) { // Trámites ambientales
@@ -650,7 +667,7 @@ console.log('onBuscar:', filters)
     }
 
     const consultarTramitesAmbientales = async (filters: any) => {
-        console.log('consultarTramitesAmbientales:', filters)
+        if(validaLoggerLocalStorage('logger')) console.log('consultarTramitesAmbientales:', filters)
 
         const { categoria, idMunicipio, fechaInicio, fechaFin } = filters
 
@@ -759,7 +776,7 @@ console.log('onBuscar:', filters)
     }
 
     React.useEffect(() => {
-      console.log({filters, opciones})
+      if(validaLoggerLocalStorage('logger')) console.log({filters, opciones})
     }, [])
     
     return (

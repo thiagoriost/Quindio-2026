@@ -214,7 +214,7 @@ const Widget = (props: AllWidgetProps<any>) => {
 
   // Carga módulos utilitarios al montar el componente
   useEffect(() => {
-    console.log("consulta Simple")
+    if (utilsModule?.logger()) console.log("consulta Simple")
     import('../../../commonWidgets/widgetsModule').then(modulo => { setWidgetModules(modulo) })
     import('../../../utils/module').then(modulo => { setUtilsModule(modulo) })
   }, [])

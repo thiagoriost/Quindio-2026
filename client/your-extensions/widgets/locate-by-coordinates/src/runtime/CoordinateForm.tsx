@@ -21,6 +21,7 @@ import '../styles/styles.css'
 import FloatingInput from "../../../shared/components/FloatingInput/FloatingInput"
 import { validateDMS, validateGeographic, validatePlanar } from "./coordinateUtils"
 import { SearchActionBar } from "../../../../widgets/shared/components/search-action-bar"
+import { validaLoggerLocalStorage } from "../../../shared/utils/export.utils"
 
 interface Props {
   onLocate: (coords: any, type: CoordinateType) => void
@@ -106,7 +107,7 @@ export default function CoordinateForm({ onLocate, disabled, mapReady, onClear }
 
   React.useEffect(() => {
     // Solo para depuración
-    console.log("CoordinateForm, mapReady:", mapReady)
+    if (validaLoggerLocalStorage('logger')) console.log("CoordinateForm, mapReady:", mapReady)
   }, [mapReady])
 
   const onLimpiar = (): void => {

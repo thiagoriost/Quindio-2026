@@ -20,6 +20,7 @@ import { appActions, getAppStore } from 'jimu-core'
 import { WIDGET_IDS } from '../../../shared/constants/widget-ids'
 import { Checkbox } from 'jimu-ui'
 import { features } from 'process';
+import { validaLoggerLocalStorage } from '../../../shared/utils/export.utils';
 
 /**
  * @file Widget de Consulta Catastral.
@@ -141,7 +142,7 @@ const Widget = (props: any) => {
      * - Maneja estado de carga.
      */
     const cargarMunicipios = async () => {
-        console.log('Cargando municipios...')
+        if (validaLoggerLocalStorage('logger')) console.log('Cargando municipios...')
 
         setLoading(true)
 
@@ -416,7 +417,7 @@ const Widget = (props: any) => {
                 return
             }
 
-            console.log('Resultado matrícula', resultado);
+            if (validaLoggerLocalStorage('logger')) console.log('Resultado matrícula', resultado);
             const features = response.data?.features || []
 
             // porque la aconsulta devuelve dos registros con la misma matrícula
@@ -480,7 +481,7 @@ const Widget = (props: any) => {
 
             //  pintarPredio(resultado.features[0]), ahora lo pinta WidgetResult
 
-            console.log('Respuesta consulta predial', response)
+            if (validaLoggerLocalStorage('logger')) console.log('Respuesta consulta predial', response)
             const features = response.data?.features || []
 
             // porque l aconsulta devuelve dos registros con el mismo número predial 
