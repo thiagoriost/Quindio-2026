@@ -46,7 +46,7 @@ export const INDICADORES = {
 
 export const LEYENDA_COROPLETICO_QUINDIO = {
   Cobertura: {
-    dataCoropletico: [
+    leyenda: [
       {
         colorFondo: "252,3,3,0.4",
         colorLine: "252,3,3,1",
@@ -72,7 +72,7 @@ export const LEYENDA_COROPLETICO_QUINDIO = {
     fieldToFilter: "TOTALESTUDIANTES",
   },
   Cupos_ofertados: {
-    dataCoropletico: [
+    leyenda: [
       {
         colorFondo: "77,246,22,0.4",
         colorLine: "77,246,22,1",
@@ -105,7 +105,7 @@ export const LEYENDA_COROPLETICO_QUINDIO = {
     fieldToFilter: "CANTIDADMATRICULADOS",
   },
   Eficiencia_interna: {
-    dataCoropletico: [
+    leyenda: [
       {
         colorFondo: "252,3,3,0.4",
         colorLine: "252,3,3,1",
@@ -131,7 +131,7 @@ export const LEYENDA_COROPLETICO_QUINDIO = {
     fieldToFilter: "ESTUDIANTESMATRICULADOS",
   },
   Tasa_analfabetismo_departamental: {
-    dataCoropletico: [
+    leyenda: [
       {
         colorFondo: "252,3,3,0.4",
         colorLine: "252,3,3,1",
@@ -157,7 +157,7 @@ export const LEYENDA_COROPLETICO_QUINDIO = {
     fieldToFilter: "TOTALDEPTO",
   },
   Tasa_analfabetismo_municipal: {
-    dataCoropletico: [
+    leyenda: [
       {
         colorFondo: "252,3,3,0.4",
         colorLine: "252,3,3,1",
@@ -240,7 +240,7 @@ const Widget = (props: AllWidgetProps<any>) => {
 
   const handleConsultaPor = async(e: { target: { value: string; }; }) => {
     if (e.target.value === "") return
-    
+    handleClear()
     const id = Number(e.target.value)
     const selected = consultaPor.find(c => c.id === id)
     if(validaLoggerLocalStorage('logger'))  console.log({selected})
@@ -322,10 +322,21 @@ const Widget = (props: AllWidgetProps<any>) => {
       clearPoint(varJimuMapView, graphicsLayer)
     }
 
-    setGraphicsLayer(null)
-    setFeaturesDibujados([])
-    setLoading(false)
-    setError("")
+    limpiarYCerrarWidgetResultados(widgetResultId)
+    limpiarYCerrarwidgetLeyenda(WIDGET_IDS.LEYENDA)
+    limpiarFeaturesDibujados(varJimuMapView, featuresDibujados)
+    setVerAtributos(false)
+    setConsultaPorSeleccionada({name: "", id: null, url: ""})
+    setSelectedCategory(null)
+    setCategories(null)
+    setMunicipios(null)
+    setSelectedMunicipio(null)
+    setSelectedEstablecimiento(null)
+    setEstablecimientos(null)
+    setSelectedIndicador(null)
+    setSelectedAnio(null)
+    setSelectedNivel(null)
+    setSelectedSector(null)
   }
 
   /**
@@ -333,18 +344,7 @@ const Widget = (props: AllWidgetProps<any>) => {
    */
   React.useEffect(() => {
     if (props.state === 'CLOSED') {
-      handleClear()      
-      limpiarYCerrarWidgetResultados(widgetResultId)
-      limpiarYCerrarwidgetLeyenda(WIDGET_IDS.LEYENDA)
-      limpiarFeaturesDibujados(varJimuMapView, featuresDibujados)
-      setVerAtributos(false)
-      setConsultaPorSeleccionada({name: "", id: null, url: ""})
-      setSelectedCategory(null)
-      setCategories(null)
-      setMunicipios(null)
-      setSelectedMunicipio(null)
-      setSelectedEstablecimiento(null)
-      setEstablecimientos(null)
+      handleClear()
     } 
     
     
@@ -552,24 +552,24 @@ const Widget = (props: AllWidgetProps<any>) => {
               if (selectedIndicador === 1) { // para el indicador "cobertura", el color del símbolo se determina según el valor del campo TOTALESTUDIANTES y la leyenda definida en LEYENDA_COROPLETICO_QUINDIO
                 const dataCoropletico = LEYENDA_COROPLETICO_QUINDIO.Cobertura
                 valor = Number(f.attributes[dataCoropletico.fieldToFilter]) || 0
-                rango = dataCoropletico.dataCoropletico.find(l => valor >= l.minimo && valor <= l.maximo) ?? dataCoropletico.dataCoropletico[0]                
+                rango = dataCoropletico.leyenda.find(l => valor >= l.minimo && valor <= l.maximo) ?? dataCoropletico.leyenda[0]                
                 
               }else if (selectedIndicador === 2) { // para el indicador "cupos ofertados", el color del símbolo se determina según el valor del campo CANTIDADMATRICULADOS y la leyenda definida en LEYENDA_COROPLETICO_QUINDIO
                 const dataCoropletico = LEYENDA_COROPLETICO_QUINDIO.Cupos_ofertados
                 valor = Number(f.attributes[dataCoropletico.fieldToFilter]) || 0
-                rango = dataCoropletico.dataCoropletico.find(l => valor >= l.minimo && valor <= l.maximo) ?? dataCoropletico.dataCoropletico[0]                
+                rango = dataCoropletico.leyenda.find(l => valor >= l.minimo && valor <= l.maximo) ?? dataCoropletico.leyenda[0]                
               }else if (selectedIndicador === 3) { // para el indicador "eficiencia interna", el color del símbolo se determina según el valor del campo ESTUDIANTESMATRICULADOS y la leyenda definida en LEYENDA_COROPLETICO_QUINDIO
                 const dataCoropletico = LEYENDA_COROPLETICO_QUINDIO.Eficiencia_interna
                 valor = Number(f.attributes[dataCoropletico.fieldToFilter]) || 0
-                rango = dataCoropletico.dataCoropletico.find(l => valor >= l.minimo && valor <= l.maximo) ?? dataCoropletico.dataCoropletico[0]                
+                rango = dataCoropletico.leyenda.find(l => valor >= l.minimo && valor <= l.maximo) ?? dataCoropletico.leyenda[0]                
               }else if (selectedIndicador === 4) { // para el indicador "tasa de analfabetismo departamental", el color del símbolo se determina según el valor del campo correspondiente y la leyenda definida en LEYENDA_COROPLETICO_QUINDIO
                 const dataCoropletico = LEYENDA_COROPLETICO_QUINDIO.Tasa_analfabetismo_departamental
                 valor = Number(f.attributes[dataCoropletico.fieldToFilter]) || 0
-                rango = dataCoropletico.dataCoropletico.find(l => valor >= l.minimo && valor <= l.maximo) ?? dataCoropletico.dataCoropletico[0]                
+                rango = dataCoropletico.leyenda.find(l => valor >= l.minimo && valor <= l.maximo) ?? dataCoropletico.leyenda[0]                
               }else if (selectedIndicador === 5) { // para el indicador "tasa de analfabetismo municipal", el color del símbolo se determina según el valor del campo correspondiente y la leyenda definida en LEYENDA_COROPLETICO_QUINDIO
                 const dataCoropletico = LEYENDA_COROPLETICO_QUINDIO.Tasa_analfabetismo_municipal
                 valor = Number(f.attributes[dataCoropletico.fieldToFilter]) || 0
-                rango = dataCoropletico.dataCoropletico.find(l => valor >= l.minimo && valor <= l.maximo) ?? dataCoropletico.dataCoropletico[0]                
+                rango = dataCoropletico.leyenda.find(l => valor >= l.minimo && valor <= l.maximo) ?? dataCoropletico.leyenda[0]                
               }
 
               const colorFondo = rango.colorFondo.split(",").map(Number)
@@ -656,29 +656,31 @@ const Widget = (props: AllWidgetProps<any>) => {
         const dataCoropletico = LEYENDA_COROPLETICO_QUINDIO.Cobertura
         fieldToFilter = dataCoropletico.fieldToFilter
         titleGrahic = `Cobertura de educación en el año ${selectedAnio ?? ""} por ${selectedNivel ? "nivel educativo" : "sector"}`
-        dataLeyenda = dataCoropletico.dataCoropletico.map(l => ({ label: l.label, colorFondo: l.colorFondo, colorLine: l.colorLine }))
+        dataLeyenda = dataCoropletico.leyenda.map(l => ({ label: l.label, colorFondo: l.colorFondo, colorLine: l.colorLine }))
       }else if(selectedIndicador === 2){ // para el indicador "cupos ofertados", el gráfico mostrará la cantidad de cupos ofertados por municipio
         const dataCoropletico = LEYENDA_COROPLETICO_QUINDIO.Cupos_ofertados
         fieldToFilter = dataCoropletico.fieldToFilter
         titleGrahic = `Cupos ofertados y matriculados en el año ${selectedAnio ?? ""} `
-        dataLeyenda = dataCoropletico.dataCoropletico.map(l => ({ label: l.label, colorFondo: l.colorFondo, colorLine: l.colorLine }))
+        dataLeyenda = dataCoropletico.leyenda.map(l => ({ label: l.label, colorFondo: l.colorFondo, colorLine: l.colorLine }))
       }else if(selectedIndicador === 3){ // para el indicador "eficiencia interna", el gráfico mostrará la eficiencia interna por municipio
         const dataCoropletico = LEYENDA_COROPLETICO_QUINDIO.Eficiencia_interna
         fieldToFilter = dataCoropletico.fieldToFilter
         titleGrahic = `Total estudiantes matriculados en el año ${selectedAnio ?? ""} `
-        dataLeyenda = dataCoropletico.dataCoropletico.map(l => ({ label: l.label, colorFondo: l.colorFondo, colorLine: l.colorLine }))
+        dataLeyenda = dataCoropletico.leyenda.map(l => ({ label: l.label, colorFondo: l.colorFondo, colorLine: l.colorLine }))
+        if(validaLoggerLocalStorage('logger')) console.log({fieldToFilter, titleGrahic, dataLeyenda})
       }else if(selectedIndicador === 4){ // para el indicador "tasa de analfabetismo departamental", el gráfico mostrará la tasa de analfabetismo departamental por municipio
         const dataCoropletico = LEYENDA_COROPLETICO_QUINDIO.Tasa_analfabetismo_departamental
         fieldToFilter = dataCoropletico.fieldToFilter
         titleGrahic = `Tasa de analfabetismo departamental en el año ${selectedAnio ?? ""}`
-        dataLeyenda = dataCoropletico.dataCoropletico.map(l => ({ label: l.label, colorFondo: l.colorFondo, colorLine: l.colorLine }))
+        dataLeyenda = dataCoropletico.leyenda.map(l => ({ label: l.label, colorFondo: l.colorFondo, colorLine: l.colorLine }))
       }else if(selectedIndicador === 5){ // para el indicador "tasa de analfabetismo municipal", el gráfico mostrará la tasa de analfabetismo municipal
         const dataCoropletico = LEYENDA_COROPLETICO_QUINDIO.Tasa_analfabetismo_municipal
         fieldToFilter = dataCoropletico.fieldToFilter
         titleGrahic = `Tasa de analfabetismo municipal en el año ${selectedAnio ?? ""}`
-        dataLeyenda = dataCoropletico.dataCoropletico.map(l => ({ label: l.label, colorFondo: l.colorFondo, colorLine: l.colorLine }))
+        dataLeyenda = dataCoropletico.leyenda.map(l => ({ label: l.label, colorFondo: l.colorFondo, colorLine: l.colorLine }))
       }
       fixDataToRenderGrafic = features.map(f => ({ name: MUNICIPIOS_QUINDIO.find(m => m.IDMUNICIPI === f.attributes.IDMUNICIPIO)?.NOMBRE, value: Number(f.attributes[fieldToFilter]) || 0 }))
+      if(validaLoggerLocalStorage('logger')) console.log({fixDataToRenderGrafic, withGraphic})
       withGraphic = {
         showGraphic: true,
         graphicData: fixDataToRenderGrafic,

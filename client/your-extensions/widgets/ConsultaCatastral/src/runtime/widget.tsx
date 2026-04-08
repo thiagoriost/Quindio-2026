@@ -181,7 +181,7 @@ const Widget = (props: any) => {
     // Ejecutar al iniciar
     // -----------------------------
     useEffect(() => {
-        console.log('Cambio de estado del widget', { widgetState, prevState: prevState.current })
+        if (validaLoggerLocalStorage('logger')) console.log('Cambio de estado del widget', { widgetState, prevState: prevState.current })
         if (widgetState === 'OPENED') {
             cargarMunicipios()
         }
@@ -189,7 +189,7 @@ const Widget = (props: any) => {
 
 
     useEffect(() => {
-        console.log('useEffect de inicialización del MapView', { jimuMapView, state: props.state })
+        if (validaLoggerLocalStorage('logger')) console.log('useEffect de inicialización del MapView', { jimuMapView, state: props.state })
 
         const jmv = jimuMapViewRef.current
 
@@ -206,7 +206,7 @@ const Widget = (props: any) => {
 
         view.when(() => {
 
-            console.log('View listo definitivamente:', view)
+            if (validaLoggerLocalStorage('logger')) console.log('View listo definitivamente:', view)
 
             if (!initialExtentRef.current) {
                 initialExtentRef.current = view.extent?.clone()
@@ -238,7 +238,7 @@ const Widget = (props: any) => {
      */
     const pintarPredio = (feature: any) => {
 
-        console.log('Pintando predio', feature)
+        if (validaLoggerLocalStorage('logger')) console.log('Pintando predio', feature)
 
         if (!jimuMapView || !graphicsLayerRef.current) return
 
@@ -351,7 +351,7 @@ const Widget = (props: any) => {
      * - Limpia estado.
      */
     const onClose = () => {
-        console.log('Widget cerrado')
+        if (validaLoggerLocalStorage('logger')) console.log('Widget cerrado')
 
         getAppStore().dispatch(
             appActions.closeWidget(widgetResultId),
