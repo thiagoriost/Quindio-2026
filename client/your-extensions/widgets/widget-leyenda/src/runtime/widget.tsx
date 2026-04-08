@@ -27,7 +27,7 @@ import { useOnWidgetClose } from '../../../shared/hooks/useOnWidgetClose';
 import { appActions, getAppStore } from 'jimu-core'
 import { WidgetState } from 'jimu-core'
 import '../styles/widget_Leyenda_Floating.css'
-import { validaLoggerLocalStorage } from '../../../shared/utils/export.utils'
+import { /* restoreInitialExtent, */ validaLoggerLocalStorage } from '../../../shared/utils/export.utils'
 
 /**
  * widget-leyenda
@@ -134,35 +134,23 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
 
     }, [jimuMapView]);
 
-    
-    /**
-     * Restaura el extent inicial del mapa.
-     */
-    const restoreInitialExtent = () => {
-        const view = jimuMapView?.view
-        const extent = initialExtentRef.current
-        if (view && extent) {
-            view.goTo(extent)
-        }
-    }
-
     /**
      * Cuando los resultados desaparecen (data = null),
      * se limpian los gráficos y se restaura el extent inicial.
      */
-    React.useEffect(() => {
+    /* React.useEffect(() => {
         if (!data) {
             graphicsLayerRef.current?.removeAll()
             
-                restoreInitialExtent()
+                restoreInitialExtent(jimuMapView, initialExtentRef)
             
         }
-    }, [data])
+    }, [data]) */
 
     /**
     * Efecto que se ejecuta cuando cambian los datos de resultados (`data`).
     */
-    React.useEffect(() => { // cef 20260307
+    React.useEffect(() => {
 
         if (!data) return
 
@@ -180,7 +168,7 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
      * Evita que el widget permanezca abierto si no hay resultados.
      */
     React.useEffect(() => {
-        if(validaLoggerLocalStorage('logger')) console.log(2222)
+        if(validaLoggerLocalStorage('logger')) console.log("useEffect")
         if (widgetState === WidgetState.Opened && !data) {
             getAppStore().dispatch(
                 appActions.closeWidget(props.id)
@@ -223,14 +211,13 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
     useOnWidgetClose(props.id, onClose)
 
     if(validaLoggerLocalStorage('logger')) console.log('Resultados recibidos en widget-leyenda:', data)
-    if(validaLoggerLocalStorage('logger')) console.log({data})
     if (!data) return
 
     const legendItems: Array<{ label: string; colorFondo: string; colorLine: string }> = data?.data ?? []
 
     return (
         <div>            
-            {/* Componente de acceso al MapView cef 20250325 */}
+            {/* Componente de acceso al MapView */}
             <div style={{ position: 'absolute', width: 0, height: 0 }}>
                 <JimuMapViewComponent
                     useMapWidgetId={props.useMapWidgetIds?.[0]}

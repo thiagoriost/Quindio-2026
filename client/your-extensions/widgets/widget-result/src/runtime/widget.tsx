@@ -44,7 +44,7 @@ import { i } from "motion/dist/react-m";
 import * as geometryJsonUtils from '@arcgis/core/geometry/support/jsonUtils'
 // cef 20260313
 import ResultGraphic from "../../components/ResultGraphic_Richarts";
-import { validaLoggerLocalStorage } from '../../../shared/utils/export.utils'
+import { /* restoreInitialExtent, */ validaLoggerLocalStorage } from '../../../shared/utils/export.utils'
 
 /**
  * WidgetResult
@@ -65,6 +65,39 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
 
     if(validaLoggerLocalStorage('logger')) console.log('WidgetResult ID:', props.id)
     if(validaLoggerLocalStorage('logger')) console.log('MapWidgetIds:', props.useMapWidgetIds)
+
+    // Estado para la posición del panel (drag)
+    const [panelPos, setPanelPos] = React.useState<{ x: number; y: number } | null>(null)
+    const draggingRef = React.useRef(false)
+    const dragOffsetRef = React.useRef({ x: 0, y: 0 })
+
+    /**
+         * Inicia el arrastre del panel al hacer mousedown sobre el header.
+         */
+        const onDragStart = (e: React.MouseEvent) => {
+            if ((e.target as HTMLElement).closest('.widget-result-close-btn')) return
+            e.preventDefault()
+            draggingRef.current = true
+            const panel = (e.currentTarget as HTMLElement).parentElement
+            const rect = panel.getBoundingClientRect()
+            dragOffsetRef.current = { x: e.clientX - rect.left, y: e.clientY - rect.top }
+
+            const onMouseMove = (ev: MouseEvent) => {
+                if (!draggingRef.current) return
+                const newX = Math.max(0, Math.min(ev.clientX - dragOffsetRef.current.x, window.innerWidth - rect.width))
+                const newY = Math.max(0, Math.min(ev.clientY - dragOffsetRef.current.y, window.innerHeight - rect.height))
+                setPanelPos({ x: newX, y: newY })
+            }
+
+            const onMouseUp = () => {
+                draggingRef.current = false
+                document.removeEventListener('mousemove', onMouseMove)
+                document.removeEventListener('mouseup', onMouseUp)
+            }
+
+            document.addEventListener('mousemove', onMouseMove)
+            document.addEventListener('mouseup', onMouseUp)
+        }
 
     /**
      * Vista activa del mapa proporcionada por JimuMapViewComponent.
@@ -189,28 +222,17 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
     }, [jimuMapView])
 
     /**
-     * Restaura el extent inicial del mapa.
-     */
-    const restoreInitialExtent = () => {
-        const view = jimuMapView?.view
-        const extent = initialExtentRef.current
-        if (view && extent) {
-            view.goTo(extent)
-        }
-    }
-
-    /**
      * Cuando los resultados desaparecen (data = null),
      * se limpian los gráficos y se restaura el extent inicial.
      */
-    React.useEffect(() => {
+    /* React.useEffect(() => {
         if (!data) {
             graphicsLayerRef.current?.removeAll()
             if (!temporalLayerRef.current) {
-                restoreInitialExtent()
+                restoreInitialExtent(jimuMapView, initialExtentRef)
             }
         }
-    }, [data])
+    }, [data]) */
 
     /**
      * Reinicia la paginación cuando llegan nuevos resultados.
@@ -538,12 +560,8 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
                 null
             )
         )
-        if (initialExtentRef.current && jimuMapView) {
-            jimuMapView.view.goTo(
-                initialExtentRef.current
-            )
-        }
         setPage(1)
+        // restoreInitialExtent(jimuMapView, initialExtentRef)
     }
 
     /**
@@ -708,48 +726,7 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
         }
         return undefined // usa el ancho por defecto del CSS para modo tabla
     }
-
-  if (!props.useMapWidgetIds?.length) {
-    return (
-      <div>
-        {!open && hasFeatures && (
-          <button className="widget-result-floating-btn" onClick={() => setOpen(true)} title="Mostrar resultados">
-            <span className="widget-result-floating-icon">
-                {/* SVG tabla */}
-                <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <rect x="4" y="6" width="20" height="16" rx="3" fill="var(--color-primary-light)" stroke="var(--color-primary-light)" strokeWidth="2" />
-                    <rect x="4" y="11" width="20" height="1.5" fill="var(--color-primary-light)" />
-                    <rect x="10" y="6" width="1.5" height="16" fill="var(--color-primary-light)" />
-                    <rect x="16.5" y="6" width="1.5" height="16" fill="var(--color-primary-light)" />
-                </svg>
-            </span>
-        </button>
-        )}
-        {open && hasFeatures && (
-            <div className="widget-result-floating-panel">
-                <div className="widget-result-header">
-                    Resultados
-                    <button className="widget-result-close-btn" onClick={() => setOpen(false)} title="Cerrar">×</button>
-                </div>
-                <div className="widget-result-content">
-                    Debe seleccionar un Map Widget en la configuración.
-                </div>
-            </div>
-        )}
-        </div>
-        )
-    }
-
     
-
-    /* if (!props.useMapWidgetIds?.length) {
-        return (
-            <div style={{ padding: 16 }}>
-                Debe seleccionar un Map Widget en la configuración.
-            </div>
-        )
-    } */
-
     return (
         <div>
 
@@ -778,8 +755,9 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
             {open && (
                 <div
                     className={`widget-result-floating-panel${viewMode === 'grafico' && data?.withGraphic?.showGraphic ? ' widget-result-panel--graphic' : ''}`}
+                    style={panelPos ? { left: panelPos.x, top: panelPos.y, right: 'auto', bottom: 'auto' } : undefined}
                 >
-                    <div className="widget-result-header">
+                    <div className="widget-result-header" onMouseDown={onDragStart}>
                         Resultados
                         <button className="widget-result-close-btn" onClick={() => setOpen(false)} title="Cerrar">-</button>
                     </div>

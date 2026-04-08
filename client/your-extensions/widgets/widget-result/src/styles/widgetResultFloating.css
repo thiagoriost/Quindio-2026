@@ -78,7 +78,10 @@
   font-size: 1.1rem;
   font-weight: 600;
   flex: 0 0 auto;
-  /*cef 20260324*/
+  cursor: grab;
+}
+.widget-result-header:active, .widget-result-header:focus {
+  cursor: grabbing;
 }
 .widget-result-close-btn {
   align-items: center;
@@ -175,5 +178,6 @@
 .widget-result-graphic-chart {
   flex: 1 1 auto;
   min-height: 280px;
+  height: 280px;
   width: 100%;
 }

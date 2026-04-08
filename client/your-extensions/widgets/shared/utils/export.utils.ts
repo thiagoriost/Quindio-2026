@@ -357,3 +357,14 @@ export const ejecutarConsulta = async ({
     }
     return loggerParsed === true
   }
+
+   /**
+     * Restaura el extent inicial del mapa.
+     */
+export const restoreInitialExtent = (jimuMapView: any, initialExtentRef: any) => {
+        const view = jimuMapView?.view
+        const extent = initialExtentRef.current
+        if (view && extent) {
+            view.goTo(extent)
+        }
+    }

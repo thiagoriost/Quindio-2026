@@ -67,7 +67,7 @@ const ResultGraphic = ({ data, type = "bar", xKey = "name", yKey = "value", titl
       )}
       {/* GRÁFICO */}
       <div className="widget-result-graphic-chart">
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
           {type === "bar" ? (
             <BarChart data={data} barSize={Math.max(20, Math.min(50, 300 / data.length))} margin={{ bottom: 40 }}>
               <XAxis dataKey={xKey} angle={-45} textAnchor="end" interval={0} height={60} />

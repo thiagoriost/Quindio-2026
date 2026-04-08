@@ -30,7 +30,7 @@
   background: var(--color-primary-hover);
 }
 
-.widget-result-floating-panel { /*cef 20260304*/
+.widget-result-floating-panel {
   position: fixed;
   bottom: 100px;
   right: 50px;
@@ -74,7 +74,6 @@
   font-size: 1.1rem;
   font-weight: 600;
   flex: 0 0 auto;
-  /*cef 20260324*/
 }
 .widget-result-close-btn {
   align-items: center;
@@ -90,7 +89,7 @@
   padding-bottom: 5px;
 }
 
-.widget-result-content { /* cef 20260424*/
+.widget-result-content {
   flex: 1;
   min-height: 0;
   display: flex;
@@ -128,7 +127,7 @@
   bottom: 500px;
   right: 30px;
   z-index: 10000;
-  background: var(--bg-color-white, #fff);
+  background: var(--bg-color-white);
   border: 1px solid #ccc;
   border-radius: 4px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.15);
@@ -147,8 +146,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: var(--color-primary, #5a6e2e);
-  color: var(--bg-color-white, #fff);
+  background: var(--color-primary);
+  color: var(--bg-color-white);
   padding: 6px 10px;
   font-size: 0.95rem;
   font-weight: 600;
@@ -162,7 +161,7 @@
 .widget-leyenda-close-btn {
   background: transparent;
   border: none;
-  color: var(--bg-color-white, #fff);
+  color: var(--bg-color-white);
   font-size: 1.2rem;
   cursor: pointer;
   line-height: 1;
@@ -208,7 +207,7 @@
   color: #333;
 }
 
-/* toolbar cef 20260424 */
+/* toolbar */
 .widget-result-toolbar {
   flex: 0 0 auto;
 }
@@ -227,18 +226,18 @@
   margin-left: auto;
 }
 
-.widget-result-body {  /* cef 20260424*/
+.widget-result-body {  /*  20260424*/
   flex: 1 1 auto;
   min-height: 0;
   display: flex;
   flex-direction: column;
 }
 
-.widget-result-footer {  /*cef 20260423*/
+.widget-result-footer {  /* 20260423*/
   flex: 0 0 auto;
 }
 
-.widget-result-view { /*cef 20260423*/
+.widget-result-view { /* 20260423*/
   flex: 1;
   min-height: 0;
   overflow: hidden; 

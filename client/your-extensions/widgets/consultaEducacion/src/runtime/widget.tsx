@@ -17,7 +17,7 @@ import esriRequest from "@arcgis/core/request"
 
 import { abrirTablaResultados, limpiarYCerrarWidgetResultados } from "../../../widget-result/src/runtime/widget";
 import { abrirWidgetLeyenda, limpiarYCerrarwidgetLeyenda } from '../../../widget-leyenda/src/runtime/widget';
-import {  ejecutarConsulta, goToInitialExtent, validaLoggerLocalStorage} from "../../../shared/utils/export.utils";
+import {  ejecutarConsulta, goToInitialExtent, restoreInitialExtent, validaLoggerLocalStorage} from "../../../shared/utils/export.utils";
 import { LayerInfo } from "widgets/shared/types/types_consultaAvanzadaAlfanumerica"
 import { SearchActionBar } from "../../../shared/components/search-action-bar";
 import { loadLayers } from "../../../shared/services/queryMapServer.service"
@@ -192,8 +192,7 @@ const Widget = (props: AllWidgetProps<any>) => {
    * @type {[JimuMapView | undefined, Function]}
    */
   const [varJimuMapView, setJimuMapView] = React.useState<JimuMapView>()
-  const [initialExtent, setInitialExtent] = React.useState(null)
-  const [initialZoom, setInitialZoom] = React.useState<number | null>(null)
+  
   const [loading, setLoading] = React.useState(false)
   const [graphicsLayer, setGraphicsLayer] = React.useState<GraphicsLayer | null>(null)
   const [error, setError] = React.useState("")
@@ -231,6 +230,13 @@ const Widget = (props: AllWidgetProps<any>) => {
     name: INDICADORES.ConsultaPorIndicadores,
     url: urls.SERVICIO_EDUCACION_ALFANUMERICO
   }];
+
+  /**
+     * Extent inicial del mapa.
+     * Se guarda al cargar el widget para poder restaurar
+     * la vista original posteriormente.
+  */
+  const initialExtentRef = React.useRef<__esri.Extent | null>(null)
 
   const handleConsultaPor = async(e: { target: { value: string; }; }) => {
     if (e.target.value === "") return
@@ -301,9 +307,8 @@ const Widget = (props: AllWidgetProps<any>) => {
   const activeViewChangeHandler = (jmv: JimuMapView) => {
     if (jmv) {
       setJimuMapView(jmv)
-      if (!initialExtent) {
-        setInitialExtent(jmv.view.extent.clone())
-        setInitialZoom(jmv.view.zoom)
+      if (!initialExtentRef.current) {
+        initialExtentRef.current = jmv.view.extent.clone()
       }
     }
   }
@@ -328,8 +333,7 @@ const Widget = (props: AllWidgetProps<any>) => {
    */
   React.useEffect(() => {
     if (props.state === 'CLOSED') {
-      handleClear()
-      goToInitialExtent(varJimuMapView, initialExtent, initialZoom)
+      handleClear()      
       limpiarYCerrarWidgetResultados(widgetResultId)
       limpiarYCerrarwidgetLeyenda(WIDGET_IDS.LEYENDA)
       limpiarFeaturesDibujados(varJimuMapView, featuresDibujados)
@@ -501,6 +505,7 @@ const Widget = (props: AllWidgetProps<any>) => {
       setError("Por favor seleccione un establecimiento o un indicador para realizar la búsqueda.")
       return
     }
+    setLoading(true)
     // limpiar geometrías previamente dibujadas
     if(featuresDibujados?.length){
       limpiarFeaturesDibujados(varJimuMapView, featuresDibujados)
@@ -529,10 +534,11 @@ const Widget = (props: AllWidgetProps<any>) => {
     // si la longitud de los features obtenidos es menor a 1, mostrar mensaje de error indicando que no se encontraron resultados para la consulta realizada
     if (features.length < 1) {
       setError("No se encontraron resultados para la consulta realizada.")
+      setLoading(false)
       return
     }
     // ir al extend inicial del mapa para mostrar todos los resultados obtenidos
-    goToInitialExtent(varJimuMapView, initialExtent, initialZoom)
+    restoreInitialExtent(varJimuMapView, initialExtentRef)
     // dibujar los features obtenidos en el mapa
     const esCoropletico = consultaPorSeleccionada?.name === INDICADORES.ConsultaPorIndicadores && (selectedIndicador === 1 || selectedIndicador === 2 || selectedIndicador === 3 || selectedIndicador === 4 || selectedIndicador === 5) // el indicador "cobertura", "cupos ofertados", "eficiencia interna", "tasa de analfabetismo departamental" y "tasa de analfabetismo municipal" se representan con coropletico
     if (features?.length) {
@@ -593,7 +599,7 @@ const Widget = (props: AllWidgetProps<any>) => {
       varJimuMapView.view.graphics.addMany(graphics)
       setFeaturesDibujados(graphics)
       // centrar el mapa en el primer feature obtenido
-      if(esCoropletico) varJimuMapView.view.goTo({ target: features[0].geometry, zoom: 15 })
+      // if(esCoropletico) varJimuMapView.view.goTo({ target: features[0].geometry, zoom: 15 })
     }
 
     let camposResultados,_cloneFeatures, withGraphic={
@@ -696,6 +702,7 @@ const Widget = (props: AllWidgetProps<any>) => {
       varJimuMapView.view.spatialReference,      
       withGraphic
     )
+    setLoading(false)
 
   }  
   
