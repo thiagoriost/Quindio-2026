@@ -19,8 +19,8 @@ import { useCancelableHttp } from '../../../shared/hooks/useCancelableHttp';
 import { appActions, getAppStore } from 'jimu-core'
 import { WIDGET_IDS } from '../../../shared/constants/widget-ids'
 import { Checkbox } from 'jimu-ui'
-import { features } from 'process';
 import { validaLoggerLocalStorage } from '../../../shared/utils/export.utils';
+import { abrirTablaResultados, limpiarYCerrarWidgetResultados } from '../../../widget-result/src/runtime/widget';
 
 /**
  * @file Widget de Consulta Catastral.
@@ -77,7 +77,7 @@ const Widget = (props: any) => {
     const { useRef, useEffect, useState } = React
     const [municipios, setMunicipios] = useState<MunicipioOption[]>([])
     const [municipio, setMunicipio] = useState<string>('')
-    const [tipoBusqueda, setTipoBusqueda] = useState<TipoBusqueda>('matricula');
+    const [tipoBusqueda, setTipoBusqueda] = useState<TipoBusqueda>('predial');
     const [valorBusqueda, setValorBusqueda] = useState<string>('');
     const [mensaje, setMensaje] = useState<string | null>(null);
 
@@ -90,7 +90,7 @@ const Widget = (props: any) => {
     const initializedRef = useRef(false)
     const initialExtentRef = useRef<any>(null)
     const graphicsLayerRef = useRef<GraphicsLayer | null>(null)
-    const [capaTemporal, setCapaTemporal] = React.useState(false) // 20260305
+    const [capaTemporal, setCapaTemporal] = React.useState<boolean>(false) // 20260305
 
     const arcgisService = new ArcgisService()
 
@@ -353,40 +353,11 @@ const Widget = (props: any) => {
     const onClose = () => {
         if (validaLoggerLocalStorage('logger')) console.log('Widget cerrado')
 
-        getAppStore().dispatch(
-            appActions.closeWidget(widgetResultId),
-        )
-        getAppStore().dispatch(
-            appActions.widgetStatePropChange(
-                widgetResultId,
-                'results',
-                null
-            )
-        )
+       limpiarYCerrarWidgetResultados(widgetResultId) // cierra el widget de resultados al cerrar este widget de consulta catastral
         cancelAll()
         onLimpiar()
     }
 
-    const abrirTablaResultados = (features: any[], fields: any[], spatialReference?: __esri.SpatialReference) => {
-
-        getAppStore().dispatch(appActions.openWidget(widgetResultId))
-
-        getAppStore().dispatch(
-            appActions.widgetStatePropChange(
-                widgetResultId,   // id del WidgetResult en el layout desde el widget controller
-                'results',
-                {
-                    sourceWidgetId: props.id,
-                    title: 'Resultados de prueba',
-                    features: features,
-                    fields: fields,
-                    spatialReference: spatialReference,
-                    temporalLayer: capaTemporal,
-                    valorBusqueda: valorBusqueda
-                }
-            )
-        )
-    }
     /**
      * Ejecuta búsqueda por matrícula inmobiliaria.
      * 
@@ -435,7 +406,7 @@ const Widget = (props: any) => {
             ] */
             const fields = response.data.fields
 
-            abrirTablaResultados(firstFeatureArray, fields, spatialReference as __esri.SpatialReference)
+            abrirTablaResultados(firstFeatureArray, fields, props, widgetResultId , spatialReference as __esri.SpatialReference, undefined, capaTemporal, valorBusqueda)
 
 //            pintarPredio(resultado.features[0])  ahora lo pinta WidgetResult
 
@@ -490,7 +461,7 @@ const Widget = (props: any) => {
 
             const fields = response.data.fields
 
-            abrirTablaResultados(firstFeatureArray, fields, spatialReference as __esri.SpatialReference)
+            abrirTablaResultados(firstFeatureArray, fields, props, widgetResultId , spatialReference as __esri.SpatialReference, undefined, capaTemporal, valorBusqueda)
 
 
         } catch (error) {
@@ -563,12 +534,12 @@ const Widget = (props: any) => {
      */
     const onLimpiar = () => {
         setMunicipio('');
-        setTipoBusqueda('matricula');
+        setTipoBusqueda('predial');
         setValorBusqueda('');
         setMensaje(null);
         setError('');
         setCapaTemporal(false);
-//      eliminarGraficos();  // cef20260310
+//      eliminarGraficos();  // si se habilita no funciona las capas temporales porque se eliminan al limpiar, se podría mejorar para que solo elimine el gráfico del predio y no las capas temporales que se agreguen
     };
 
     /**
@@ -691,7 +662,7 @@ const Widget = (props: any) => {
 
             {/* Tipo de búsqueda */}
             <div style={{ marginTop: 12 }}>
-                <Label>
+                {/* <Label>
                     <Radio
                         checked={tipoBusqueda === 'matricula'}
                         onChange={() => {
@@ -700,7 +671,7 @@ const Widget = (props: any) => {
                         }}
                     />
                     Matrícula inmobiliaria
-                </Label>
+                </Label> */}
 
                 <Label style={{ marginLeft: 12 }}>
                     <Radio

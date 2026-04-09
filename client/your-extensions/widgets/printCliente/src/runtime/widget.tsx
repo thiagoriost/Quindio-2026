@@ -26,8 +26,8 @@ import { SearchActionBar } from '../../../shared/components/search-action-bar'
 export default function Widget(props: any) {
 
   const [jimuMapView, setJimuMapView] = React.useState<any>()
-  const [title, setTitle] = React.useState("MAPA TEMÁTICO")
-  const [author, setAuthor] = React.useState("IGAC")
+  const [title, setTitle] = React.useState("Sig Quindío")
+  const [author, setAuthor] = React.useState("")
 
   const { print, loading } = useClientPrint(jimuMapView, { title, author })
 

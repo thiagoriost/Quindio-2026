@@ -641,10 +641,10 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
         graphicsLayerRef.current.add(graphic)
 
         if (geometry.type === "point") {  // cef 20260313
-
+            const zoomLevel = 20
             await view.goTo({
                 target: geometry,
-                zoom: 16
+                zoom: zoomLevel
             })
 
         } else {
@@ -843,7 +843,9 @@ export const abrirTablaResultados = (
     graphicData: any,
     graphicType: string//"bar" | "pie",
     graphicTitle?: string
-  }
+  },
+  temporalLayer?: boolean,
+  valorBusqueda?: string
 ) => {
   getAppStore().dispatch(
     appActions.widgetStatePropChange(
@@ -855,7 +857,9 @@ export const abrirTablaResultados = (
         features: features, // datos de las características a mostrar
         fields: fields, // campos a mostrar en la tabla de resultados
         spatialReference: spatialReference, // referencia espacial de los datos
-        withGraphic // información del gráfico asociado
+        withGraphic, // información del gráfico asociado
+        temporalLayer, // indica si los resultados corresponden a una capa temporal
+        valorBusqueda // valor de búsqueda asociado a los resultados, útil para identificar capas temporales por consulta
       },
     ),
   );

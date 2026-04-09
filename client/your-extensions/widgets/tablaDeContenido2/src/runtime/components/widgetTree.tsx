@@ -576,10 +576,10 @@ const WidgetTree: React.FC<Widget_Tree_Props> = ({ dataTablaContenido, varJimuMa
                                 </TabPanel>
                                 <TabPanel>
                                     <LegendDisplay activeLayerUrls={capasSelectd.map(capa => {
-                                        const url = capa.URL ? capa.URL : capa.capasNietas ? capa.capasNietas[0].URL : '';
-                                        const nombreCapa = capa.NOMBRECAPA ? capa.NOMBRECAPA : capa.capasNietas ? capa.capasNietas[0].NOMBRECAPA : '';
-                                        return url && nombreCapa ? `${url}/${nombreCapa}` : url;
-                                        })}
+                                            const url = capa.URL ? capa.URL : capa.capasNietas?.[0]?.URL ?? '';
+                                            const nombreCapa = capa.NOMBRECAPA ? capa.NOMBRECAPA : capa.capasNietas?.[0]?.NOMBRECAPA ?? '';
+                                            return url && nombreCapa ? `${url}/${nombreCapa}` : url;
+                                        }).filter(Boolean)}
                                     />
                                 </TabPanel>
                             </>

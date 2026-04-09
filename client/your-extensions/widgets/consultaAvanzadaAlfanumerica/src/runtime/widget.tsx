@@ -14,7 +14,7 @@ import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer"
 
 import { React, type AllWidgetProps } from "jimu-core"
 
-import { Label, Select, Option } from "jimu-ui";
+import { Label, Select, Option, TextArea } from "jimu-ui";
 
 import { abrirTablaResultados, limpiarYCerrarWidgetResultados } from "../../../widget-result/src/runtime/widget";
 import { drawFeaturesOnMap, ejecutarConsulta, goToInitialExtent, validaLoggerLocalStorage} from "../../../shared/utils/export.utils";
@@ -375,9 +375,9 @@ const Widget = (props: AllWidgetProps<any>) => {
 
             {/* CONDICION */}
 
-            <label>Condición de Búsqueda</label>
+            <Label>Condición de Búsqueda</Label>
 
-            <textarea
+            <TextArea
               value={condition}
               onChange={(e) => setCondition(e.target.value)}
             />
