@@ -576,6 +576,7 @@ const WidgetTree: React.FC<Widget_Tree_Props> = ({ dataTablaContenido, varJimuMa
                                 </TabPanel>
                                 <TabPanel>
                                     <LegendDisplay activeLayerUrls={capasSelectd.map(capa => {
+                                            if (utilsModule?.logger()) console.log("LeyendDisplay => capa:", capa)
                                             const url = capa.URL ? capa.URL : capa.capasNietas?.[0]?.URL ?? '';
                                             const nombreCapa = capa.NOMBRECAPA ? capa.NOMBRECAPA : capa.capasNietas?.[0]?.NOMBRECAPA ?? '';
                                             return url && nombreCapa ? `${url}/${nombreCapa}` : url;
