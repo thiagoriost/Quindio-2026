@@ -17,7 +17,7 @@ import { React, type AllWidgetProps } from "jimu-core"
 import { Label, Select, Option, TextArea } from "jimu-ui";
 
 import { abrirTablaResultados, limpiarYCerrarWidgetResultados } from "../../../widget-result/src/runtime/widget";
-import { drawFeaturesOnMap, ejecutarConsulta, goToInitialExtent, validaLoggerLocalStorage} from "../../../shared/utils/export.utils";
+import { clearMapAndResetExtent, drawFeaturesOnMap, ejecutarConsulta, goToInitialExtent, validaLoggerLocalStorage} from "../../../shared/utils/export.utils";
 import { LayerInfo } from "widgets/shared/types/types_consultaAvanzadaAlfanumerica"
 import { SearchActionBar } from "../../../shared/components/search-action-bar";
 import { loadLayers } from "../../../shared/services/queryMapServer.service"
@@ -115,7 +115,7 @@ const Widget = (props: AllWidgetProps<any>) => {
   React.useEffect(() => {
     if (props.state === 'CLOSED') {
       handleClear()
-      goToInitialExtent(varJimuMapView, initialExtent, initialZoom)
+      clearMapAndResetExtent(varJimuMapView, initialExtent, initialZoom)
       limpiarYCerrarWidgetResultados(widgetResultId)
     }  
     
@@ -242,19 +242,23 @@ const Widget = (props: AllWidgetProps<any>) => {
     try {
       const features = await ejecutarConsulta({ returnGeometry: true, campos: fields, url: urlLayer, where: condition.trim() })
       if(validaLoggerLocalStorage('logger')) console.log("Resultados búsqueda:", features)
-      const graphicsLayer = await drawFeaturesOnMap({ features, spatialReference: varJimuMapView.view.spatialReference }, varJimuMapView, 16)
-      setGraphicsLayer(graphicsLayer)
-      const fieldsToShow = fields.map(f => ({ name: f, alias: f }))
-      const featuresFixed = features
-        .filter(e => e?.geometry)
-        .map(e => ({
-          attributes: e.attributes,
-          geometry: e.geometry.toJSON()
-        }))
-
-      const resultSpatialReference = features[0]?.geometry?.spatialReference || varJimuMapView.view.spatialReference
-      if(validaLoggerLocalStorage('logger')) console.log({fieldsToShow, featuresFixed})
-      abrirTablaResultados(featuresFixed, fieldsToShow, props, widgetResultId, resultSpatialReference)
+      if (features.length > 0) {
+        const graphicsLayer = await drawFeaturesOnMap({ features, spatialReference: features[0].geometry.spatialReference }, varJimuMapView, 12)
+        setGraphicsLayer(graphicsLayer)
+        const fieldsToShow = fields.map(f => ({ name: f, alias: f }))
+        const featuresFixed = features
+          .filter(e => e?.geometry)
+          .map(e => ({
+            attributes: e.attributes,
+            geometry: e.geometry.toJSON()
+          }))
+  
+        const resultSpatialReference = features[0]?.geometry?.spatialReference || varJimuMapView.view.spatialReference
+        if(validaLoggerLocalStorage('logger')) console.log({fieldsToShow, featuresFixed})
+        abrirTablaResultados(featuresFixed, fieldsToShow, props, widgetResultId, resultSpatialReference)
+      }else{
+        return setError("No se encontraron resultados para la condición de búsqueda ingresada.")
+      }
     } catch (err) {
       console.error("Error en búsqueda:", err)
       setError("Ocurrió un error al ejecutar la búsqueda. Verifique la condición ingresada.")
