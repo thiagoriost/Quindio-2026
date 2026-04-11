@@ -12,6 +12,7 @@ import { loadModules } from 'esri-loader'
 import { WIDGET_IDS } from '../../../shared/constants/widget-ids'
 import { SearchActionBar } from '../../../shared/components/search-action-bar'
 import { abrirTablaResultados, limpiarYCerrarWidgetResultados } from '../../../widget-result/src/runtime/widget'
+import { clearMapAndResetExtent } from '../../../shared/utils/export.utils'
 
 const { useEffect, useState } = React
 
@@ -59,7 +60,7 @@ const ConsultaAvanzada = (props: AllWidgetProps<any>) => {
    * @param {Array<any>} jsonSERV Estructura acumulada de temáticas/capas.
    * @returns {Promise<void>}
    */
-  const getJSONContenido = async (jsonSERV) => {
+  const getJSONContenido = async (jsonSERV: React.SetStateAction<any[]>) => {
     try {
       const urlServicioTOC = servicios.urls.tablaContenido
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -144,7 +145,7 @@ const ConsultaAvanzada = (props: AllWidgetProps<any>) => {
    * @returns {void}
    */
 
-  const getTemas = (jsonData) => {
+  const getTemas = (jsonData: string | any[]) => {
     const opcArr = []
     let tipoRegistro, nodoPadre, urlServ, descrip: string
     let idTema = -1
@@ -175,7 +176,7 @@ const ConsultaAvanzada = (props: AllWidgetProps<any>) => {
    * @param {{ target: { value: string } }} temas Evento del control Tema.
    * @returns {void}
    */
-  const getSubtemas = (temas) => {
+  const getSubtemas = (temas: { target: { value: string } }) => {
     let idParent: number = -1
     let type: string = ''
     let jsonSubtemas: any = ''
@@ -303,7 +304,7 @@ const ConsultaAvanzada = (props: AllWidgetProps<any>) => {
    * @param {{ target: { value: string } }} grupos Evento del control Grupo.
    * @returns {void}
    */
-  const getCapaByGrupo = (grupos) => {
+  const getCapaByGrupo = (grupos: { target: { value: string } }) => {
     let idParent: number = -1
     let type: string = ''
     let jsonSubtemas: any = ''
@@ -355,7 +356,7 @@ const ConsultaAvanzada = (props: AllWidgetProps<any>) => {
    * @param {{ value: number }} target Valor seleccionado en el control Capa.
    * @returns {void}
    */
-  const getAtributosCapa = (target) => {
+  const getAtributosCapa = (target: { value: any }) => {
     let urlCapa: string = ''
     let JsonAtrCapa: any = ''
     const AtrCapaArr: any = []
@@ -426,9 +427,8 @@ const ConsultaAvanzada = (props: AllWidgetProps<any>) => {
     setResponseConsulta(null)
     // Limpiar capas del mapa
     if (jimuMapView && jimuMapView.view) {
-      try {
-        jimuMapView.view.map.removeAll()
-        goToInitialExtent(jimuMapView, initialExtent)
+      try {        
+        clearMapAndResetExtent(jimuMapView, initialExtent)
       } catch (e) {
         if (utilsModule?.logger()) console.error('Error al limpiar el mapa:', e)
       }
@@ -522,7 +522,7 @@ const ConsultaAvanzada = (props: AllWidgetProps<any>) => {
     * @param {string} url URL del FeatureLayer a desplegar.
     * @returns {void}
     */
-  const dibujaCapasSeleccionadas = (url) => {
+  const dibujaCapasSeleccionadas = (url: string) => {
     const layer = new FeatureLayer({ url })
     jimuMapView.view.map.add(layer)
     layer.when(() => {
@@ -535,7 +535,7 @@ const ConsultaAvanzada = (props: AllWidgetProps<any>) => {
     })
   }
 
-  const removeLayerDeployed = (featureLayer) => {
+  const removeLayerDeployed = (featureLayer: __esri.Layer) => {
     if (featureLayer && jimuMapView) {
       jimuMapView.view.map.remove(featureLayer)
     } else {
@@ -648,7 +648,7 @@ const ConsultaAvanzada = (props: AllWidgetProps<any>) => {
     if (utilsModule?.logger()) console.log(target.value)
     setIsLoading(true)
     if (graphicsLayerDeployed?.graphics.items.length > 0) {
-      jimuMapView.view.map.removeAll()
+      clearMapAndResetExtent(jimuMapView, initialExtent)
     }
     getAtributosCapa(target)
     setCapaselected(target.value)
@@ -874,7 +874,7 @@ const realizarConsulta = async (campo: string, url: string, returnGeometry: bool
  */
 const getOrdenarDatos = (response: InterfaceResponseConsulta, campo: string) => {
   const { features } = response
-  const justDatos = []
+  const justDatos: Iterable<any> = []
   features.forEach(feature => {
     justDatos.push(feature.attributes[campo])
   })
@@ -894,7 +894,7 @@ const getOrdenarDatos = (response: InterfaceResponseConsulta, campo: string) => 
       return 0 // En caso de mezclar tipos, no hacer nada
     }
   })
-  const sortedArrayObjet = []
+  const sortedArrayObjet: { value: any; label: any }[] = []
   sortedArray.forEach(e => sortedArrayObjet.push({ value: e, label: e }))
   return sortedArrayObjet
 }
@@ -906,20 +906,7 @@ const getOrdenarDatos = (response: InterfaceResponseConsulta, campo: string) => 
  * @param {Record<string, any>} object Criterio de coincidencia exacta.
  * @returns {Array<any>}
  */
-const where = (array, object) => {
+const where = (array: any[], object: { [x: string]: any; id?: string }) => {
   const keys = Object.keys(object)
-  return array.filter(item => keys.every(key => item[key] === object[key]))
-}
-
-/**
- * Regresa el mapa al extent inicial capturado al abrir el widget.
- *
- * @param {JimuMapView} jimuMapView Vista activa del mapa.
- * @param {any} initialExtent Extensión inicial del mapa.
- * @returns {void}
- */
-const goToInitialExtent = (jimuMapView: JimuMapView, initialExtent: any) => {
-  if (jimuMapView && initialExtent) {
-    jimuMapView.view.goTo(initialExtent, { duration: 1000 })
-  }
+  return array.filter((item: { [x: string]: any }) => keys.every(key => item[key] === object[key]))
 }
