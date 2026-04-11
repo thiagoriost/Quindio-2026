@@ -8,6 +8,7 @@
 
 import JsPDF from "jspdf"
 import { buildLegendItems } from "./legendService"
+import { validaLoggerLocalStorage } from "../../../shared/utils/export.utils"
 
 /**
  * Opciones de configuración para la generación del PDF.
@@ -59,7 +60,7 @@ interface PdfOptions {
  */
 export const generatePdf = async (options: PdfOptions): Promise<void> => {
 
-  console.log({options})
+  if(validaLoggerLocalStorage('logger')) console.log({options})
   const doc = new JsPDF({
     orientation: "portrait",
     unit: "mm",

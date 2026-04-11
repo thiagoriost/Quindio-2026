@@ -613,7 +613,7 @@ const Widget = (props: any) => {
      * @example
      * useOnWidgetClose(props.id, onClose)
      */
-    useOnWidgetClose(props.id, onClose)
+    useOnWidgetClose(props.id, jimuMapView, initialExtentRef.current, onClose)
 
     // -----------------------------
     // UI render
@@ -661,8 +661,8 @@ const Widget = (props: any) => {
             )}
 
             {/* Tipo de búsqueda */}
-            <div style={{ marginTop: 12 }}>
-                {/* <Label>
+            {/* <div style={{ marginTop: 12 }}>
+                <Label>
                     <Radio
                         checked={tipoBusqueda === 'matricula'}
                         onChange={() => {
@@ -671,7 +671,7 @@ const Widget = (props: any) => {
                         }}
                     />
                     Matrícula inmobiliaria
-                </Label> */}
+                </Label>
 
                 <Label style={{ marginLeft: 12 }}>
                     <Radio
@@ -683,7 +683,7 @@ const Widget = (props: any) => {
                     />
                     Número predial
                 </Label>
-            </div>
+            </div> */}
 
             {/* Input búsqueda */}
             <div style={{ marginTop: 12 }}>

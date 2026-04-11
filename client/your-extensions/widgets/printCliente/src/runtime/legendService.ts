@@ -9,6 +9,7 @@
  */
 
 import { loadModules } from "esri-loader"
+import { validaLoggerLocalStorage } from "../../../shared/utils/export.utils"
 
 /**
  * Representa un elemento de la leyenda del mapa.
@@ -143,10 +144,11 @@ export const buildLegendItems = async (
   const [symbolUtils] = await loadModules(["esri/symbols/support/symbolUtils"])
 
   const layers = view.map.layers.toArray().filter(l => l.visible)
-  console.log("[buildLegendItems] Capas visibles:", layers.length)
+
+  if(validaLoggerLocalStorage('logger')) console.log("[buildLegendItems] Capas visibles:", layers.length)
 
   for (const layer of layers) {
-    console.log("[buildLegendItems] Procesando capa:", layer.title, "- tipo:", layer.type)
+    if(validaLoggerLocalStorage('logger')) console.log("[buildLegendItems] Procesando capa:", layer.title, "- tipo:", layer.type)
 
     // Solo procesar FeatureLayers
     if (layer.type !== "feature") continue
@@ -161,12 +163,12 @@ export const buildLegendItems = async (
     const renderer = featureLayer.renderer
     if (!renderer) continue
 
-    console.log("[buildLegendItems] Renderer tipo:", renderer.type)
+    if(validaLoggerLocalStorage('logger')) console.log("[buildLegendItems] Renderer tipo:", renderer.type)
 
     // Manejar ClassBreaksRenderer
     if (renderer.type === "class-breaks") {
       const cbRenderer = renderer
-      console.log("[buildLegendItems] ClassBreakInfos encontrados:", cbRenderer.classBreakInfos?.length)
+      if(validaLoggerLocalStorage('logger')) console.log("[buildLegendItems] ClassBreakInfos encontrados:", cbRenderer.classBreakInfos?.length)
 
       const layerItems: LegendItem[] = []
 
@@ -180,9 +182,9 @@ export const buildLegendItems = async (
               node: document.createElement("div"),
               size: 24
             })
-            console.log("[buildLegendItems] Preview generado:", preview.innerHTML)
+            if(validaLoggerLocalStorage('logger')) console.log("[buildLegendItems] Preview generado:", preview.innerHTML)
             imageData = await extractImageData(preview)
-            console.log("[buildLegendItems] ImageData extraído:", imageData ? "OK" : "null")
+            if(validaLoggerLocalStorage('logger')) console.log("[buildLegendItems] ImageData extraído:", imageData ? "OK" : "null")
           } catch (err) {
             console.warn("[buildLegendItems] Error renderizando símbolo:", err)
           }
@@ -194,18 +196,23 @@ export const buildLegendItems = async (
         })
       }
 
-      if (layerItems.length > 0) {
+      // Eliminar items duplicados por label
+      const uniqueItems = layerItems.filter((item, index, self) =>
+        index === self.findIndex(i => i.label === item.label)
+      )
+
+      if (uniqueItems.length > 0) {
         groups.push({
           layerTitle: layer.title || "Capa",
-          items: layerItems
+          items: uniqueItems
         })
       }
     }
 
     // Manejar UniqueValueRenderer
-    if (renderer.type === "unique-value") {
+    else if (renderer.type === "unique-value") {
       const uvRenderer = renderer
-      console.log("[buildLegendItems] UniqueValueInfos encontrados:", uvRenderer.uniqueValueInfos?.length)
+      if(validaLoggerLocalStorage('logger')) console.log("[buildLegendItems] UniqueValueInfos encontrados:", uvRenderer.uniqueValueInfos?.length)
 
       const layerItems: LegendItem[] = []
 
@@ -220,6 +227,7 @@ export const buildLegendItems = async (
               size: 24
             })
             imageData = await extractImageData(preview)
+            if(validaLoggerLocalStorage('logger')) console.log("[buildLegendItems] ImageData extraído:", imageData ? "OK" : "null")
           } catch (err) {
             console.warn("[buildLegendItems] Error renderizando símbolo:", err)
           }
@@ -231,16 +239,21 @@ export const buildLegendItems = async (
         })
       }
 
-      if (layerItems.length > 0) {
+      // Eliminar items duplicados por label
+      const uniqueItems = layerItems.filter((item, index, self) =>
+        index === self.findIndex(i => i.label === item.label)
+      )
+
+      if (uniqueItems.length > 0) {
         groups.push({
           layerTitle: layer.title || "Capa",
-          items: layerItems
+          items: uniqueItems
         })
       }
     }
 
     // Manejar SimpleRenderer
-    if (renderer.type === "simple") {
+    else if (renderer.type === "simple") {
       const simpleRenderer = renderer
       const symbol = simpleRenderer.symbol
       let imageData: string | undefined
@@ -252,6 +265,7 @@ export const buildLegendItems = async (
             size: 24
           })
           imageData = await extractImageData(preview)
+          if(validaLoggerLocalStorage('logger')) console.log("[buildLegendItems] ImageData extraído:", imageData ? "OK" : "null")
         } catch (err) {
           console.warn("[buildLegendItems] Error renderizando símbolo:", err)
         }
@@ -267,6 +281,11 @@ export const buildLegendItems = async (
     }
   }
 
-  console.log("[buildLegendItems] Total grupos generados:", groups.length)
-  return groups
+  // Eliminar grupos duplicados por layerTitle
+  const uniqueGroups = groups.filter((group, index, self) =>
+    index === self.findIndex(g => g.layerTitle === group.layerTitle)
+  )
+
+  if(validaLoggerLocalStorage('logger')) console.log("[buildLegendItems] Total grupos generados:", uniqueGroups.length)
+  return uniqueGroups
 }

@@ -296,6 +296,8 @@ export const goToInitialExtent = (varJimuMapView: JimuMapView, initialExtent: an
     varJimuMapView.view.goTo({
       target: initialExtent,
       zoom: initialZoom
+    }, {
+      duration: 1000 // Duración de la animación en milisegundos
     })
 
   }
@@ -368,3 +370,22 @@ export const restoreInitialExtent = (jimuMapView: any, initialExtentRef: any) =>
             view.goTo(extent)
         }
     }
+
+/**
+ * Funcion que limpia el mapa eliminando todas las capas gráficas execpto la capa jimuMapView.view.map.layers.items[0].displayField === 'IDMUNICIPIO' y restablece el extent inicial.
+ */
+export const clearMapAndResetExtent = (jimuMapView: any, initialExtent: any, initialZoom= 12) => {
+  if (jimuMapView && jimuMapView.view) {
+    try {
+      // Eliminar todas las capas gráficas excepto la capa con displayField 'IDMUNICIPIO'
+      jimuMapView.view.map.layers.forEach((layer: any) => {
+        if (layer.displayField !== 'IDMUNICIPIO') {
+          jimuMapView.view.map.remove(layer)
+        }
+      })
+      // Restablecer el extent inicial
+      goToInitialExtent(jimuMapView, initialExtent, initialZoom) // Ajusta el nivel de zoom según sea necesario
+    } catch (e) {
+      console.error('Error al limpiar el mapa:', e)
+    }
+} }
