@@ -238,7 +238,7 @@ const LegendDisplay = ({ activeLayerUrls = [] }: { activeLayerUrls: string[] }):
                 listStyle: 'none'
               }}
             >
-              {legendInfo.map((item: { symbol: { svg: string | number | boolean | React.ReactElement<any, string > | Iterable<React.ReactNode> | React.ReactPortal; color: any; outlineStyle: React.CSSProperties }; label: string | number | boolean | React.ReactElement<any, string > | Iterable<React.ReactNode> | React.ReactPortal }, idx: React.Key) => (
+              {legendInfo.map((item: { symbol: { svg: string | number | boolean | React.ReactElement<any, string > | Iterable<React.ReactNode> | React.ReactPortal; color: string; outline: { color: number[]; width: string | number } }; label: string | number | boolean | React.ReactElement<any, string > | Iterable<React.ReactNode> } , idx: React.Key) => (
                 <li key={idx} className="legendItem" style={{ width: '100%', minWidth: 0 }}>
                   {/* Si el símbolo es SVG (PictureFillSymbol), lo muestra como SVG */}
                   {item.symbol && item.symbol.svg && (
@@ -249,17 +249,28 @@ const LegendDisplay = ({ activeLayerUrls = [] }: { activeLayerUrls: string[] }):
                   )}
                   {/* Si el símbolo es un color sólido, lo muestra como bloque de color con borde */}
                   {item.symbol && item.symbol.color && !item.symbol.svg && (
-                    <span
-                      style={{
-                        display: 'inline-block',
-                        width: '100%',
-                        height: '20px',
-                        background: item.symbol.color,
-                        ...((item.symbol.outlineStyle) ? item.symbol.outlineStyle : {})
-                      }}
-                    >
-                      {item.label}
-                    </span>
+                    <div className="divImgLeyendRow" style={{ padding: 0, background: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <svg overflow="hidden" width="30" height="30" style={{ touchAction: 'none', flexShrink: 0 }}>
+                        <path
+                          fill={item.symbol.color}
+                          fillOpacity="1"
+                          stroke={item.symbol.outline && item.symbol.outline.color
+                            ? `rgba(${item.symbol.outline.color[0]},${item.symbol.outline.color[1]},${item.symbol.outline.color[2]},${item.symbol.outline.color[3] / 255})`
+                            : 'rgb(110, 110, 110)'}
+                          strokeOpacity="1"
+                          strokeWidth={item.symbol.outline && item.symbol.outline.width ? item.symbol.outline.width : 0.53}
+                          strokeLinecap="butt"
+                          strokeLinejoin="miter"
+                          strokeMiterlimit={4}
+                          d="M-10-10L 10 0L 10 10L-10 10L-10-10Z"
+                          fillRule="evenodd"
+                          transform="matrix(1,0,0,1,15,15)"
+                        />
+                      </svg>
+                      <p style={{ margin: 0 }}>
+                        {item.label}
+                      </p>
+                    </div>
                   )}
                 </li>
               ))}
