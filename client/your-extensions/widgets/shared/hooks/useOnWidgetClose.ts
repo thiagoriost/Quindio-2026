@@ -43,7 +43,7 @@ import { JimuMapView } from 'jimu-arcgis'
 export const useOnWidgetClose = (
   widgetId: string,
   jimuMapView: JimuMapView,
-  initialExtent: undefined,
+  initialExtent: React.MutableRefObject<__esri.Extent>,
   onClose?: () => void,
 ) => {
 

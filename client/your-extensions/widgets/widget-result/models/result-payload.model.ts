@@ -44,6 +44,13 @@ export interface ResultPayload {
     graphicData: ChartDataItem[]
     graphicType: string
     graphicTitle?: string
+    selectedIndicador?: number, // para manejar diferentes indicadores que pueden venir con la gráficafeaturesDibujados?: any[] // para manejar casos como el indicador 3 donde se dibujan características en el mapa además de mostrar la gráfica
+    fieldToFilter?: string, // campo que se emplea para renderizar el grafico, se asume que es el campo principal para mostrar en el gráfico, por ejemplo "ESTUDIANTESMATRICULADOS" para el caso de cobertura educativa
+    dataCoropletico?: {
+      fieldsToFilter: any[] // lista de campos disponibles para mostrar en el gráfico, se asume que el primer campo es el principal para mostrar inicialmente
+      label: string // etiqueta para mostrar en la leyenda
+      leyenda: Array<{ minimo: number; maximo: number; colorFondo: string; colorLine: string }>
+    }
   }
 
    // cef 20260320

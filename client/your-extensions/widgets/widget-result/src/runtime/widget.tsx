@@ -44,7 +44,7 @@ import { i } from "motion/dist/react-m";
 import * as geometryJsonUtils from '@arcgis/core/geometry/support/jsonUtils'
 // cef 20260313
 import ResultGraphic from "../../components/ResultGraphic_Richarts";
-import { /* restoreInitialExtent, */ validaLoggerLocalStorage } from '../../../shared/utils/export.utils'
+import { /* restoreInitialExtent, */ dibujarFeaturesCoropletico, validaLoggerLocalStorage } from '../../../shared/utils/export.utils'
 
 /**
  * WidgetResult
@@ -164,13 +164,15 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
      */
     const temporalLayerRef = React.useRef<boolean>(false)
 
-    // cef 20260324 para tabs
+    //  para tabs
     const [activeTab, setActiveTab] = React.useState<string>('tabla')
 
-    // estado de la vista para grafico y/o tabla cef 20260324
+    // estado de la vista para grafico y/o tabla 
     const [viewMode, setViewMode] = React.useState<'tabla' | 'grafico'>(
         data?.withGraphic ? 'grafico' : 'tabla'
     )
+
+    const [fieldToFilter, setFieldToFilter] = React.useState<string>("") // para manejar el campo que se va a mostrar en el gráfico cuando hay gráfica
 
     /**
      * Guarda el extent inicial del mapa cuando la vista
@@ -198,28 +200,6 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
     };
     }, [jimuMapView]);
 
-    /**
-     * Crea una capa gráfica utilizada para mostrar
-     * la geometría de la entidad seleccionada.
-     *
-     * La capa se agrega al mapa al inicializarse y
-     * se elimina automáticamente cuando el widget se desmonta.
-     */
-    React.useEffect(() => {
-        const view = jimuMapView?.view
-        if (!view) return
-        const layer = new GraphicsLayer({
-            id: 'result-selection-layer'
-        })
-        view.map.add(layer)
-        graphicsLayerRef.current = layer
-
-        return () => {
-            view.map.remove(layer)
-            layer.destroy()
-            graphicsLayerRef.current = null
-        }
-    }, [jimuMapView])
 
     /**
      * Cuando los resultados desaparecen (data = null),
@@ -238,28 +218,14 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
      * Reinicia la paginación cuando llegan nuevos resultados.
      */
     React.useEffect(() => {
-        if (data) setPage(1)
-    }, [data])
-
-
-    /**
-     * Guarda el valor de temporalLayer cuando llegan los datos
-    */
-    React.useEffect(() => {
-        if (data) {
-            temporalLayerRef.current = data.temporalLayer === true
-        }
-    }, [data])
-
-    /*
-    *   cef 20260324
-    *   Sincronizar data para la gráfica usando swith toogle
-    */
-    React.useEffect(() => {
         if (data?.withGraphic) {
             setViewMode('grafico')
-        } else if (data) {
+        }
+        if (data){
+            temporalLayerRef.current = data.temporalLayer === true //Guarda el valor de temporalLayer cuando llegan los datos
+            setPage(1)
             setViewMode('tabla')
+            setFieldToFilter(data.withGraphic ? data.withGraphic.fieldToFilter : "") // actualiza el campo a mostrar en el gráfico cuando llegan nuevos datos con gráfica
         }
     }, [data])
 
@@ -523,7 +489,7 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
 
         if (!features?.length) return
 
-        if(validaLoggerLocalStorage('logger')) console.log("Resultados recibidos en WidgetResult:", features)
+        if(validaLoggerLocalStorage('logger')) console.log("Resultados recibidos en WidgetResult:", {features, data})
         setOpen(true)
 
     }, [data])
@@ -568,7 +534,7 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
      * Hook que detecta el cierre del widget
      * y ejecuta la función de limpieza.
      */
-    useOnWidgetClose(props.id, onClose)
+    useOnWidgetClose(props.id, jimuMapView, initialExtentRef, onClose)
 
 
 
@@ -726,6 +692,31 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
         }
         return undefined // usa el ancho por defecto del CSS para modo tabla
     }
+
+    const renderizarSiguienteCropleticoYgrafica = () => {
+        // lógica para cambiar el indicador seleccionado y actualizar la gráfica en consecuencia
+        if (!data?.withGraphic) return
+        const currentIndicador = fieldToFilter !== "" ? fieldToFilter : data.withGraphic.fieldToFilter
+        console.log({currentIndicador})
+        const fieldsToFilter = data.withGraphic.dataCoropletico.fieldsToFilter
+        const currentIndex = fieldsToFilter.findIndex(e=>e.field === currentIndicador)
+        const nextIndex = (currentIndex + 1) % fieldsToFilter.length
+        const nextField = fieldsToFilter[nextIndex].field
+        setFieldToFilter(nextField)
+
+        console.log({data, currentIndicador, currentIndex, nextIndex, nextField})
+        // ajustar y enviar data a renderiza grafica con nuevo fieldToFilter
+        
+
+        dibujarFeaturesCoropletico({
+          features:data.features,
+          jimuMapView,
+          coroplethConfig:{
+            field: nextField,
+            leyenda: data.withGraphic.dataCoropletico.leyenda,
+          }
+        })
+    }
     
     return (
         <div>
@@ -777,6 +768,12 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
                                     {viewMode === "tabla" ? "Ver Gráfico" : "Ver Tabla"}
                                 </Button>
                             )}
+                            {/* Botones de siguiente y atras para visualización de diferentes graficas para la misma consulta */}
+                            {
+                                (data.withGraphic.selectedIndicador === 3 && data.features.length > 0) && (
+                                    <Button size="sm" type="primary" className="widget-result-export-btn" onClick={renderizarSiguienteCropleticoYgrafica}> Siguiente </Button>
+                                )
+                            }
                             { viewMode === 'tabla' &&
                             (<Button size="sm" type="primary" className="widget-result-export-btn" onClick={handleExport}>
                                 Exportar tabla
@@ -800,8 +797,8 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
                                 page={page}
                                 totalPages={totalPages}
                                 setPage={setPage}
-                                data={data} // cef 20260324 para mostrar botón de toggle si viene withGraphic
-                                setViewMode={setViewMode} // cef 20260324 para toggle tabla/gráfico
+                                data={data} //  para mostrar botón de toggle si viene withGraphic
+                                setViewMode={setViewMode} //  para toggle tabla/gráfico
                                 />
                             )}
 
@@ -842,7 +839,8 @@ export const abrirTablaResultados = (
     showGraphic: boolean,
     graphicData: any,
     graphicType: string//"bar" | "pie",
-    graphicTitle?: string
+    graphicTitle?: string,
+    selectedIndicador?: number, // para manejar diferentes indicadores que pueden venir con la gráficafeaturesDibujados?: any[] // para manejar casos como el indicador 3 donde se dibujan características en el mapa además de mostrar la gráfica
   },
   temporalLayer?: boolean,
   valorBusqueda?: string
