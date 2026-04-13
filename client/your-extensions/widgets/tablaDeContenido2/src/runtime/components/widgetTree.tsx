@@ -123,6 +123,7 @@ const WidgetTree: React.FC<Widget_Tree_Props> = ({ dataTablaContenido, varJimuMa
         /**
          * 7. Intenta abrir/cerrar el widget Leyenda (widget_9) solo si existe en la configuración.
          *    Si ocurre un error, lo muestra en consola si logger está activo.
+         *   Para cuando la leyenda es un widget independiente, se abre automáticamente al activar una capa y se cierra al desactivarla, siempre y cuando el widget exista en la    configuración desde appConfig.widgets y en experience builder. Si el widget no existe, se muestra una advertencia en consola. Cualquier error durante este proceso también se captura y muestra en consola.
          */
         try {
             const state = getAppStore().getState()
@@ -383,22 +384,87 @@ const WidgetTree: React.FC<Widget_Tree_Props> = ({ dataTablaContenido, varJimuMa
     }
 
     /**
-     * Metodo que quita todas las capas pintadas en el mapa y actauliza los states FeaturesLayersDeployed, apasSelectd,
-     * DataTablaContenido y SearchQuery
-     * @returns
+     * Metodo que quita todas las capas pintadas en el mapa (excepto Municipios) y actualiza los states
+     * FeaturesLayersDeployed, capasSelectd, checkedItems, activeLayersRef, searchQuery y expandedItems.
+     * Usa removeMany para remoción en bloque (más confiable que remove individual con muchas capas).
+     * No dispara setDataTablaContenido para evitar que el useEffect re-agregue capas al mapa.
      */
     const removeAllLayers = () => {
-        featuresLayersDeployed.forEach(FL => varJimuMapView.view.map.remove(FL.layer))
-        setFeaturesLayersDeployed([])
-        const {capasVisibles, clonedDataTablaContenido, apagarCapas} = recorreTodasLasCapasTablaContenido(dataTablaContenido, true)
-        setCapasSelectd( capasVisibles )
-        if (apagarCapas) setDataTablaContenido(clonedDataTablaContenido)
-        varJimuMapView.view.zoom = varJimuMapView.view.zoom - 0.00000001
-        renderTree(dataTablaContenido)
+        // Helper para identificar la capa de Municipios (no se debe remover)
+        const esMunicipios = (capa: any): boolean => {
+            const titulo = (capa?.TITULOCAPA || '').toLowerCase()
+            return titulo.includes('municipio')
+        }
+
+        // Separar la capa de Municipios de las demás
+        const layersToRemove = featuresLayersDeployed.filter(FL => !esMunicipios(FL.capa))
+        const layersToKeep = featuresLayersDeployed.filter(FL => esMunicipios(FL.capa))
+
+        // Remover capas del mapa en bloque (más confiable que remove individual)
+        if (layersToRemove.length > 0) {
+            varJimuMapView.view.map.removeMany(layersToRemove.map(FL => FL.layer))
+        }
+
+        // Actualizar featuresLayersDeployed (solo mantener Municipios)
+        setFeaturesLayersDeployed(layersToKeep)
+
+        // Actualizar capas seleccionadas (solo mantener Municipios)
+        const capasToKeep = capasSelectd.filter(capa => esMunicipios(capa))
+        setCapasSelectd(capasToKeep)
+
+        // Limpiar activeLayersRef (mantener solo Municipios)
+        activeLayersRef.current = activeLayersRef.current.filter(l => esMunicipios(l))
+
+        // Actualizar VISIBLE en dataTablaContenido (mutación directa, mismo patrón que handleCheck)
+        // No se usa setDataTablaContenido para evitar que el useEffect re-agregue capas
+        const actualizarVisible = (capas: any[]) => {
+            if (!capas) return
+            capas.forEach(capa => {
+                if (capa.URL && capa.VISIBLE && !esMunicipios(capa)) {
+                    capa.VISIBLE = false
+                }
+                actualizarVisible(capa.capasHijas)
+                actualizarVisible(capa.capasNietas)
+                actualizarVisible(capa.capasBisnietos)
+            })
+        }
+        actualizarVisible(dataTablaContenido)
+
+        // Actualizar checkedItems: solo Municipios y capas temporales quedan chequeados
+        const newCheckedItems: Record<string, boolean> = {}
+        capasToKeep.forEach(capa => {
+            const id = capa.capasNietas?.length ? capa.capasNietas[0].IDCAPA : capa.IDCAPA
+            if (id) newCheckedItems[id] = true
+        })
+        // Preservar el check de capas temporales (no pasan por la lógica de dibujar/remover)
+        const temporales = dataTablaContenido
+            .find((t: any) => t.NOMBRETEMATICA === 'Capas Temporales')
+            ?.capasHijas || []
+        temporales.forEach((capa: any) => {
+            if (checkedItems[capa.IDCAPA]) {
+                newCheckedItems[capa.IDCAPA] = true
+            }
+        })
+        setCheckedItems(newCheckedItems)
+
         setSearchQuery('')
-        setCheckedItems({})// con esto se descelecciona los check activos
-        setExpandedItems({}) // con esto se cierran todos los item abiertes, se descolacza el arbol
-        // renderTree(dataTablaContenido);
+        setExpandedItems({})
+
+        // Gestionar widget Leyenda según capas activas restantes
+        try {
+            const state = getAppStore().getState()
+            const widgets = state?.appConfig?.widgets
+            if (widgets?.widget_9) {
+                if (activeLayersRef.current.length > 0) {
+                    getAppStore().dispatch(appActions.openWidget('widget_9'))
+                } else {
+                    getAppStore().dispatch(appActions.closeWidget('widget_9'))
+                }
+            }
+        } catch (err) { /* silenciar error */ }
+
+        // Forzar refresco del mapa
+        varJimuMapView.view.zoom = varJimuMapView.view.zoom - 0.00000001
     }
 
     /**
@@ -548,12 +614,12 @@ const WidgetTree: React.FC<Widget_Tree_Props> = ({ dataTablaContenido, varJimuMa
                                 className='input-search'
                             />
                             <div className='btnsSearch'>
-                                <Button onClick={()=>{ setSearchQuery('') }} size="sm" type="secondary" >
+                                <Button onClick={()=>{ setSearchQuery('') }} size="sm" type="secondary" title="Limpiar búsqueda" >
                                         <ClearOutlined />
                                 </Button>
                                 {
                                     capasSelectd.length>0 &&
-                                        <Button onClick={()=>{ removeAllLayers() }} size="sm" type="secondary" >
+                                        <Button onClick={()=>{ removeAllLayers() }} size="sm" type="secondary" title="Remover todas las capas" >
                                             <WrongOutlined />
                                         </Button>
                                 }

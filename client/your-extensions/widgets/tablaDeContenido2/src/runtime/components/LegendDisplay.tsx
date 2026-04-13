@@ -115,7 +115,36 @@ const LegendDisplay = ({ activeLayerUrls = [] }: { activeLayerUrls: string[] }):
                         symbol: { color: fillColor, style: symbol.style, outline: symbol.outline, outlineStyle }
                       }
                     })
-                  // 2b. Soporte para renderer simple (un solo símbolo)
+                  // 2b. Soporte para classBreaks: genera un símbolo por rango de clase
+                  } else if (renderer.type === 'classBreaks' && Array.isArray(renderer.classBreakInfos)) {
+                    legendInfo = renderer.classBreakInfos.map((info: { symbol: any; label: any; classMaxValue: any; description: any }) => {
+                      const symbol = info.symbol
+                      if (symbol.type === 'esriPMS' && symbol.imageData) {
+                        const imageUrl = `data:${symbol.contentType};base64,${symbol.imageData}`
+                        return {
+                          label: info.label || `≤ ${info.classMaxValue}`,
+                          symbol: {
+                            svg: (
+                              <img src={imageUrl} alt={info.label || `≤ ${info.classMaxValue}`} className='imgLeyend' />
+                            )
+                          }
+                        }
+                      }
+                      const colorArr = symbol.color || [0,0,0,0]
+                      const fillColor = `rgba(${colorArr[0]},${colorArr[1]},${colorArr[2]},${colorArr[3]/255})`
+                      let outlineStyle = {}
+                      if (symbol.outline && symbol.outline.color) {
+                        const outlineArr = symbol.outline.color
+                        outlineStyle = {
+                          border: `${symbol.outline.width || 2}px solid rgba(${outlineArr[0]},${outlineArr[1]},${outlineArr[2]},${outlineArr[3]/255})`
+                        }
+                      }
+                      return {
+                        label: info.label || `≤ ${info.classMaxValue}`,
+                        symbol: { color: fillColor, style: symbol.style, outline: symbol.outline, outlineStyle }
+                      }
+                    })
+                  // 2c. Soporte para renderer simple (un solo símbolo)
                   } else if (renderer.type === 'simple' && renderer.symbol) {
                     const symbol = renderer.symbol
                     // Soporte para PictureMarkerSymbol (esriPMS): muestra la imagen directamente
