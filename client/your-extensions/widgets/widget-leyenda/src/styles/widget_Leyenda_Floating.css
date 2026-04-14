@@ -264,13 +264,13 @@
 .widget-result-graphic-title {
   flex: 0 0 auto;
   text-align: center;
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-bold);
   margin-top: var(--spacing-sm);
   margin-bottom: var(--spacing-md);
   color: var(--text-color-secondary);
   padding-top: var(--spacing-xs);
   border-bottom: 1px solid var(--border-color-light);
-  font-weight: var(--font-weight-medium);
   letter-spacing: 0.3px;
 }
 

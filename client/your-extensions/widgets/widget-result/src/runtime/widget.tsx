@@ -164,6 +164,12 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
      */
     const temporalLayerRef = React.useRef<boolean>(false)
 
+    /**
+     * Almacena los Graphic[] dibujados por dibujarFeaturesCoropletico
+     * para poder limpiarlos correctamente con limpiarFeaturesDibujados.
+     */
+    // const featuresDibujadosRef = React.useRef<__esri.Graphic[]>([])
+
     //  para tabs
     const [activeTab, setActiveTab] = React.useState<string>('tabla')
 
@@ -700,42 +706,44 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
     const renderizarSiguienteCropleticoYgrafica = () => {
         // lógica para cambiar el indicador seleccionado y actualizar la gráfica en consecuencia
         if (!data?.withGraphic) return
-        limpiarFeaturesDibujados(jimuMapView, data.features) // limpia los features dibujados del gráfico anterior
-        setTimeout(() => {
+        // Primera vez: los gráficos fueron dibujados por el widget origen (consultaEducacion),
+        // se limpian todos los graphics del view (los de selección están en graphicsLayerRef aparte)
+        jimuMapView?.view?.graphics?.removeAll()
             
-            const currentIndicador = fieldToFilter !== "" ? fieldToFilter : data.withGraphic.fieldToFilter
-            console.log({currentIndicador})
-            const fieldsToFilter = data.withGraphic.dataCoropletico.fieldsToFilter
-            const currentIndex = fieldsToFilter.findIndex(e=>e.field === currentIndicador)
-            const nextIndex = (currentIndex + 1) % fieldsToFilter.length
-            const nextField = fieldsToFilter[nextIndex].field
-            setFieldToFilter(nextField)
-    
-            console.log({data, currentIndicador, currentIndex, nextIndex, nextField})
-            // ajustar y enviar data a renderiza grafica con nuevo fieldToFilter
-            
-    
-            const graphics = dibujarFeaturesCoropletico({
-              features:data.features,
-              jimuMapView,
-              coroplethConfig:{
-                field: nextField,
-                leyenda: data.withGraphic.dataCoropletico.leyenda,
-              }
-            })
-    
-            // Recalcular graphicData con el nuevo campo, reutilizando los nombres originales
-            const originalGraphicData = data.withGraphic.graphicData
-            const newGraphicData = originalGraphicData.map((item, i) => ({
-              name: item.name,
-              value: Number(data.features[i]?.attributes?.[nextField]) || 0
-            }))
-            setOverrideGraphicData(newGraphicData)
-    
-            // Actualizar título con la etiqueta del campo seleccionado
-            const nextFieldInfo = `Total de estudiantes ${fieldsToFilter[nextIndex].label || nextField} en el año ${data.valorBusqueda || ''}`
-            setOverrideGraphicTitle(nextFieldInfo)
-        }, 4000);
+        const currentIndicador = fieldToFilter !== "" ? fieldToFilter : data.withGraphic.fieldToFilter
+        console.log({currentIndicador})
+        const fieldsToFilter = data.withGraphic.dataCoropletico.fieldsToFilter
+        const currentIndex = fieldsToFilter.findIndex(e=>e.field === currentIndicador)
+        const nextIndex = (currentIndex + 1) % fieldsToFilter.length
+        const nextField = fieldsToFilter[nextIndex].field
+        setFieldToFilter(nextField)
+        console.log({data, currentIndicador, currentIndex, nextIndex, nextField})
+        // ajustar y enviar data a renderiza grafica con nuevo fieldToFilter
+
+        // Convertir features inmutables de Redux a objetos JS mutables
+        // para que los constructores de ArcGIS (Polygon, Point, etc.) puedan operar sobre ellos
+        const mutableFeatures = JSON.parse(JSON.stringify(data.features))
+
+        const graphics = dibujarFeaturesCoropletico({
+            features: mutableFeatures,
+            jimuMapView,
+            coroplethConfig:{
+            field: nextField,
+            leyenda: JSON.parse(JSON.stringify(data.withGraphic.dataCoropletico.leyenda)),
+            }
+        })
+
+        // Recalcular graphicData con el nuevo campo, reutilizando los nombres originales
+        const originalGraphicData = data.withGraphic.graphicData
+        const newGraphicData = originalGraphicData.map((item, i) => ({
+            name: item.name,
+            value: Number(data.features[i]?.attributes?.[nextField]) || 0
+        }))
+        setOverrideGraphicData(newGraphicData)
+
+        // Actualizar título con la etiqueta del campo seleccionado
+        const nextFieldInfo = `Total de estudiantes ${fieldsToFilter[nextIndex].label || nextField} en el año ${data.valorBusqueda || ''}`
+        setOverrideGraphicTitle(nextFieldInfo)
     }
     
     return (
@@ -790,7 +798,7 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
                             )}
                             {/* Botones de siguiente y atras para visualización de diferentes graficas para la misma consulta */}
                             {
-                                (data.withGraphic.selectedIndicador === 3 && data.features.length > 0 && viewMode === 'grafico') && (
+                                (data.withGraphic.selectedIndicador === 3 && data.features.length > 1 && viewMode === 'grafico') && (
                                     <Button size="sm" type="primary" className="widget-result-export-btn" onClick={renderizarSiguienteCropleticoYgrafica}> Siguiente </Button>
                                 )
                             }

@@ -292,10 +292,7 @@ const Widget = (props: AllWidgetProps<any>) => {
       }
     }
   }
-
   
-
-
   const realizarQuery = async (url: string, name: string) => {
     setError("")
     try {
@@ -522,10 +519,7 @@ const Widget = (props: AllWidgetProps<any>) => {
     }
     setLoading(true)
     // limpiar geometrías previamente dibujadas
-    if(featuresDibujados?.length){
-      limpiarFeaturesDibujados(varJimuMapView, featuresDibujados)
-      setFeaturesDibujados([])
-    }
+    varJimuMapView?.view?.graphics?.removeAll()
     let urlCapa, campos, where
     if(consultaPorSeleccionada?.name === INDICADORES.ConsultaEducacion){
       urlCapa = urls.SERVICIO_EDUCACION_ALFANUMERICO + `/0`
@@ -545,7 +539,7 @@ const Widget = (props: AllWidgetProps<any>) => {
     // const urlCapa = urls.SERVICIO_EDUCACION_ALFANUMERICO + "/0";
 
     const features = await ejecutarConsulta({ returnGeometry: true, campos, url: urlCapa, where })
-    if(validaLoggerLocalStorage('logger')) console.log({ features, selectedMunicipio, selectedEstablecimiento })
+    
     // si la longitud de los features obtenidos es menor a 1, mostrar mensaje de error indicando que no se encontraron resultados para la consulta realizada
     if (features.length < 1) {
       setError("No se encontraron resultados para la consulta realizada.")
@@ -566,6 +560,7 @@ const Widget = (props: AllWidgetProps<any>) => {
         5: { field: LEYENDA_COROPLETICO_QUINDIO.Tasa_analfabetismo_municipal.fieldsToFilter[0].field, leyenda: LEYENDA_COROPLETICO_QUINDIO.Tasa_analfabetismo_municipal.leyenda },
       }
       const coroplethConfig = esCoropletico && selectedIndicador ? COROPLETICO_MAP[selectedIndicador] : undefined
+      if(validaLoggerLocalStorage('logger')) console.log({ features, selectedMunicipio, selectedEstablecimiento,selectedIndicador, coroplethConfig })
       const graphics = dibujarFeaturesCoropletico({ features, jimuMapView: varJimuMapView, coroplethConfig })
       setFeaturesDibujados(graphics)
     }
