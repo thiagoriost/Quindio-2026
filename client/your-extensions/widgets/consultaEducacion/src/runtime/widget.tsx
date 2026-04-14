@@ -17,7 +17,7 @@ import esriRequest from "@arcgis/core/request"
 
 import { abrirTablaResultados, limpiarYCerrarWidgetResultados } from "../../../widget-result/src/runtime/widget";
 import { abrirWidgetLeyenda, limpiarYCerrarwidgetLeyenda } from '../../../widget-leyenda/src/runtime/widget';
-import {  ejecutarConsulta, restoreInitialExtent, validaLoggerLocalStorage, dibujarFeaturesCoropletico} from "../../../shared/utils/export.utils";
+import {  ejecutarConsulta, restoreInitialExtent, validaLoggerLocalStorage, dibujarFeaturesCoropletico, limpiarFeaturesDibujados} from "../../../shared/utils/export.utils";
 import { LayerInfo } from "widgets/shared/types/types_consultaAvanzadaAlfanumerica"
 import { SearchActionBar } from "../../../shared/components/search-action-bar";
 import { loadLayers } from "../../../shared/services/queryMapServer.service"
@@ -293,11 +293,7 @@ const Widget = (props: AllWidgetProps<any>) => {
     }
   }
 
-  const limpiarFeaturesDibujados = (jimuMapView: JimuMapView, features: __esri.Graphic[]) => {
-    if (jimuMapView && features?.length) {
-      jimuMapView.view.graphics.removeMany(features)
-    }
-  }
+  
 
 
   const realizarQuery = async (url: string, name: string) => {
@@ -655,7 +651,6 @@ const Widget = (props: AllWidgetProps<any>) => {
         dataLeyenda = dataCoropletico.leyenda.map(l => ({ label: l.label, colorFondo: l.colorFondo, colorLine: l.colorLine }))
       }
       fixDataToRenderGrafic = features.map(f => ({ name: MUNICIPIOS_QUINDIO.find(m => m.IDMUNICIPI === f.attributes.IDMUNICIPIO)?.NOMBRE, value: Number(f.attributes[fieldToFilter]) || 0 }))
-      if(validaLoggerLocalStorage('logger')) console.log({fixDataToRenderGrafic, withGraphic})
       withGraphic = {
         showGraphic: true,
         graphicData: fixDataToRenderGrafic,
@@ -665,6 +660,7 @@ const Widget = (props: AllWidgetProps<any>) => {
         dataCoropletico,
         fieldToFilter // primer campo que se emplea para renderizar el grafico, se asume que es el campo principal para mostrar en el gráfico
       }
+    if(validaLoggerLocalStorage('logger')) console.log({fixDataToRenderGrafic, withGraphic})
       
       abrirWidgetLeyenda({
         widgetleyendaId: WIDGET_IDS.LEYENDA,
@@ -680,7 +676,9 @@ const Widget = (props: AllWidgetProps<any>) => {
       props,
       widgetResultId,
       varJimuMapView.view.spatialReference,      
-      withGraphic
+      withGraphic,
+      false,
+      selectedAnio
     )
     setLoading(false)
 

@@ -44,7 +44,7 @@ import { i } from "motion/dist/react-m";
 import * as geometryJsonUtils from '@arcgis/core/geometry/support/jsonUtils'
 // cef 20260313
 import ResultGraphic from "../../components/ResultGraphic_Richarts";
-import { /* restoreInitialExtent, */ dibujarFeaturesCoropletico, validaLoggerLocalStorage } from '../../../shared/utils/export.utils'
+import { /* restoreInitialExtent, */ dibujarFeaturesCoropletico, limpiarFeaturesDibujados, validaLoggerLocalStorage } from '../../../shared/utils/export.utils'
 
 /**
  * WidgetResult
@@ -173,6 +173,8 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
     )
 
     const [fieldToFilter, setFieldToFilter] = React.useState<string>("") // para manejar el campo que se va a mostrar en el gráfico cuando hay gráfica
+    const [overrideGraphicData, setOverrideGraphicData] = React.useState<any[] | null>(null) // datos de gráfica recalculados al cambiar indicador
+    const [overrideGraphicTitle, setOverrideGraphicTitle] = React.useState<string | null>(null) // título de gráfica recalculado al cambiar indicador
 
     /**
      * Guarda el extent inicial del mapa cuando la vista
@@ -226,6 +228,8 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
             setPage(1)
             setViewMode('tabla')
             setFieldToFilter(data.withGraphic ? data.withGraphic.fieldToFilter : "") // actualiza el campo a mostrar en el gráfico cuando llegan nuevos datos con gráfica
+            setOverrideGraphicData(null)
+            setOverrideGraphicTitle(null)
         }
     }, [data])
 
@@ -696,26 +700,42 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
     const renderizarSiguienteCropleticoYgrafica = () => {
         // lógica para cambiar el indicador seleccionado y actualizar la gráfica en consecuencia
         if (!data?.withGraphic) return
-        const currentIndicador = fieldToFilter !== "" ? fieldToFilter : data.withGraphic.fieldToFilter
-        console.log({currentIndicador})
-        const fieldsToFilter = data.withGraphic.dataCoropletico.fieldsToFilter
-        const currentIndex = fieldsToFilter.findIndex(e=>e.field === currentIndicador)
-        const nextIndex = (currentIndex + 1) % fieldsToFilter.length
-        const nextField = fieldsToFilter[nextIndex].field
-        setFieldToFilter(nextField)
-
-        console.log({data, currentIndicador, currentIndex, nextIndex, nextField})
-        // ajustar y enviar data a renderiza grafica con nuevo fieldToFilter
-        
-
-        dibujarFeaturesCoropletico({
-          features:data.features,
-          jimuMapView,
-          coroplethConfig:{
-            field: nextField,
-            leyenda: data.withGraphic.dataCoropletico.leyenda,
-          }
-        })
+        limpiarFeaturesDibujados(jimuMapView, data.features) // limpia los features dibujados del gráfico anterior
+        setTimeout(() => {
+            
+            const currentIndicador = fieldToFilter !== "" ? fieldToFilter : data.withGraphic.fieldToFilter
+            console.log({currentIndicador})
+            const fieldsToFilter = data.withGraphic.dataCoropletico.fieldsToFilter
+            const currentIndex = fieldsToFilter.findIndex(e=>e.field === currentIndicador)
+            const nextIndex = (currentIndex + 1) % fieldsToFilter.length
+            const nextField = fieldsToFilter[nextIndex].field
+            setFieldToFilter(nextField)
+    
+            console.log({data, currentIndicador, currentIndex, nextIndex, nextField})
+            // ajustar y enviar data a renderiza grafica con nuevo fieldToFilter
+            
+    
+            const graphics = dibujarFeaturesCoropletico({
+              features:data.features,
+              jimuMapView,
+              coroplethConfig:{
+                field: nextField,
+                leyenda: data.withGraphic.dataCoropletico.leyenda,
+              }
+            })
+    
+            // Recalcular graphicData con el nuevo campo, reutilizando los nombres originales
+            const originalGraphicData = data.withGraphic.graphicData
+            const newGraphicData = originalGraphicData.map((item, i) => ({
+              name: item.name,
+              value: Number(data.features[i]?.attributes?.[nextField]) || 0
+            }))
+            setOverrideGraphicData(newGraphicData)
+    
+            // Actualizar título con la etiqueta del campo seleccionado
+            const nextFieldInfo = `Total de estudiantes ${fieldsToFilter[nextIndex].label || nextField} en el año ${data.valorBusqueda || ''}`
+            setOverrideGraphicTitle(nextFieldInfo)
+        }, 4000);
     }
     
     return (
@@ -770,7 +790,7 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
                             )}
                             {/* Botones de siguiente y atras para visualización de diferentes graficas para la misma consulta */}
                             {
-                                (data.withGraphic.selectedIndicador === 3 && data.features.length > 0) && (
+                                (data.withGraphic.selectedIndicador === 3 && data.features.length > 0 && viewMode === 'grafico') && (
                                     <Button size="sm" type="primary" className="widget-result-export-btn" onClick={renderizarSiguienteCropleticoYgrafica}> Siguiente </Button>
                                 )
                             }
@@ -783,9 +803,9 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
                         <div className="widget-result-view">
                             {viewMode === 'grafico' && data?.withGraphic?.showGraphic ? (
                                 <ResultGraphic
-                                    data={data.withGraphic.graphicData}
+                                    data={overrideGraphicData ?? data.withGraphic.graphicData}
                                     type={data.withGraphic.graphicType}
-                                    title={data.withGraphic.graphicTitle || 'Sin título'}
+                                    title={overrideGraphicTitle ?? data.withGraphic.graphicTitle ?? 'Sin título'}
                                 />
                             ) : (
                             <ResultTable

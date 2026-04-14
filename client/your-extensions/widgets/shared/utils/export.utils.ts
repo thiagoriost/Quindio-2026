@@ -404,6 +404,12 @@ export interface CoroplethConfig {
   leyenda: Array<{ minimo: number; maximo: number; colorFondo: string; colorLine: string }>
 }
 
+export const limpiarFeaturesDibujados = (jimuMapView: JimuMapView, features: __esri.Graphic[]) => {
+  if (jimuMapView && features?.length) {
+    jimuMapView.view.graphics.removeMany(features)
+  }
+}
+
 /**
  * Genera gráficos (Graphic[]) a partir de features ArcGIS y los dibuja en el mapa.
  *
