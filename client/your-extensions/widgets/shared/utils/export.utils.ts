@@ -450,9 +450,37 @@ export const dibujarFeaturesCoropletico = ({
 }): __esri.Graphic[] => {
   if (!features?.length || !jimuMapView) return []
 
+  // Deep-clone features para garantizar mutabilidad (ej. objetos congelados de Redux)
+  const mutableFeatures: __esri.Graphic[] = JSON.parse(JSON.stringify(features))
+
+  // Validar y deep-clone la leyenda si se proporcionó coroplethConfig
+  if (coroplethConfig) {
+    if (!coroplethConfig.field) {
+      console.warn('dibujarFeaturesCoropletico: coroplethConfig.field es requerido')
+      return []
+    }
+    if (!coroplethConfig.leyenda?.length) {
+      console.warn('dibujarFeaturesCoropletico: coroplethConfig.leyenda está vacía o no definida')
+      return []
+    }
+    // Validar que cada rango tenga las propiedades necesarias
+    const leyendaValida = coroplethConfig.leyenda.every(
+      l => l.minimo != null && l.maximo != null && l.colorFondo && l.colorLine
+    )
+    if (!leyendaValida) {
+      console.warn('dibujarFeaturesCoropletico: leyenda contiene rangos incompletos (minimo, maximo, colorFondo, colorLine requeridos)')
+      return []
+    }
+    // Deep-clone leyenda para evitar mutar el objeto original (ej. Redux)
+    coroplethConfig = {
+      field: coroplethConfig.field,
+      leyenda: JSON.parse(JSON.stringify(coroplethConfig.leyenda))
+    }
+  }
+
   const viewSR = jimuMapView.view.spatialReference
 
-  const graphics = features
+  const graphics = mutableFeatures
     .filter(f => f?.geometry)
     .map(f => {
       const raw = f.geometry as any

@@ -550,20 +550,20 @@ const Widget = (props: AllWidgetProps<any>) => {
     restoreInitialExtent(varJimuMapView, initialExtentRef)
     // dibujar los features obtenidos en el mapa
     const esCoropletico = consultaPorSeleccionada?.name === INDICADORES.ConsultaPorIndicadores && (selectedIndicador === 1 || selectedIndicador === 2 || selectedIndicador === 3 || selectedIndicador === 4 || selectedIndicador === 5) // el indicador "cobertura", "cupos ofertados", "eficiencia interna", "tasa de analfabetismo departamental" y "tasa de analfabetismo municipal" se representan con coropletico
-    if (features?.length) {
-      // Determinar la configuración coroplética según el indicador seleccionado
-      const COROPLETICO_MAP: Record<number, { field: string; leyenda: typeof LEYENDA_COROPLETICO_QUINDIO.Cobertura.leyenda }> = {
-        1: { field: LEYENDA_COROPLETICO_QUINDIO.Cobertura.fieldsToFilter[0].field, leyenda: LEYENDA_COROPLETICO_QUINDIO.Cobertura.leyenda },
-        2: { field: LEYENDA_COROPLETICO_QUINDIO.Cupos_ofertados.fieldsToFilter[0].field, leyenda: LEYENDA_COROPLETICO_QUINDIO.Cupos_ofertados.leyenda },
-        3: { field: LEYENDA_COROPLETICO_QUINDIO.Eficiencia_interna.fieldsToFilter[0].field, leyenda: LEYENDA_COROPLETICO_QUINDIO.Eficiencia_interna.leyenda },
-        4: { field: LEYENDA_COROPLETICO_QUINDIO.Tasa_analfabetismo_departamental.fieldsToFilter[0].field, leyenda: LEYENDA_COROPLETICO_QUINDIO.Tasa_analfabetismo_departamental.leyenda },
-        5: { field: LEYENDA_COROPLETICO_QUINDIO.Tasa_analfabetismo_municipal.fieldsToFilter[0].field, leyenda: LEYENDA_COROPLETICO_QUINDIO.Tasa_analfabetismo_municipal.leyenda },
-      }
-      const coroplethConfig = esCoropletico && selectedIndicador ? COROPLETICO_MAP[selectedIndicador] : undefined
-      if(validaLoggerLocalStorage('logger')) console.log({ features, selectedMunicipio, selectedEstablecimiento,selectedIndicador, coroplethConfig })
-      const graphics = dibujarFeaturesCoropletico({ features, jimuMapView: varJimuMapView, coroplethConfig })
-      setFeaturesDibujados(graphics)
-    }
+    // if (features?.length) {
+    //   // Determinar la configuración coroplética según el indicador seleccionado
+      // const COROPLETICO_MAP: Record<number, { field: string; leyenda: typeof LEYENDA_COROPLETICO_QUINDIO.Cobertura.leyenda }> = {
+      //   1: { field: LEYENDA_COROPLETICO_QUINDIO.Cobertura.fieldsToFilter[0].field, leyenda: LEYENDA_COROPLETICO_QUINDIO.Cobertura.leyenda },
+      //   2: { field: LEYENDA_COROPLETICO_QUINDIO.Cupos_ofertados.fieldsToFilter[0].field, leyenda: LEYENDA_COROPLETICO_QUINDIO.Cupos_ofertados.leyenda },
+      //   3: { field: LEYENDA_COROPLETICO_QUINDIO.Eficiencia_interna.fieldsToFilter[0].field, leyenda: LEYENDA_COROPLETICO_QUINDIO.Eficiencia_interna.leyenda },
+      //   4: { field: LEYENDA_COROPLETICO_QUINDIO.Tasa_analfabetismo_departamental.fieldsToFilter[0].field, leyenda: LEYENDA_COROPLETICO_QUINDIO.Tasa_analfabetismo_departamental.leyenda },
+      //   5: { field: LEYENDA_COROPLETICO_QUINDIO.Tasa_analfabetismo_municipal.fieldsToFilter[0].field, leyenda: LEYENDA_COROPLETICO_QUINDIO.Tasa_analfabetismo_municipal.leyenda },
+      // }
+      // const coroplethConfig = esCoropletico && selectedIndicador ? COROPLETICO_MAP[selectedIndicador] : undefined
+      // if(validaLoggerLocalStorage('logger')) console.log({ features, selectedMunicipio, selectedEstablecimiento,selectedIndicador, coroplethConfig })
+      // const graphics = dibujarFeaturesCoropletico({ features, jimuMapView: varJimuMapView, coroplethConfig })
+      // setFeaturesDibujados(graphics)
+    // }
 
     let camposResultados,_cloneFeatures, withGraphic={
         showGraphic: false,

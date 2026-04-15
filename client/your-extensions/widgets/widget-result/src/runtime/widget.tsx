@@ -61,10 +61,7 @@ import { /* restoreInitialExtent, */ dibujarFeaturesCoropletico, limpiarFeatures
  */
 export default function Widget(props: AllWidgetProps<IMConfig>) {
     // Estado para mostrar/ocultar el panel flotante
-    const [open, setOpen] = React.useState(true)
-
-    if(validaLoggerLocalStorage('logger')) console.log('WidgetResult ID:', props.id)
-    if(validaLoggerLocalStorage('logger')) console.log('MapWidgetIds:', props.useMapWidgetIds)
+    const [open, setOpen] = React.useState(true)    
 
     // Estado para la posición del panel (drag)
     const [panelPos, setPanelPos] = React.useState<{ x: number; y: number } | null>(null)
@@ -74,30 +71,30 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
     /**
          * Inicia el arrastre del panel al hacer mousedown sobre el header.
          */
-        const onDragStart = (e: React.MouseEvent) => {
-            if ((e.target as HTMLElement).closest('.widget-result-close-btn')) return
-            e.preventDefault()
-            draggingRef.current = true
-            const panel = (e.currentTarget as HTMLElement).parentElement
-            const rect = panel.getBoundingClientRect()
-            dragOffsetRef.current = { x: e.clientX - rect.left, y: e.clientY - rect.top }
+    const onDragStart = (e: React.MouseEvent) => {
+        if ((e.target as HTMLElement).closest('.widget-result-close-btn')) return
+        e.preventDefault()
+        draggingRef.current = true
+        const panel = (e.currentTarget as HTMLElement).parentElement
+        const rect = panel.getBoundingClientRect()
+        dragOffsetRef.current = { x: e.clientX - rect.left, y: e.clientY - rect.top }
 
-            const onMouseMove = (ev: MouseEvent) => {
-                if (!draggingRef.current) return
-                const newX = Math.max(0, Math.min(ev.clientX - dragOffsetRef.current.x, window.innerWidth - rect.width))
-                const newY = Math.max(0, Math.min(ev.clientY - dragOffsetRef.current.y, window.innerHeight - rect.height))
-                setPanelPos({ x: newX, y: newY })
-            }
-
-            const onMouseUp = () => {
-                draggingRef.current = false
-                document.removeEventListener('mousemove', onMouseMove)
-                document.removeEventListener('mouseup', onMouseUp)
-            }
-
-            document.addEventListener('mousemove', onMouseMove)
-            document.addEventListener('mouseup', onMouseUp)
+        const onMouseMove = (ev: MouseEvent) => {
+            if (!draggingRef.current) return
+            const newX = Math.max(0, Math.min(ev.clientX - dragOffsetRef.current.x, window.innerWidth - rect.width))
+            const newY = Math.max(0, Math.min(ev.clientY - dragOffsetRef.current.y, window.innerHeight - rect.height))
+            setPanelPos({ x: newX, y: newY })
         }
+
+        const onMouseUp = () => {
+            draggingRef.current = false
+            document.removeEventListener('mousemove', onMouseMove)
+            document.removeEventListener('mouseup', onMouseUp)
+        }
+
+        document.addEventListener('mousemove', onMouseMove)
+        document.addEventListener('mouseup', onMouseUp)
+    }
 
     /**
      * Vista activa del mapa proporcionada por JimuMapViewComponent.
@@ -125,6 +122,9 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
     const widgetState = useSelector(
         (state: IMState) => state.widgetsRuntimeInfo?.[props.id]?.state
     )
+    if(validaLoggerLocalStorage('logger')) console.log('WidgetResult ID:', {id:props.id, props})
+    if(validaLoggerLocalStorage('logger')) console.log('MapWidgetIds:', props.useMapWidgetIds)
+    if(validaLoggerLocalStorage('logger')) console.log({widgetState})        
 
     /**
      * Página actual de la tabla de resultados.
@@ -202,6 +202,7 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
     graphicsLayerRef.current = layer;
 
     return () => {
+        console.log("closed widget result")
       view.map.remove(layer);
       layer.destroy();
       graphicsLayerRef.current = null;
@@ -226,16 +227,35 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
      * Reinicia la paginación cuando llegan nuevos resultados.
      */
     React.useEffect(() => {
+         if (!data) return
         if (data?.withGraphic) {
             setViewMode('grafico')
         }
         if (data){
             temporalLayerRef.current = data.temporalLayer === true //Guarda el valor de temporalLayer cuando llegan los datos
+            const { features } = data
+            if (!features?.length) return
+            if(validaLoggerLocalStorage('logger')) console.log("Resultados recibidos en WidgetResult:", {features, data})
+            setOpen(true)
             setPage(1)
             setViewMode('tabla')
             setFieldToFilter(data.withGraphic ? data.withGraphic.fieldToFilter : "") // actualiza el campo a mostrar en el gráfico cuando llegan nuevos datos con gráfica
             setOverrideGraphicData(null)
             setOverrideGraphicTitle(null)
+            // analizar data para saber si se requiere cambiar a vista de gráfico directamente (data.withGraphic) y setear viewMode en consecuencia
+            if (data.withGraphic.showGraphic) {
+                const graphics = dibujarFeaturesCoropletico({
+                    features: data.features,
+                    jimuMapView,
+                    coroplethConfig:{
+                        field: data.withGraphic.fieldToFilter,
+                        leyenda: data.withGraphic.dataCoropletico.leyenda,
+                    }
+                })
+                console.log({graphics})
+                setViewMode('grafico')
+            }
+
         }
     }, [data])
 
@@ -491,7 +511,7 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
     /**
     * Efecto que se ejecuta cuando cambian los datos de resultados (`data`).
     */
-    React.useEffect(() => { // cef 20260307
+    /* React.useEffect(() => { // cef 20260307
 
         if (!data) return
 
@@ -502,7 +522,7 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
         if(validaLoggerLocalStorage('logger')) console.log("Resultados recibidos en WidgetResult:", {features, data})
         setOpen(true)
 
-    }, [data])
+    }, [data]) */
 
 
     /**
@@ -716,21 +736,18 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
         const nextIndex = (currentIndex + 1) % fieldsToFilter.length
         const nextField = fieldsToFilter[nextIndex].field
         setFieldToFilter(nextField)
-        if(validaLoggerLocalStorage('logger')) console.log({data, currentIndicador, currentIndex, nextIndex, nextField})
+        if(validaLoggerLocalStorage('logger')) console.log({data, currentIndicador, currentIndex, nextIndex, nextField,coroplethConfig:{field: nextField, leyenda: data.withGraphic.dataCoropletico.leyenda }})
         // ajustar y enviar data a renderiza grafica con nuevo fieldToFilter
 
-        // Convertir features inmutables de Redux a objetos JS mutables
-        // para que los constructores de ArcGIS (Polygon, Point, etc.) puedan operar sobre ellos
-        const mutableFeatures = JSON.parse(JSON.stringify(data.features))
-
         const graphics = dibujarFeaturesCoropletico({
-            features: mutableFeatures,
+            features: data.features,
             jimuMapView,
             coroplethConfig:{
             field: nextField,
-            leyenda: JSON.parse(JSON.stringify(data.withGraphic.dataCoropletico.leyenda)),
+            leyenda: data.withGraphic.dataCoropletico.leyenda,
             }
         })
+        console.log({graphics})
 
         // Recalcular graphicData con el nuevo campo, reutilizando los nombres originales
         const originalGraphicData = data.withGraphic.graphicData
