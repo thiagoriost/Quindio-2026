@@ -101,6 +101,12 @@ const Widget = (props: AllWidgetProps<any>) => {
    */
   const [pointerGeoCoords9377, setPointerGeoCoords9377] = useState<{lat: number, lon: number, sr: number} | null>(null)
 
+  /**
+   * Estado para las coordenadas geográficas (lat/lon) del puntero proyectadas a SR 4686 (MAGNA-SIRGAS).
+   * Estructura: { lat, lon, sr }.
+   */
+  const [pointerCoords4686, setPointerCoords4686] = useState<{lat: number, lon: number, sr: number} | null>(null)
+
     /**
      * Maneja el evento de cambio de vista activa en el widget de mapa.
      * Asigna la instancia de JimuMapView al estado local y, si la vista es de tipo MapView,
@@ -204,6 +210,7 @@ const Widget = (props: AllWidgetProps<any>) => {
       setPointerGeoCoords(null)
       setPointerCoords9377(null)
       setPointerGeoCoords9377(null)
+      setPointerCoords4686(null)
       return
     }
 
@@ -270,6 +277,38 @@ const Widget = (props: AllWidgetProps<any>) => {
       }
     }
     tryProject9377()
+
+    // Proyección a 4686 (MAGNA-SIRGAS geográfico)
+    const tryProject4686 = async (retryCount = 0) => {
+      const projection = (window as any).arcgisProjection
+      const PointArcgis = (window as any).arcgisPoint
+      const SpatialReference = (window as any).arcgisSpatialReference
+
+      if (!projection || !PointArcgis || !SpatialReference) {
+        if (retryCount < 5) {
+          setTimeout(() => tryProject4686(retryCount + 1), 300)
+        } else {
+          setPointerCoords4686(null)
+        }
+        return
+      }
+      await projection.load?.()
+      const targetSR = new SpatialReference({ wkid: 4686 })
+      const srcPoint = new PointArcgis({ x: point.x, y: point.y, spatialReference: point.spatialReference })
+      let projected = null
+      try {
+        projected = projection.project(srcPoint, targetSR)
+        if (loggerValue) console.log({ projected4686: projected, srcSR: srcPoint.spatialReference.wkid, targetSR: 4686 })
+      } catch (e) {
+        projected = null
+      }
+      if (projected) {
+        setPointerCoords4686({ lat: projected.y, lon: projected.x, sr: 4686 })
+      } else {
+        setPointerCoords4686(null)
+      }
+    }
+    tryProject4686()
   }, [])
 
 
@@ -384,12 +423,21 @@ const Widget = (props: AllWidgetProps<any>) => {
             <br />
           </div>
         )}
-        {pointerGeoCoords && (
+        {(pointerGeoCoords && loggerValue) && (
           <div>
             <span className="barraEscalaCoordsLabel">Coordenadas geográficas (SR {pointerGeoCoords.sr}):</span>
             <br />
             <span className="barraEscalaCoordsValue">
               Lat: {pointerGeoCoords.lat.toFixed(6)}, Lon: {pointerGeoCoords.lon.toFixed(6)}
+            </span>
+          </div>
+        )}
+        {pointerCoords4686 && (
+          <div>
+            <span className="barraEscalaCoordsLabel">Coordenadas geográficas (SR 4686):</span>
+            <br />
+            <span className="barraEscalaCoordsValue">
+              Lat: {pointerCoords4686.lat.toFixed(6)}, Lon: {pointerCoords4686.lon.toFixed(6)}
             </span>
           </div>
         )}

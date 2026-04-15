@@ -711,13 +711,12 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
         jimuMapView?.view?.graphics?.removeAll()
             
         const currentIndicador = fieldToFilter !== "" ? fieldToFilter : data.withGraphic.fieldToFilter
-        console.log({currentIndicador})
         const fieldsToFilter = data.withGraphic.dataCoropletico.fieldsToFilter
         const currentIndex = fieldsToFilter.findIndex(e=>e.field === currentIndicador)
         const nextIndex = (currentIndex + 1) % fieldsToFilter.length
         const nextField = fieldsToFilter[nextIndex].field
         setFieldToFilter(nextField)
-        console.log({data, currentIndicador, currentIndex, nextIndex, nextField})
+        if(validaLoggerLocalStorage('logger')) console.log({data, currentIndicador, currentIndex, nextIndex, nextField})
         // ajustar y enviar data a renderiza grafica con nuevo fieldToFilter
 
         // Convertir features inmutables de Redux a objetos JS mutables
