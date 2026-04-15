@@ -4,6 +4,7 @@
 export type CoordinateType =
   | "PLANAR"
   | "GEOGRAPHIC_DECIMAL"
+  | "GEOGRAPHIC_DECIMAL_4686"
   | "GEOGRAPHIC_DMS"
 
 /**

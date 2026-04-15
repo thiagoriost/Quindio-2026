@@ -90,6 +90,13 @@ const Widget = (props: AllWidgetProps<any>) => {
         spatialReference: { wkid: 4326 }
       })
     }
+    if (type === "GEOGRAPHIC_DECIMAL_4686") {
+      point = new Point({
+        longitude: Number(data.lon),
+        latitude: Number(data.lat),
+        spatialReference: new SpatialReference({ wkid: 4686 })
+      })
+    }
     let textoGeographicDMS = ''
     if (type === "GEOGRAPHIC_DMS") {
       textoGeographicDMS = `Lat: ${data.latDeg}° ${data.latMin}' ${data.latSec}'', Lon: ${data.lonDeg}° ${data.lonMin}' ${data.lonSec}''`

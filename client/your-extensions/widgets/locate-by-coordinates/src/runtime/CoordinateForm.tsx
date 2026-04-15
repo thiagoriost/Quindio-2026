@@ -69,7 +69,7 @@ export default function CoordinateForm({ onLocate, disabled, mapReady, onClear }
       return true
     }
 
-    if (type === "GEOGRAPHIC_DECIMAL") {
+    if (type === "GEOGRAPHIC_DECIMAL" || type === "GEOGRAPHIC_DECIMAL_4686") {
 
       if (!lat || !lon) {
         setError("")
@@ -137,8 +137,9 @@ export default function CoordinateForm({ onLocate, disabled, mapReady, onClear }
           }}
         >
           <Option value="PLANAR">Planas MAGNA SIRGAS (9377)</Option>
-          <Option value="GEOGRAPHIC_DECIMAL">Geográficas (Decimal - 4326)</Option>
-          <Option value="GEOGRAPHIC_DMS">Geográficas (DMS - 4326)</Option>
+          {/* <Option value="GEOGRAPHIC_DECIMAL">Geográficas (Decimal - 4326)</Option> */}
+          <Option value="GEOGRAPHIC_DECIMAL_4686">Geográficas (Decimal - 4686)</Option>
+          {/* <Option value="GEOGRAPHIC_DMS">Geográficas (DMS - 4326)</Option> */}
         </Select>
       </div>
 
@@ -170,7 +171,7 @@ export default function CoordinateForm({ onLocate, disabled, mapReady, onClear }
         </div>
       )}
 
-      {type === "GEOGRAPHIC_DECIMAL" && (
+      {(type === "GEOGRAPHIC_DECIMAL" || type === "GEOGRAPHIC_DECIMAL_4686") && (
         <div className="section">
           <Label className="label">Coordenadas Geográficas</Label>
 
