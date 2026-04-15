@@ -20,7 +20,7 @@
  */
 
 import { Button } from 'jimu-ui'
-import { React, jsx, AllWidgetProps, IMState, IMConfig } from 'jimu-core'
+import { React, AllWidgetProps, IMState, IMConfig } from 'jimu-core'
 import { useSelector } from 'react-redux'
 import { ResultPayload } from '../../models/result-payload.model'
 import { ResultTable } from '../../components/ResultTable'
@@ -38,13 +38,10 @@ import { WidgetState } from 'jimu-core'
 import FeatureLayer from '@arcgis/core/layers/FeatureLayer'
 import GroupLayer from '@arcgis/core/layers/GroupLayer'
 import '../styles/widgetResultFloating.css'
-import { i } from "motion/dist/react-m";
 
 // cef 20260313
-import * as geometryJsonUtils from '@arcgis/core/geometry/support/jsonUtils'
-// cef 20260313
 import ResultGraphic from "../../components/ResultGraphic_Richarts";
-import { /* restoreInitialExtent, */ dibujarFeaturesCoropletico, limpiarFeaturesDibujados, validaLoggerLocalStorage } from '../../../shared/utils/export.utils'
+import { dibujarFeaturesCoropletico,  validaLoggerLocalStorage } from '../../../shared/utils/export.utils'
 
 /**
  * WidgetResult
@@ -164,14 +161,6 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
      */
     const temporalLayerRef = React.useRef<boolean>(false)
 
-    /**
-     * Almacena los Graphic[] dibujados por dibujarFeaturesCoropletico
-     * para poder limpiarlos correctamente con limpiarFeaturesDibujados.
-     */
-    // const featuresDibujadosRef = React.useRef<__esri.Graphic[]>([])
-
-    //  para tabs
-    const [activeTab, setActiveTab] = React.useState<string>('tabla')
 
     // estado de la vista para grafico y/o tabla 
     const [viewMode, setViewMode] = React.useState<'tabla' | 'grafico'>(
@@ -209,28 +198,11 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
     };
     }, [jimuMapView]);
 
-
-    /**
-     * Cuando los resultados desaparecen (data = null),
-     * se limpian los gráficos y se restaura el extent inicial.
-     */
-    /* React.useEffect(() => {
-        if (!data) {
-            graphicsLayerRef.current?.removeAll()
-            if (!temporalLayerRef.current) {
-                restoreInitialExtent(jimuMapView, initialExtentRef)
-            }
-        }
-    }, [data]) */
-
     /**
      * Reinicia la paginación cuando llegan nuevos resultados.
      */
     React.useEffect(() => {
          if (!data) return
-        if (data?.withGraphic) {
-            setViewMode('grafico')
-        }
         if (data){
             temporalLayerRef.current = data.temporalLayer === true //Guarda el valor de temporalLayer cuando llegan los datos
             const { features } = data
@@ -243,8 +215,8 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
             setOverrideGraphicData(null)
             setOverrideGraphicTitle(null)
             // analizar data para saber si se requiere cambiar a vista de gráfico directamente (data.withGraphic) y setear viewMode en consecuencia
-            if (data.withGraphic.showGraphic) {
-                const graphics = dibujarFeaturesCoropletico({
+            if (data.withGraphic?.showGraphic && jimuMapView) {
+                dibujarFeaturesCoropletico({
                     features: data.features,
                     jimuMapView,
                     coroplethConfig:{
@@ -252,12 +224,11 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
                         leyenda: data.withGraphic.dataCoropletico.leyenda,
                     }
                 })
-                console.log({graphics})
                 setViewMode('grafico')
             }
 
         }
-    }, [data])
+    }, [data, jimuMapView])
 
     /**
      * Valida si un objeto de referencia espacial tiene información utilizable por ArcGIS JS API.
@@ -549,6 +520,8 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
     const onClose = () => {
 
         graphicsLayerRef.current?.removeAll()
+        // Limpiar gráficos coroplético dibujados directamente en el view
+        jimuMapView?.view?.graphics?.removeAll()
         getAppStore().dispatch(
             appActions.widgetStatePropChange(
                 props.id,
@@ -557,6 +530,11 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
             )
         )
         setPage(1)
+        setFieldToFilter("")
+        setOverrideGraphicData(null)
+        setOverrideGraphicTitle(null)
+        setViewMode('tabla')
+        setOpen(false)
         // restoreInitialExtent(jimuMapView, initialExtentRef)
     }
 
@@ -747,7 +725,6 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
             leyenda: data.withGraphic.dataCoropletico.leyenda,
             }
         })
-        console.log({graphics})
 
         // Recalcular graphicData con el nuevo campo, reutilizando los nombres originales
         const originalGraphicData = data.withGraphic.graphicData
@@ -814,7 +791,7 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
                             )}
                             {/* Botones de siguiente y atras para visualización de diferentes graficas para la misma consulta */}
                             {
-                                (data.withGraphic.selectedIndicador === 3 && data.features.length > 1 && viewMode === 'grafico') && (
+                                (data.withGraphic.selectedIndicador === 3 && viewMode === 'grafico') && (
                                     <Button size="sm" type="primary" className="widget-result-export-btn" onClick={renderizarSiguienteCropleticoYgrafica}> Siguiente </Button>
                                 )
                             }
