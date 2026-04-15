@@ -41,7 +41,8 @@ import '../styles/widgetResultFloating.css'
 
 // cef 20260313
 import ResultGraphic from "../../components/ResultGraphic_Richarts";
-import { dibujarFeaturesCoropletico,  validaLoggerLocalStorage } from '../../../shared/utils/export.utils'
+import { validaLoggerLocalStorage } from '../../../shared/utils/export.utils'
+import { useDibujarCoropletico } from '../../../shared/hooks/useDibujarCoropletico'
 
 /**
  * WidgetResult
@@ -172,6 +173,20 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
     const [overrideGraphicTitle, setOverrideGraphicTitle] = React.useState<string | null>(null) // título de gráfica recalculado al cambiar indicador
 
     /**
+     * Hook que dibuja/limpia automáticamente el coroplético en el mapa
+     * cuando cambian features, jimuMapView, fieldToFilter o la leyenda.
+     */
+    const activeField = fieldToFilter || data?.withGraphic?.fieldToFilter
+    useDibujarCoropletico({
+        features: data?.features,
+        jimuMapView,
+        coroplethConfig: activeField && data?.withGraphic?.dataCoropletico?.leyenda
+            ? { field: activeField, leyenda: data.withGraphic.dataCoropletico.leyenda }
+            : undefined,
+        enabled: !!data?.withGraphic?.showGraphic
+    })
+
+    /**
      * Guarda el extent inicial del mapa cuando la vista
      * del mapa está disponible.
      * 
@@ -210,25 +225,13 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
             if(validaLoggerLocalStorage('logger')) console.log("Resultados recibidos en WidgetResult:", {features, data})
             setOpen(true)
             setPage(1)
-            setViewMode('tabla')
-            setFieldToFilter(data.withGraphic ? data.withGraphic.fieldToFilter : "") // actualiza el campo a mostrar en el gráfico cuando llegan nuevos datos con gráfica
+            setFieldToFilter(data.withGraphic ? data.withGraphic.fieldToFilter : "")
             setOverrideGraphicData(null)
             setOverrideGraphicTitle(null)
-            // analizar data para saber si se requiere cambiar a vista de gráfico directamente (data.withGraphic) y setear viewMode en consecuencia
-            if (data.withGraphic?.showGraphic && jimuMapView) {
-                dibujarFeaturesCoropletico({
-                    features: data.features,
-                    jimuMapView,
-                    coroplethConfig:{
-                        field: data.withGraphic.fieldToFilter,
-                        leyenda: data.withGraphic.dataCoropletico.leyenda,
-                    }
-                })
-                setViewMode('grafico')
-            }
-
+            // El hook useDibujarCoropletico se encarga de dibujar automáticamente
+            setViewMode(data.withGraphic?.showGraphic ? 'grafico' : 'tabla')
         }
-    }, [data, jimuMapView])
+    }, [data])
 
     /**
      * Valida si un objeto de referencia espacial tiene información utilizable por ArcGIS JS API.
@@ -479,22 +482,6 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
         })
     }
 
-    /**
-    * Efecto que se ejecuta cuando cambian los datos de resultados (`data`).
-    */
-    /* React.useEffect(() => { // cef 20260307
-
-        if (!data) return
-
-        const { features } = data
-
-        if (!features?.length) return
-
-        if(validaLoggerLocalStorage('logger')) console.log("Resultados recibidos en WidgetResult:", {features, data})
-        setOpen(true)
-
-    }, [data]) */
-
 
     /**
      * Evita que el widget permanezca abierto si no hay resultados.
@@ -520,8 +507,7 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
     const onClose = () => {
 
         graphicsLayerRef.current?.removeAll()
-        // Limpiar gráficos coroplético dibujados directamente en el view
-        jimuMapView?.view?.graphics?.removeAll()
+        // Los gráficos coroplético se limpian automáticamente por el hook useDibujarCoropletico
         getAppStore().dispatch(
             appActions.widgetStatePropChange(
                 props.id,
@@ -704,27 +690,15 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
     const renderizarSiguienteCropleticoYgrafica = () => {
         // lógica para cambiar el indicador seleccionado y actualizar la gráfica en consecuencia
         if (!data?.withGraphic) return
-        // Primera vez: los gráficos fueron dibujados por el widget origen (consultaEducacion),
-        // se limpian todos los graphics del view (los de selección están en graphicsLayerRef aparte)
-        jimuMapView?.view?.graphics?.removeAll()
             
         const currentIndicador = fieldToFilter !== "" ? fieldToFilter : data.withGraphic.fieldToFilter
         const fieldsToFilter = data.withGraphic.dataCoropletico.fieldsToFilter
         const currentIndex = fieldsToFilter.findIndex(e=>e.field === currentIndicador)
         const nextIndex = (currentIndex + 1) % fieldsToFilter.length
         const nextField = fieldsToFilter[nextIndex].field
+        // Al actualizar fieldToFilter, el hook useDibujarCoropletico redibuja automáticamente
         setFieldToFilter(nextField)
-        if(validaLoggerLocalStorage('logger')) console.log({data, currentIndicador, currentIndex, nextIndex, nextField,coroplethConfig:{field: nextField, leyenda: data.withGraphic.dataCoropletico.leyenda }})
-        // ajustar y enviar data a renderiza grafica con nuevo fieldToFilter
-
-        const graphics = dibujarFeaturesCoropletico({
-            features: data.features,
-            jimuMapView,
-            coroplethConfig:{
-            field: nextField,
-            leyenda: data.withGraphic.dataCoropletico.leyenda,
-            }
-        })
+        if(validaLoggerLocalStorage('logger')) console.log({data, currentIndicador, currentIndex, nextIndex, nextField})
 
         // Recalcular graphicData con el nuevo campo, reutilizando los nombres originales
         const originalGraphicData = data.withGraphic.graphicData
