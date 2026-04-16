@@ -39,8 +39,15 @@ import {
   ResponsiveContainer,
   PieChart,
   Pie,
+  Cell,
   Legend
 } from "recharts"
+
+const PIE_COLORS = [
+  "#8884d8", "#82ca9d", "#ffc658", "#ff7f50", "#6a5acd",
+  "#20b2aa", "#ff6384", "#36a2eb", "#ffce56", "#4bc0c0",
+  "#9966ff", "#ff9f40", "#e7e9ed", "#b59b00", "#c45850"
+]
 import "../src/styles/widgetResultFloating.css"
 
 interface Props {
@@ -85,7 +92,11 @@ const ResultGraphic = ({ data, type = "bar", xKey = "name", yKey = "value", titl
                 cy="50%"
                 outerRadius="80%"
                 label
-              />
+              >
+                {data.map((_, index) => (
+                  <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                ))}
+              </Pie>
               <Tooltip />
               <Legend />
             </PieChart>
