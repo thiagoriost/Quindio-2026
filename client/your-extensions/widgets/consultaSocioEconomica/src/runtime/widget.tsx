@@ -17,10 +17,9 @@ import { Label, Select, Option } from "jimu-ui"
 
 import { abrirTablaResultados, limpiarYCerrarWidgetResultados } from "../../../widget-result/src/runtime/widget"
 import { limpiarYCerrarwidgetLeyenda } from '../../../widget-leyenda/src/runtime/widget'
-import { ejecutarConsulta, restoreInitialExtent, validaLoggerLocalStorage, limpiarFeaturesDibujados} from "../../../shared/utils/export.utils"
+import { ejecutarConsulta, restoreInitialExtent, validaLoggerLocalStorage, limpiarFeaturesDibujados, realizarQuery} from "../../../shared/utils/export.utils"
 import type { LayerInfo } from "widgets/shared/types/types_consultaAvanzadaAlfanumerica"
 import { SearchActionBar } from "../../../shared/components/search-action-bar"
-import { loadLayers } from "../../../shared/services/queryMapServer.service"
 import { WIDGET_IDS } from "../../../shared/constants/widget-ids"
 import { clearPoint } from "../../../../widgets/utils/module"
 import { urls} from "../../../api/serviciosQuindio"
@@ -30,7 +29,7 @@ import '../styles/styles.css'
 
 
 interface interfaceConsultaPor { id: number, name: string, url: string }
-interface interfaceCategories { id: number, name: string }
+// interface interfaceCategories { id: number, name: string }
 // interface interfaceIndicadores { id: number, name: string }
 // interface interfaceMunicipio { IDMUNICIPIO: string, MUNICIPIO: string }
 interface interfaceEstablecimiento { NOMBREESTABLECIMIENTO: string, CODIGOESTABLECIMIENTO: string, DIRECCION: string, JORNADA: string, IMAGEN: string, geometry: __esri.Geometry, IDSECTOR: string, IDZONA: string, IDTIPOSEDE: string, IDGRUPO: string }
@@ -240,7 +239,7 @@ const WidgetSocioEconomica = (props: AllWidgetProps<any>) => {
     setDisabledAnio(disable)
   }
 
-  const NAMES = ["Infraestructura", "Cobertura" , "Cupos ofertados","Eficiencia interna", "Tasa de Analfabetismo Dep", "Tasa de Analfabetismo Mun"]
+ /*  const NAMES = ["Infraestructura", "Cobertura" , "Cupos ofertados","Eficiencia interna", "Tasa de Analfabetismo Dep", "Tasa de Analfabetismo Mun"]
 
   const consultaPor = [
     {
@@ -268,7 +267,7 @@ const WidgetSocioEconomica = (props: AllWidgetProps<any>) => {
       name: INDICADORES.CoberturaServiciosPublicos,
       url: urls.SERVICIO_SOCIOECONOMICO
     }
-]
+] */
 
   /**
      * Extent inicial del mapa.
@@ -282,52 +281,18 @@ const WidgetSocioEconomica = (props: AllWidgetProps<any>) => {
     // handleClear()
     const id = Number(e.target.value)
     const selected = capasDisponibles.find(c => c.id === id)
-    if(validaLoggerLocalStorage('logger')) console.log({selected})
-    setConsultaPorSeleccionada({ id: selected.id, name: selected.name, url: urls.SERVICIO_SOCIOECONOMICO })
+    const selectedUrl = `${ urls.SERVICIO_SOCIOECONOMICO }/${selected?.id}`
+    setConsultaPorSeleccionada({ id: selected.id, name: selected.name, url: selectedUrl })
     setLoading(true)
-    const response = await realizarQuery(urls.SERVICIO_SOCIOECONOMICO, selected.name)
-    //  poblar el campo categoria con la información presente en response.layers
-    if (response && response.layers) {
-      if(selected.name === INDICADORES.Poblacion) {
-        const categories = response.layers.map((layer: LayerInfo) => ({ id: layer.id, name: layer.name }))
-        //categories ordenadas por name alfabeticamente
-        categories.sort((a: interfaceCategories, b: interfaceCategories) => a.name.localeCompare(b.name))
-        if(validaLoggerLocalStorage('logger')) console.log({categories})
+    const features = await ejecutarConsulta({ returnGeometry: true, campos:['ANIO'], url: selectedUrl, where: '1=1' })
+    if(validaLoggerLocalStorage('logger')) console.log({selected, features})
 
-      }else if(selected.name === INDICADORES.Desplazados) {
-        response.layers.forEach((layer: LayerInfo, index: number) => {
-          layer.nameOriginal = layer.name
-          if (index < NAMES.length) {
-            layer.name = NAMES[index]
-          }
-        })
-        // ordena los layer y los filtra para mostrar solo los que están definidos en NAMES, y poblar el campo indicadores con esta información
-        const filteredIndicadoresList = response.layers.reduce<Array<{ id: number, name: string }>>((acc, layer: LayerInfo) => {
-          const name = layer.name || layer.nameOriginal
-          if (name !== NAMES[0] && name !== NAMES[4] && name !== NAMES[5]) acc.push({ id: layer.id, name })
-          return acc
-        }, [])
+    // obtener los años disponibles para el indicador seleccionado, y poblar el select de año
+    const aniosDisponibles = Array.from(new Set(features.map(f => f.attributes.ANIO))).sort()
+    if(validaLoggerLocalStorage('logger')) console.log({aniosDisponibles})
 
-        if(validaLoggerLocalStorage('logger')) console.log({filteredIndicadoresList})
-      }
-    }
-  }
-
-  // para cargar las capas del servicio de acuerdo a la consulta seleccionada, y mostrar un mensaje de error si la consulta falla
-  const realizarQuery = async (url: string, name: string) => {
-    setError("")
-    try {
-      const response = await loadLayers(url)
-      if(validaLoggerLocalStorage('logger')) console.log({ response, url, name })
-      return response
-    }
-    catch (err) {
-      console.error("Error realizando consulta:", err)
-      setError("Ocurrio un error al realizar la consulta. Por favor intente nuevamente.")
-    }
-    finally {
-      setLoading(false)
-    }
+    setDisabledAnio(false)
+    setLoading(false)
   }
 
   /**
@@ -380,19 +345,19 @@ const WidgetSocioEconomica = (props: AllWidgetProps<any>) => {
 
   }, [props])
 
-  React.useEffect(() => {
-    // realizar consulta al servicio consulta socioeconomica para obtener las capas disponibles y poblar el select de consulta por
-    const cargarCapasIniciales = async () => {
-      setLoading(true)
-      const response = await realizarQuery(urls.SERVICIO_SOCIOECONOMICO, "Inicial")
-      if (response && response.layers) {
-        const capas = response.layers.map((layer: LayerInfo) => ({ id: layer.id, name: layer.name }))
-        capas.sort((a: {name: string}, b: {name: string}) => a.name.localeCompare(b.name))
-        setCapasDisponibles(capas)
-        if(validaLoggerLocalStorage('logger')) console.log({response})
-      }
-      setLoading(false)
+  // realizar consulta al servicio consulta socioeconomica para obtener las capas disponibles y poblar el select de consulta por
+  const cargarCapasIniciales = async () => {
+    setLoading(true)
+    const response = await realizarQuery(urls.SERVICIO_SOCIOECONOMICO, "Inicial", setError, setLoading)
+    if (response && response.layers) {
+      const capas = response.layers.map((layer: LayerInfo) => ({ id: layer.id, name: layer.name }))
+      capas.sort((a: {name: string}, b: {name: string}) => a.name.localeCompare(b.name))
+      setCapasDisponibles(capas)
+      if(validaLoggerLocalStorage('logger')) console.log({response})
     }
+    setLoading(false)
+  }
+  React.useEffect(() => {
 
     cargarCapasIniciales()
   }, [])

@@ -6,6 +6,8 @@ import { Point, Polygon, Polyline } from "@arcgis/core/geometry"
 import type { JimuMapView } from 'jimu-arcgis'
 import Query from "@arcgis/core/rest/support/Query"
 import { executeQueryJSON } from "@arcgis/core/rest/query"
+import { loadLayers } from "../../shared/services/queryMapServer.service"
+
 // import { appActions, getAppStore } from 'jimu-core'
 
 
@@ -537,3 +539,20 @@ export const dibujarFeaturesCoropletico = ({
   jimuMapView.view.graphics.addMany(graphics)
   return graphics
 }
+
+// para cargar las capas del servicio de acuerdo a la consulta seleccionada, y mostrar un mensaje de error si la consulta falla
+  export const realizarQuery = async (url: string, name: string, setError: (arg0: string) => void, setLoading: (arg0: boolean) => void) => {
+    setError("")
+    try {
+      const response = await loadLayers(url)
+      if(validaLoggerLocalStorage('logger')) console.log({ response, url, name })
+      return response
+    }
+    catch (err) {
+      console.error("Error realizando consulta:", err)
+      setError("Ocurrio un error al realizar la consulta. Por favor intente nuevamente.")
+    }
+    finally {
+      setLoading(false)
+    }
+  }
