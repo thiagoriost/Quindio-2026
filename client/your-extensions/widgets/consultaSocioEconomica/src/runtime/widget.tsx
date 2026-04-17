@@ -1,5 +1,5 @@
 /**
- * 
+ *
  *
  * @component
  * @param {AllWidgetProps<any>} props - Propiedades del widget proporcionadas por ArcGIS Experience Builder
@@ -9,37 +9,39 @@
  * @since 2026
  */
 import { JimuMapViewComponent, type JimuMapView } from 'jimu-arcgis'
-import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer"
-import Graphic from "@arcgis/core/Graphic"
+// import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer"
+// import Graphic from "@arcgis/core/Graphic"
 import { React, type AllWidgetProps } from "jimu-core"
-import { Label, Select, Option } from "jimu-ui";
-import esriRequest from "@arcgis/core/request"
+import { Label, Select, Option } from "jimu-ui"
+// import esriRequest from "@arcgis/core/request"
 
-import { abrirTablaResultados, limpiarYCerrarWidgetResultados } from "../../../widget-result/src/runtime/widget";
-import { abrirWidgetLeyenda, limpiarYCerrarwidgetLeyenda } from '../../../widget-leyenda/src/runtime/widget';
-import {  ejecutarConsulta, restoreInitialExtent, validaLoggerLocalStorage, dibujarFeaturesCoropletico, limpiarFeaturesDibujados} from "../../../shared/utils/export.utils";
-import { LayerInfo } from "widgets/shared/types/types_consultaAvanzadaAlfanumerica"
-import { SearchActionBar } from "../../../shared/components/search-action-bar";
+import { abrirTablaResultados, limpiarYCerrarWidgetResultados } from "../../../widget-result/src/runtime/widget"
+import { limpiarYCerrarwidgetLeyenda } from '../../../widget-leyenda/src/runtime/widget'
+import { ejecutarConsulta, restoreInitialExtent, validaLoggerLocalStorage, limpiarFeaturesDibujados} from "../../../shared/utils/export.utils"
+import type { LayerInfo } from "widgets/shared/types/types_consultaAvanzadaAlfanumerica"
+import { SearchActionBar } from "../../../shared/components/search-action-bar"
 import { loadLayers } from "../../../shared/services/queryMapServer.service"
-import { WIDGET_IDS } from "../../../shared/constants/widget-ids";
+import { WIDGET_IDS } from "../../../shared/constants/widget-ids"
 import { clearPoint } from "../../../../widgets/utils/module"
 import { urls} from "../../../api/serviciosQuindio"
 import OurLoading from '../../../commonWidgets/our_loading/OurLoading'
 import '../styles/styles.css'
-import { MUNICIPIOS_QUINDIO } from '../../../shared/constants/municipiosQuindio';
-import ResultGraphicTest from '../../../widget-result/components/ResultGraphic_Test';
+// import { MUNICIPIOS_QUINDIO } from '../../../shared/constants/municipiosQuindio'
 
 
 interface interfaceConsultaPor { id: number, name: string, url: string }
 interface interfaceCategories { id: number, name: string }
-interface interfaceIndicadores { id: number, name: string }
-interface interfaceMunicipio { IDMUNICIPIO: string, MUNICIPIO: string }
-interface interfaceEstablecimiento { NOMBREESTABLECIMIENTO: string, CODIGOESTABLECIMIENTO: string,  DIRECCION: string, JORNADA: string, IMAGEN: string, geometry: __esri.Geometry, IDSECTOR: string, IDZONA: string, IDTIPOSEDE: string, IDGRUPO: string }
-interface interfaceLeyenda { label: string, colorFondo: string, colorLine: string }
+// interface interfaceIndicadores { id: number, name: string }
+// interface interfaceMunicipio { IDMUNICIPIO: string, MUNICIPIO: string }
+interface interfaceEstablecimiento { NOMBREESTABLECIMIENTO: string, CODIGOESTABLECIMIENTO: string, DIRECCION: string, JORNADA: string, IMAGEN: string, geometry: __esri.Geometry, IDSECTOR: string, IDZONA: string, IDTIPOSEDE: string, IDGRUPO: string }
+// interface interfaceLeyenda { label: string, colorFondo: string, colorLine: string }
 
 export const INDICADORES = {
-  "ConsultaEducacion": "Consulta educación",
-  "ConsultaPorIndicadores": "Consulta por indicadores",
+  "Poblacion": "Población",
+  "Desplazados": "Desplazados",
+  "NBI": "Necesidades Básicas Insatisfechas (NBI)",
+  "IndicadoresSocioeconomicos": "Indicadores Socieconómicos",
+  "CoberturaServiciosPublicos": "Cobertura de Servicios Públicos",
 }
 
 export const LEYENDA_COROPLETICO_QUINDIO = {
@@ -201,40 +203,72 @@ export const LEYENDA_COROPLETICO_QUINDIO = {
   },
 
 
-};
+}
 
-const Widget_SocioEconomica = (props: AllWidgetProps<any>) => {
+const WidgetSocioEconomica = (props: AllWidgetProps<any>) => {
   /**
    * Estado para almacenar la referencia a la vista del mapa de Jimu.
    * @type {[JimuMapView | undefined, Function]}
    */
   const [varJimuMapView, setJimuMapView] = React.useState<JimuMapView>()
-  
+
   const [loading, setLoading] = React.useState(false)
-  
+
   const [error, setError] = React.useState("")
   const widgetResultId = WIDGET_IDS.RESULT // ID del widget de resultados en el layout
 
   const [consultaPorSeleccionada, setConsultaPorSeleccionada] = React.useState< interfaceConsultaPor | null>({name: "", id: null, url: ""})
-  
-  
-  const [selectedIndicador, setSelectedIndicador] = React.useState<number | null>(null)
-  
-  const [selectedAnio, setSelectedAnio] = React.useState<string | null>(null)
-  
-  const [selectedEstablecimiento, setSelectedEstablecimiento] = React.useState<interfaceEstablecimiento | null>(null)
-  
-  const NAMES = ["Infraestructura", "Cobertura" ,   "Cupos ofertados","Eficiencia interna", "Tasa de Analfabetismo Dep", "Tasa de Analfabetismo Mun"];
 
-  const consultaPor = [{
-    id: 0,
-    name: INDICADORES.ConsultaEducacion,
-    url: urls.SERVICIO_EDUCACION
-  }, {
-    id: 1,
-    name: INDICADORES.ConsultaPorIndicadores,
-    url: urls.SERVICIO_EDUCACION_ALFANUMERICO
-  }];
+
+  const [selectedIndicador, setSelectedIndicador] = React.useState<number | null>(null)
+
+  const [selectedAnio, setSelectedAnio] = React.useState<string | null>(null)
+
+  const [selectedEstablecimiento, setSelectedEstablecimiento] = React.useState<interfaceEstablecimiento | null>(null)
+
+  const [capasDisponibles, setCapasDisponibles] = React.useState<Array<{id: number, name: string}>>([])
+
+  const [disabledTipoDesplazado, setDisabledTipoDesplazado] = React.useState(true)
+  const [disabledTipoIndicador, setDisabledTipoIndicador] = React.useState(true)
+  const [disabledTipoServicio, setDisabledTipoServicio] = React.useState(true)
+  const [disabledAnio, setDisabledAnio] = React.useState(true)
+
+  const disableAllSelects = (disable: boolean) => {
+    setDisabledTipoDesplazado(disable)
+    setDisabledTipoIndicador(disable)
+    setDisabledTipoServicio(disable)
+    setDisabledAnio(disable)
+  }
+
+  const NAMES = ["Infraestructura", "Cobertura" , "Cupos ofertados","Eficiencia interna", "Tasa de Analfabetismo Dep", "Tasa de Analfabetismo Mun"]
+
+  const consultaPor = [
+    {
+      id: 4,
+      name: INDICADORES.Poblacion,
+      url: urls.SERVICIO_SOCIOECONOMICO
+    },
+    {
+      id:1,
+      name: INDICADORES.NBI,
+      url: urls.SERVICIO_SOCIOECONOMICO
+    },
+    {
+      id: 2,
+      name: INDICADORES.Desplazados,
+      url: urls.SERVICIO_SOCIOECONOMICO
+    },
+    {
+      id: 3,
+      name: INDICADORES.IndicadoresSocioeconomicos,
+      url: urls.SERVICIO_SOCIOECONOMICO
+    },
+    {
+      id: 9,
+      name: INDICADORES.CoberturaServiciosPublicos,
+      url: urls.SERVICIO_SOCIOECONOMICO
+    }
+]
 
   /**
      * Extent inicial del mapa.
@@ -245,22 +279,22 @@ const Widget_SocioEconomica = (props: AllWidgetProps<any>) => {
 
   const handleConsultaPor = async(e: { target: { value: string; }; }) => {
     if (e.target.value === "") return
-    handleClear()
+    // handleClear()
     const id = Number(e.target.value)
-    const selected = consultaPor.find(c => c.id === id)
-    if(validaLoggerLocalStorage('logger'))  console.log({selected})
-    setConsultaPorSeleccionada(selected)
+    const selected = capasDisponibles.find(c => c.id === id)
+    if(validaLoggerLocalStorage('logger')) console.log({selected})
+    setConsultaPorSeleccionada({ id: selected.id, name: selected.name, url: urls.SERVICIO_SOCIOECONOMICO })
     setLoading(true)
-    const response = await realizarQuery(selected.url, selected.name)
-    //  poblar el campo categoria con la información presente en response.layers 
+    const response = await realizarQuery(urls.SERVICIO_SOCIOECONOMICO, selected.name)
+    //  poblar el campo categoria con la información presente en response.layers
     if (response && response.layers) {
-      if(selected.name === INDICADORES.ConsultaEducacion){
+      if(selected.name === INDICADORES.Poblacion) {
         const categories = response.layers.map((layer: LayerInfo) => ({ id: layer.id, name: layer.name }))
         //categories ordenadas por name alfabeticamente
         categories.sort((a: interfaceCategories, b: interfaceCategories) => a.name.localeCompare(b.name))
-        if(validaLoggerLocalStorage('logger'))  console.log({categories})
-        
-      }else if(selected.name === INDICADORES.ConsultaPorIndicadores){
+        if(validaLoggerLocalStorage('logger')) console.log({categories})
+
+      }else if(selected.name === INDICADORES.Desplazados) {
         response.layers.forEach((layer: LayerInfo, index: number) => {
           layer.nameOriginal = layer.name
           if (index < NAMES.length) {
@@ -268,17 +302,18 @@ const Widget_SocioEconomica = (props: AllWidgetProps<any>) => {
           }
         })
         // ordena los layer y los filtra para mostrar solo los que están definidos en NAMES, y poblar el campo indicadores con esta información
-        const filteredIndicadoresList = response.layers.reduce<{ id: number, name: string }[]>((acc, layer: LayerInfo) => {
+        const filteredIndicadoresList = response.layers.reduce<Array<{ id: number, name: string }>>((acc, layer: LayerInfo) => {
           const name = layer.name || layer.nameOriginal
           if (name !== NAMES[0] && name !== NAMES[4] && name !== NAMES[5]) acc.push({ id: layer.id, name })
           return acc
         }, [])
-        
-        if(validaLoggerLocalStorage('logger'))  console.log({filteredIndicadoresList})
+
+        if(validaLoggerLocalStorage('logger')) console.log({filteredIndicadoresList})
       }
     }
   }
-  
+
+  // para cargar las capas del servicio de acuerdo a la consulta seleccionada, y mostrar un mensaje de error si la consulta falla
   const realizarQuery = async (url: string, name: string) => {
     setError("")
     try {
@@ -294,7 +329,7 @@ const Widget_SocioEconomica = (props: AllWidgetProps<any>) => {
       setLoading(false)
     }
   }
-  
+
   /**
    * Manejador del cambio de vista activa del mapa.
    * Guarda la referencia al mapa en el estado del componente.
@@ -323,11 +358,12 @@ const Widget_SocioEconomica = (props: AllWidgetProps<any>) => {
     limpiarYCerrarWidgetResultados(widgetResultId)
     limpiarYCerrarwidgetLeyenda(WIDGET_IDS.LEYENDA)
     limpiarFeaturesDibujados(varJimuMapView, [])
-    
+    disableAllSelects(true)
+
     setConsultaPorSeleccionada({name: "", id: null, url: ""})
-    
+
     setSelectedEstablecimiento(null)
-    
+
     setSelectedIndicador(null)
     setSelectedAnio(null)
   }
@@ -337,11 +373,29 @@ const Widget_SocioEconomica = (props: AllWidgetProps<any>) => {
    */
   React.useEffect(() => {
     if (props.state === 'CLOSED') {
-      handleClear()
-    } 
-    
-    
+      console.log("Widget cerrado, limpiando estado...")
+      // handleClear()
+    }
+
+
   }, [props])
+
+  React.useEffect(() => {
+    // realizar consulta al servicio consulta socioeconomica para obtener las capas disponibles y poblar el select de consulta por
+    const cargarCapasIniciales = async () => {
+      setLoading(true)
+      const response = await realizarQuery(urls.SERVICIO_SOCIOECONOMICO, "Inicial")
+      if (response && response.layers) {
+        const capas = response.layers.map((layer: LayerInfo) => ({ id: layer.id, name: layer.name }))
+        capas.sort((a: {name: string}, b: {name: string}) => a.name.localeCompare(b.name))
+        setCapasDisponibles(capas)
+        if(validaLoggerLocalStorage('logger')) console.log({response})
+      }
+      setLoading(false)
+    }
+
+    cargarCapasIniciales()
+  }, [])
 
 
   const buscar = async () => {
@@ -353,10 +407,10 @@ const Widget_SocioEconomica = (props: AllWidgetProps<any>) => {
     // limpiar geometrías previamente dibujadas
     varJimuMapView?.view?.graphics?.removeAll()
     let urlCapa, campos, where
-    
+
 
     const features = await ejecutarConsulta({ returnGeometry: true, campos, url: urlCapa, where })
-    
+
     // si la longitud de los features obtenidos es menor a 1, mostrar mensaje de error indicando que no se encontraron resultados para la consulta realizada
     if (features.length < 1) {
       setError("No se encontraron resultados para la consulta realizada.")
@@ -366,9 +420,9 @@ const Widget_SocioEconomica = (props: AllWidgetProps<any>) => {
     // ir al extend inicial del mapa para mostrar todos los resultados obtenidos
     restoreInitialExtent(varJimuMapView, initialExtentRef)
     // dibujar los features obtenidos en el mapa
-    const esCoropletico = consultaPorSeleccionada?.name === INDICADORES.ConsultaPorIndicadores && (selectedIndicador === 1 || selectedIndicador === 2 || selectedIndicador === 3 || selectedIndicador === 4 || selectedIndicador === 5) // el indicador "cobertura", "cupos ofertados", "eficiencia interna", "tasa de analfabetismo departamental" y "tasa de analfabetismo municipal" se representan con coropletico    
+    // const esCoropletico = consultaPorSeleccionada?.name === INDICADORES.Poblacion && (selectedIndicador === 1 || selectedIndicador === 2 || selectedIndicador === 3 || selectedIndicador === 4 || selectedIndicador === 5) // el indicador "cobertura", "cupos ofertados", "eficiencia interna", "tasa de analfabetismo departamental" y "tasa de analfabetismo municipal" se representan con coropletico
 
-    let camposResultados,_cloneFeatures, withGraphic={
+    let camposResultados; let _cloneFeatures; const withGraphic={
         showGraphic: false,
         graphicData: [
             { name: "ejemplo_1", value: 65 },
@@ -381,22 +435,22 @@ const Widget_SocioEconomica = (props: AllWidgetProps<any>) => {
         dataCoropletico: {},
         fieldToFilter:''
     }
-    
+
     // abrir el widget de resultados y mostrar la información del establecimiento seleccionado
     abrirTablaResultados(
       _cloneFeatures,
       camposResultados,
       props,
       widgetResultId,
-      varJimuMapView.view.spatialReference,      
+      varJimuMapView.view.spatialReference,
       withGraphic,
       false,
       selectedAnio
     )
     setLoading(false)
 
-  }  
-  
+  }
+
 
   return (
     <div style={{height:'100%', padding: '5px', boxSizing: 'border-box'}}>
@@ -404,13 +458,13 @@ const Widget_SocioEconomica = (props: AllWidgetProps<any>) => {
         <JimuMapViewComponent useMapWidgetId={props.useMapWidgetIds?.[0]} onActiveViewChange={activeViewChangeHandler} />
       )}      {
       varJimuMapView && (
-          
-          <div className="consulta-widget consulta-scroll loading-host">       
-          
+
+          <div className="consulta-widget consulta-scroll loading-host">
+
             <div>
               {/* Consultar por */}
 
-              <Label>Consulta por</Label>
+              <Label className={"mb0"}>Consulta por</Label>
               <Select
                   value={consultaPorSeleccionada?.id ?? ""}
                   disabled={loading}
@@ -420,7 +474,75 @@ const Widget_SocioEconomica = (props: AllWidgetProps<any>) => {
                       {loading ? 'Cargando ...' : 'Seleccione...'}
                   </Option>
 
-                  {consultaPor.map(layer => (
+                  {capasDisponibles.map(layer => (
+                      <Option key={layer.id} value={layer.id}>
+                          {layer.name}
+                      </Option>
+                  ))}
+              </Select>
+
+              <Label className={"styleLabel"}>Tipo desplazado</Label>
+              <Select
+                  value={""}
+                  disabled={loading || disabledTipoDesplazado}
+                  onChange={() => { console.log("Seleccionar tipo desplazado") }}
+              >
+                  <Option value="">
+                      {loading ? 'Cargando ...' : 'Seleccione...'}
+                  </Option>
+
+                  {[{id: 1, name: "Tipo 1"}, {id: 2, name: "Tipo 2"}].map(layer => (
+                      <Option key={layer.id} value={layer.id}>
+                          {layer.name}
+                      </Option>
+                  ))}
+              </Select>
+
+              <Label className={"styleLabel"}>Tipo indicador</Label>
+              <Select
+                  value={""}
+                  disabled={loading || disabledTipoIndicador}
+                  onChange={() => { console.log("Seleccionar tipo indicador") }}
+              >
+                  <Option value="">
+                      {loading ? 'Cargando ...' : 'Seleccione...'}
+                  </Option>
+
+                  {[{id: 1, name: "Tipo 1"}, {id: 2, name: "Tipo 2"}].map(layer => (
+                      <Option key={layer.id} value={layer.id}>
+                          {layer.name}
+                      </Option>
+                  ))}
+              </Select>
+
+              <Label className={"styleLabel"}>Tipo servicio</Label>
+              <Select
+                  value={""}
+                  disabled={loading || disabledTipoServicio}
+                  onChange={() => { console.log("Seleccionar tipo servicio") }}
+              >
+                  <Option value="">
+                      {loading ? 'Cargando ...' : 'Seleccione...'}
+                  </Option>
+
+                  {[{id: 1, name: "Tipo 1"}, {id: 2, name: "Tipo 2"}].map(layer => (
+                      <Option key={layer.id} value={layer.id}>
+                          {layer.name}
+                      </Option>
+                  ))}
+              </Select>
+
+              <Label className={"styleLabel"}>Año</Label>
+              <Select
+                  value={""}
+                  disabled={loading || disabledAnio}
+                  onChange={() => { console.log("Seleccionar año") }}
+              >
+                  <Option value="">
+                      {loading ? 'Cargando ...' : 'Seleccione...'}
+                  </Option>
+
+                  {[{id: 1, name: "Tipo 1"}, {id: 2, name: "Tipo 2"}].map(layer => (
                       <Option key={layer.id} value={layer.id}>
                           {layer.name}
                       </Option>
@@ -428,7 +550,6 @@ const Widget_SocioEconomica = (props: AllWidgetProps<any>) => {
               </Select>
 
 
-              
               {/* BOTONES */}
               <SearchActionBar
                   onSearch={buscar}
@@ -440,7 +561,7 @@ const Widget_SocioEconomica = (props: AllWidgetProps<any>) => {
                   error={error}
               />
             </div>
-            
+
 
             {loading && <OurLoading />}
 
@@ -451,4 +572,4 @@ const Widget_SocioEconomica = (props: AllWidgetProps<any>) => {
   )
 }
 
-export default Widget_SocioEconomica
+export default WidgetSocioEconomica

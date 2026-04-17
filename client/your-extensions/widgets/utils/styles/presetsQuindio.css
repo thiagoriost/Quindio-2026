@@ -190,3 +190,15 @@
    width: 40px !important;
    height: 40px !important;
 }
+
+.styleLabel{
+    margin-top: 10px;
+    margin-bottom: 0px;
+}
+
+.mb0{
+   margin-bottom: 0px;
+}
+.mt10{
+    margin-top: 10px;
+}
