@@ -781,6 +781,7 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
                                 <ResultGraphic
                                     data={overrideGraphicData ?? data.withGraphic.graphicData}
                                     type={data.withGraphic.graphicType}
+                                    barKeys={data.withGraphic.barKeys}
                                     title={overrideGraphicTitle ?? data.withGraphic.graphicTitle ?? 'Sin título'}
                                 />
                             ) : (

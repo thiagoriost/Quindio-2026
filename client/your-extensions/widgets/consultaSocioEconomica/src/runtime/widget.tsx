@@ -321,13 +321,33 @@ const WidgetSocioEconomica = (props: AllWidgetProps<any>) => {
       consultaPorSeleccionada?.name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.necesidadesBasicasInsatisfechas ? LEYENDA_COROPLETICO_QUINDIO.necesidadesBasicasInsatisfechas.fieldsToFilter[0].label : ""
 
     const showGraphic = consultaPorSeleccionada?.name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.necesidadesBasicasInsatisfechas
-    const fixDataToRenderGrafic = features.map(f => ({
+
+    const fixDataToRenderGraphic = features.map(f => ({
       name: f.attributes.NOMBRE,
-      value: f.attributes.PROPOSICIONPORCENTUALR
+      dataToRenderGraphics:[
+        {
+          titleLeyendX: `Proposición Porcentual de ${f.attributes.NOMBRE} en el año ${selectedAnio}`,
+          titleLeyendY: `Cantidad`,
+          urbano: f.attributes.PROPOSICIONPORCENTUALU,
+          rural: f.attributes.PROPOSICIONPORCENTUALR
+        },
+        {
+          titleLeyendX: `Coeficiente de variación estimado de ${f.attributes.NOMBRE} en el año ${selectedAnio}`,
+          titleLeyendY: `Cantidad`,
+          urbano: f.attributes.CVEU,
+          rural: f.attributes.CVER
+        }
+      ]
     }))
+
     const withGraphic = {
       showGraphic,
-      graphicData: fixDataToRenderGrafic,
+      graphicData: fixDataToRenderGraphic,
+      graphicType: 'bar' as const,
+      barKeys: [
+        { key: 'urbano', label: 'Urbano', color: '#9b2d6e' },
+        { key: 'rural', label: 'Rural', color: '#b59b00' }
+      ],
       titleCoropletico,
       dataCoropletico: LEYENDA_COROPLETICO_QUINDIO[transformToCamelCase(consultaPorSeleccionada?.name) as keyof typeof LEYENDA_COROPLETICO_QUINDIO],
       fieldToFilter: LEYENDA_COROPLETICO_QUINDIO[transformToCamelCase(consultaPorSeleccionada?.name) as keyof typeof LEYENDA_COROPLETICO_QUINDIO].fieldsToFilter[0].field // campo que se usará para el coroplético, debe venir en la consulta

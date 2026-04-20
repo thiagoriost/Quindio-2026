@@ -51,20 +51,29 @@ const PIE_COLORS = [
   "#9966ff", "#ff9f40", "#e7e9ed", "#b59b00", "#c45850"
 ]
 
+interface BarKeyDef {
+  key: string;
+  label: string;
+  color: string;
+}
+
 interface Props {
   data: any[];
   type?: "bar" | "pie";
   xKey?: string;
   yKey?: string;
+  barKeys?: BarKeyDef[];
   title?: string;
 }
 
 
-const ResultGraphic = ({ data, type = "bar", xKey = "name", yKey = "value", title }: Props) => {
+const ResultGraphic = ({ data, type = "bar", xKey = "name", yKey = "value", barKeys, title }: Props) => {
 
-  if(validaLoggerLocalStorage('logger')) console.log('feature seleccionada:', { data, type, xKey, yKey, title })
+  if(validaLoggerLocalStorage('logger')) console.log('feature seleccionada:', { data, type, xKey, yKey, barKeys, title })
 
   if (!data || data.length === 0) return null
+
+  const isMultiBar = barKeys && barKeys.length > 0
 
   return (
     <div className="widget-result-graphic">
@@ -83,7 +92,13 @@ const ResultGraphic = ({ data, type = "bar", xKey = "name", yKey = "value", titl
               <XAxis dataKey={xKey} angle={-45} textAnchor="end" interval={0} height={60} />
               <YAxis />
               <Tooltip />
-              <Bar dataKey={yKey} fill="#b59b00" />
+              <Legend />
+              {isMultiBar
+                ? barKeys.map(bk => (
+                    <Bar key={bk.key} dataKey={bk.key} name={bk.label} fill={bk.color} />
+                  ))
+                : <Bar dataKey={yKey} fill="#b59b00" />
+              }
             </BarChart>
           ) : (
             <PieChart>
