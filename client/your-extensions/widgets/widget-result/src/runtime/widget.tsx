@@ -165,7 +165,7 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
 
     // estado de la vista para grafico y/o tabla 
     const [viewMode, setViewMode] = React.useState<'tabla' | 'grafico'>(
-        data?.withGraphic ? 'grafico' : 'tabla'
+        data?.withGraphic?.showGraphic ? 'grafico' : 'tabla'
     )
 
     const [fieldToFilter, setFieldToFilter] = React.useState<string>("") // para manejar el campo que se va a mostrar en el gráfico cuando hay gráfica

@@ -77,7 +77,7 @@ export const LEYENDA_COROPLETICO_QUINDIO = {
         {colorFondo: '255,0,0,0.4', colorLine: '255,0,0,1', minimo: '20', maximo: '100', label: 'Mayor al 20% Poco precisa'}
       ],
       fieldsToFilter: [
-        { field: "PERSONAS", label: "NBI - Total Cve" }
+        { field: "NOMBRE", label: "NBI - Total Cve" }
       ],
   },
 }
@@ -321,8 +321,13 @@ const WidgetSocioEconomica = (props: AllWidgetProps<any>) => {
       consultaPorSeleccionada?.name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.necesidadesBasicasInsatisfechas ? LEYENDA_COROPLETICO_QUINDIO.necesidadesBasicasInsatisfechas.fieldsToFilter[0].label : ""
 
     const showGraphic = consultaPorSeleccionada?.name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.necesidadesBasicasInsatisfechas
+    const fixDataToRenderGrafic = features.map(f => ({
+      name: f.attributes.NOMBRE,
+      value: f.attributes.PROPOSICIONPORCENTUALR
+    }))
     const withGraphic = {
       showGraphic,
+      graphicData: fixDataToRenderGrafic,
       titleCoropletico,
       dataCoropletico: LEYENDA_COROPLETICO_QUINDIO[transformToCamelCase(consultaPorSeleccionada?.name) as keyof typeof LEYENDA_COROPLETICO_QUINDIO],
       fieldToFilter: LEYENDA_COROPLETICO_QUINDIO[transformToCamelCase(consultaPorSeleccionada?.name) as keyof typeof LEYENDA_COROPLETICO_QUINDIO].fieldsToFilter[0].field // campo que se usará para el coroplético, debe venir en la consulta

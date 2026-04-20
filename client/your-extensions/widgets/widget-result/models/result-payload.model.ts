@@ -45,7 +45,7 @@ export interface ResultPayload {
   withGraphic?: {
     showGraphic: boolean
     graphicData: ChartDataItem[]
-    graphicType: string
+    graphicType: 'bar' | 'pie'
     graphicTitle?: string
     selectedIndicador?: number, // para manejar diferentes indicadores que pueden venir con la gráficafeaturesDibujados?: any[] // para manejar casos como el indicador 3 donde se dibujan características en el mapa además de mostrar la gráfica
     fieldToFilter?: string, // campo que se emplea para renderizar el grafico, se asume que es el campo principal para mostrar en el gráfico, por ejemplo "ESTUDIANTESMATRICULADOS" para el caso de cobertura educativa
