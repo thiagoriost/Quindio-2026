@@ -17,7 +17,7 @@ import { Label, Select, Option } from "jimu-ui"
 
 import { abrirTablaResultados, limpiarYCerrarWidgetResultados } from "../../../widget-result/src/runtime/widget"
 import { limpiarYCerrarwidgetLeyenda } from '../../../widget-leyenda/src/runtime/widget'
-import { ejecutarConsulta, restoreInitialExtent, validaLoggerLocalStorage, limpiarFeaturesDibujados, realizarQuery} from "../../../shared/utils/export.utils"
+import { ejecutarConsulta, restoreInitialExtent, validaLoggerLocalStorage, limpiarFeaturesDibujados, realizarQuery, transformToCamelCase} from "../../../shared/utils/export.utils"
 import type { LayerInfo } from "widgets/shared/types/types_consultaAvanzadaAlfanumerica"
 import { SearchActionBar } from "../../../shared/components/search-action-bar"
 import { WIDGET_IDS } from "../../../shared/constants/widget-ids"
@@ -46,9 +46,54 @@ export const LEYENDA_COROPLETICO_QUINDIO = {
     fieldsToFilter: [
       { field: "PORCENTAJE", label: "Indice de desnutrición" }
     ],
-  }
+  },
+  poblacionExpulsor: {
+      leyenda: [
+        {colorFondo: '255,0,0,0.4', colorLine: '255,0,0,1', minimo: '0', maximo: '50', label: '0 a 50'},
+        {colorFondo: '0,0,255,0.4', colorLine: '0,0,255,1', minimo: '51', maximo: '100', label: '51 a 100'},
+        {colorFondo: '255,255,0,0.4', colorLine: '255,255,0,1', minimo: '101', maximo: '150', label: '101 a 150'},
+        {colorFondo: '51, 153, 51,0.4', colorLine: '51, 153, 51,1', minimo: '151', maximo: '10000000', label: 'Mayor a 150'}
+      ],
+      fieldsToFilter: [
+        { field: "PERSONAS", label: "Personas desplazadas" }
+      ],
+  },
+  poblacionReceptor: {
+      leyenda: [
+        {colorFondo: '255,0,0,0.4', colorLine: '255,0,0,1', minimo: '0', maximo: '50', label: '0 a 50'},
+        {colorFondo: '0,0,255,0.4', colorLine: '0,0,255,1', minimo: '51', maximo: '100', label: '51 a 100'},
+        {colorFondo: '255,255,0,0.4', colorLine: '255,255,0,1', minimo: '101', maximo: '150', label: '101 a 150'},
+        {colorFondo: '51, 153, 51,0.4', colorLine: '51, 153, 51,1', minimo: '151', maximo: '10000000', label: 'Mayor a 150'}
+      ],
+      fieldsToFilter: [
+        { field: "PERSONAS", label: "Personas desplazadas" }
+      ],
+  },
+  necesidadesBasicasInsatisfechas: {
+      leyenda: [
+        {colorFondo: '51, 153, 51,0.4', colorLine: '51, 153, 51,1', minimo: '0', maximo: '8', label: 'Hasta el 7% Precisa'},
+        {colorFondo: '0,0,255,0.4', colorLine: '0,0,255,1', minimo: '8', maximo: '14', label: '8 al 14 % Aceptable'},
+        {colorFondo: '255,255,0,0.4', colorLine: '255,255,0,1', minimo: '14', maximo: '20', label: '15 al 20 % Regular'},
+        {colorFondo: '255,0,0,0.4', colorLine: '255,0,0,1', minimo: '20', maximo: '100', label: 'Mayor al 20% Poco precisa'}
+      ],
+      fieldsToFilter: [
+        { field: "PERSONAS", label: "NBI - Total Cve" }
+      ],
+  },
+}
 
 
+export const NAMES_CAPAS_CONSULTA_SOCIOECONOMICA = {
+  Desnutricion: 'Desnutrición',
+  necesidadesBasicasInsatisfechas: 'Necesidades Básicas Insatisfechas',
+  poblacionEdadSimple: 'Población Edad Simple',
+  poblacionExpulsor:  'Población Expulsor',
+  poblacionGeneral: 'Población General',
+  poblacionQuinquenal:  'Población Quinquenal',
+  poblacionReceptor:  'Población Receptor',
+  poblacionSISBEN:  'Población SISBEN',
+  serviciosPublicos:  'Servicios Públicos',
+  tasaDesempleo: 'Tasa de Desempleo'
 }
 
 const WidgetSocioEconomica = (props: AllWidgetProps<any>) => {
@@ -131,19 +176,21 @@ const WidgetSocioEconomica = (props: AllWidgetProps<any>) => {
     if (e.target.value === "") return
     // handleClear()
     const id = Number(e.target.value)
+    const name = capasDisponibles.find(c => c.id === id)?.name ?? ""
     const selected = capasDisponibles.find(c => c.id === id)
     const selectedUrl = `${ urls.SERVICIO_SOCIOECONOMICO }/${selected?.id}`
-    if(validaLoggerLocalStorage('logger')) console.log("handleConsultaPor", e.target.value, {id, selected, selectedUrl})
+    if(validaLoggerLocalStorage('logger')) console.log("handleConsultaPor", e.target.value, {id, selected, selectedUrl, capasDisponibles})
     setConsultaPorSeleccionada({ id: selected.id, name: selected.name, url: selectedUrl })
     setLoading(true)
 
-    if (id === 0) {
-      logicaDesnutricion(selectedUrl)
-
+    if (name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.Desnutricion || name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.poblacionExpulsor || name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.poblacionReceptor
+      || name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.necesidadesBasicasInsatisfechas
+    ) {
+      consultaPorAnio(selectedUrl)
     }
   }
 
-  const logicaDesnutricion = async (selectedUrl: string) => {
+  const consultaPorAnio = async (selectedUrl: string) => {
     const features = await ejecutarConsulta({ returnGeometry: true, campos:['ANIO'], url: selectedUrl, where: '1=1' })
     if(validaLoggerLocalStorage('logger')) console.log({features})
 
@@ -239,7 +286,7 @@ const WidgetSocioEconomica = (props: AllWidgetProps<any>) => {
     varJimuMapView?.view?.graphics?.removeAll()
     let urlCapa, campos, where
 
-    if (consultaPorSeleccionada?.id === 0) {
+    if (consultaPorSeleccionada?.name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.Desnutricion || consultaPorSeleccionada?.name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.poblacionExpulsor || consultaPorSeleccionada?.name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.poblacionReceptor || consultaPorSeleccionada?.name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.necesidadesBasicasInsatisfechas) {
       urlCapa = consultaPorSeleccionada.url
       campos = ['*']
       where = `ANIO='${selectedAnio}'`
@@ -268,15 +315,21 @@ const WidgetSocioEconomica = (props: AllWidgetProps<any>) => {
           .toLowerCase()
           .replace(/^\w/, c => c.toUpperCase())
       }))
-    const titleCoropletico = consultaPorSeleccionada?.name === "Desnutrición" ? LEYENDA_COROPLETICO_QUINDIO.Desnutrición.fieldsToFilter[0].label : ""
+    const titleCoropletico = consultaPorSeleccionada?.name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.Desnutricion ? LEYENDA_COROPLETICO_QUINDIO.Desnutrición.fieldsToFilter[0].label :
+      consultaPorSeleccionada?.name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.poblacionExpulsor ? LEYENDA_COROPLETICO_QUINDIO.poblacionExpulsor.fieldsToFilter[0].label :
+      consultaPorSeleccionada?.name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.poblacionReceptor ? LEYENDA_COROPLETICO_QUINDIO.poblacionReceptor.fieldsToFilter[0].label :
+      consultaPorSeleccionada?.name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.necesidadesBasicasInsatisfechas ? LEYENDA_COROPLETICO_QUINDIO.necesidadesBasicasInsatisfechas.fieldsToFilter[0].label : ""
+
+    const showGraphic = consultaPorSeleccionada?.name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.necesidadesBasicasInsatisfechas
     const withGraphic = {
-      showGraphic: false,
+      showGraphic,
       titleCoropletico,
-      dataCoropletico: LEYENDA_COROPLETICO_QUINDIO[consultaPorSeleccionada?.name as keyof typeof LEYENDA_COROPLETICO_QUINDIO],
-      fieldToFilter: LEYENDA_COROPLETICO_QUINDIO[consultaPorSeleccionada?.name as keyof typeof LEYENDA_COROPLETICO_QUINDIO].fieldsToFilter[0].field // campo que se usará para el coroplético, debe venir en la consulta
+      dataCoropletico: LEYENDA_COROPLETICO_QUINDIO[transformToCamelCase(consultaPorSeleccionada?.name) as keyof typeof LEYENDA_COROPLETICO_QUINDIO],
+      fieldToFilter: LEYENDA_COROPLETICO_QUINDIO[transformToCamelCase(consultaPorSeleccionada?.name) as keyof typeof LEYENDA_COROPLETICO_QUINDIO].fieldsToFilter[0].field // campo que se usará para el coroplético, debe venir en la consulta
     }
     const temporalLayer = false
     const _cloneFeatures = features.map(f => ({ attributes: f.attributes, geometry: f.geometry.toJSON() }))
+    const titleTable = consultaPorSeleccionada?.name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.poblacionExpulsor ? `${consultaPorSeleccionada?.name} en el año ${selectedAnio}` : `${consultaPorSeleccionada?.name} - ${selectedAnio}`
     abrirTablaResultados(
       true,
       _cloneFeatures,
@@ -284,6 +337,7 @@ const WidgetSocioEconomica = (props: AllWidgetProps<any>) => {
       props,
       widgetResultId,
       varJimuMapView.view.spatialReference,
+      titleTable,
       withGraphic,
       temporalLayer,
       selectedAnio

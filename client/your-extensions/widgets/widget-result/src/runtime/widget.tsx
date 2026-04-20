@@ -745,7 +745,7 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
                     style={panelPos ? { left: panelPos.x, top: panelPos.y, right: 'auto', bottom: 'auto' } : undefined}
                 >
                     <div className="widget-result-header" onMouseDown={onDragStart}>
-                        Resultados
+                        {data.title}
                         <button className="widget-result-close-btn" onClick={() => setOpen(false)} title="Cerrar">-</button>
                     </div>
                     <div className="widget-result-content">
@@ -832,6 +832,7 @@ export const abrirTablaResultados = (
   props: any,
   widgetResultId: string,
   spatialReference?: any,
+  titleTable?: string,
   withGraphic?:{
     showGraphic: boolean,
     titleCoropletico?: string, // título específico para el caso de coroplético, si se quiere mostrar uno diferente al título general
@@ -849,7 +850,7 @@ export const abrirTablaResultados = (
       "results", // nombre de la propiedad que se va a actualizar en el estado del widget
       {
         props, // para tomar el id del widget que envía los datos (este widget)
-        title: `Resultados ${valorBusqueda ?? ""}`, // título que se mostrará en el widget de resultados
+        title: titleTable !== '' ? titleTable : `Resultados ${valorBusqueda ?? ""}`, // título que se mostrará en el widget de resultados
         features: features, // datos de las características a mostrar
         fields: fields, // campos a mostrar en la tabla de resultados
         spatialReference: spatialReference, // referencia espacial de los datos

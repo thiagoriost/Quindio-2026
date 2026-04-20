@@ -572,3 +572,26 @@ export const realizarQuery = async (url: string, name: string, setError: (arg0: 
   }
 }
 
+/**
+ * Transforma el valor de consultaPorSeleccionada?.name:
+ * 1. Normaliza para eliminar tildes (NFD + regex).
+ * 2. Limpia caracteres no alfanuméricos.
+ * 3. Convierte a formato camelCase.
+ */
+export const transformToCamelCase = (str: string) => {
+  if (!str) return str
+
+  return str
+    .normalize("NFD")
+    // Elimina diacríticos (tildes)
+    .replace(/[\u0300-\u036f]/g, "")
+    // Elimina caracteres especiales dejando solo letras, números y espacios
+    .replace(/[^a-zA-Z0-9 ]/g, "")
+    .split(/\s+/)
+    .map((word, index) => {
+      const cleaned = word.toLowerCase()
+      if (index === 0) return cleaned
+      return cleaned.charAt(0).toUpperCase() + cleaned.slice(1)
+    })
+    .join("")
+}
