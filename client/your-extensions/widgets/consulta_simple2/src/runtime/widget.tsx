@@ -150,7 +150,7 @@ const Widget = (props: AllWidgetProps<any>) => {
 
     const fields = ResponseConsultaSimple.fields
 
-    abrirTablaResultados(firstFeatureArray, fields, props, widgetResultId, spatialReference )
+    abrirTablaResultados(false, firstFeatureArray, fields, props, widgetResultId, spatialReference )
     // setColumns(DgridCol)
     setControlForms(true)
     // setRows(DgridRows)

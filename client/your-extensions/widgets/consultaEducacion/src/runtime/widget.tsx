@@ -651,6 +651,7 @@ const Widget = (props: AllWidgetProps<any>) => {
     }
     // abrir el widget de resultados y mostrar la información del establecimiento seleccionado
     abrirTablaResultados(
+      esCoropletico,
       _cloneFeatures,
       camposResultados,
       props,

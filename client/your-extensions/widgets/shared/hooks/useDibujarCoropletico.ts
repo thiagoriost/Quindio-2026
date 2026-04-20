@@ -1,6 +1,6 @@
 import { React } from 'jimu-core'
 import type { JimuMapView } from 'jimu-arcgis'
-import { dibujarFeaturesCoropletico, type CoroplethConfig } from '../utils/export.utils'
+import { dibujarFeaturesCoropletico, type CoroplethConfig, validaLoggerLocalStorage } from '../utils/export.utils'
 
 /**
  * Hook que gestiona el ciclo de vida completo del dibujo coroplético en el mapa.
@@ -23,37 +23,40 @@ import { dibujarFeaturesCoropletico, type CoroplethConfig } from '../utils/expor
  * const graphics = useDibujarCoropletico({
  *   features: data.features,
  *   jimuMapView,
- *   coroplethConfig: { field: "TOTALESTUDIANTES", leyenda },
+ *   coroplethConfig: { field: "TOTALESTUDIANTES", leyenda, titleCoropletico: "Total Estudiantes" },
  *   enabled: data.withGraphic?.showGraphic
  * })
  * ```
  */
 export const useDibujarCoropletico = ({
+  props,
   features,
   jimuMapView,
   coroplethConfig,
   enabled = true
 }: {
+  props: any
   features: __esri.Graphic[]
   jimuMapView: JimuMapView
   coroplethConfig?: CoroplethConfig
   enabled?: boolean
 }): __esri.Graphic[] => {
-  // console.log('useDibujarCoropletico', { features, jimuMapView, coroplethConfig, enabled })
+  if(validaLoggerLocalStorage('logger')) console.log('useDibujarCoropletico', { features, jimuMapView, coroplethConfig, enabled })
   const graphicsRef = React.useRef<__esri.Graphic[]>([])
 
   React.useEffect(() => {
+    if (!enabled || !features?.length || !jimuMapView) {
+      return
+    }
+
     // Limpiar gráficos anteriores
     if (graphicsRef.current.length && jimuMapView?.view) {
       jimuMapView.view.graphics.removeMany(graphicsRef.current)
       graphicsRef.current = []
     }
 
-    if (!enabled || !features?.length || !jimuMapView) {
-      return
-    }
-
     const newGraphics = dibujarFeaturesCoropletico({
+      props,
       features,
       jimuMapView,
       coroplethConfig
@@ -68,7 +71,7 @@ export const useDibujarCoropletico = ({
         graphicsRef.current = []
       }
     }
-  }, [features, jimuMapView, coroplethConfig?.field, coroplethConfig?.leyenda, enabled])
+  }, [features, jimuMapView, coroplethConfig?.field, coroplethConfig?.leyenda, coroplethConfig?.titleCoropletico, enabled])
 
   return graphicsRef.current
 }

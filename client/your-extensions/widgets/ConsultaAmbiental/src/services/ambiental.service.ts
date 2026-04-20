@@ -52,6 +52,7 @@ export const consultarCapasAmbientales = async (
         })) || []
 
         deps.abrirTablaResultados(
+            false,
             resultado.features,
             fields,
             resultado.spatialReference as __esri.SpatialReference

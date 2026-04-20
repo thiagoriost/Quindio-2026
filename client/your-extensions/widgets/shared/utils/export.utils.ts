@@ -7,6 +7,8 @@ import type { JimuMapView } from 'jimu-arcgis'
 import Query from "@arcgis/core/rest/support/Query"
 import { executeQueryJSON } from "@arcgis/core/rest/query"
 import { loadLayers } from "../../shared/services/queryMapServer.service"
+import { abrirWidgetLeyenda } from '../../widget-leyenda/src/runtime/widget'
+import { WIDGET_IDS } from '../../shared/constants/widget-ids'
 
 // import { appActions, getAppStore } from 'jimu-core'
 
@@ -404,6 +406,7 @@ export const clearMapAndResetExtent = (jimuMapView: any, initialExtent: any, ini
 export interface CoroplethConfig {
   field: string
   leyenda: Array<{ minimo: number; maximo: number; colorFondo: string; colorLine: string }>
+  titleCoropletico?: string
 }
 
 export const limpiarFeaturesDibujados = (jimuMapView: JimuMapView, features: __esri.Graphic[]) => {
@@ -442,10 +445,12 @@ export const limpiarFeaturesDibujados = (jimuMapView: JimuMapView, features: __e
  * ```
  */
 export const dibujarFeaturesCoropletico = ({
+  props,
   features,
   jimuMapView,
   coroplethConfig
 }: {
+  props: any
   features: __esri.Graphic[]
   jimuMapView: JimuMapView
   coroplethConfig?: CoroplethConfig
@@ -476,7 +481,9 @@ export const dibujarFeaturesCoropletico = ({
     // Deep-clone leyenda para evitar mutar el objeto original (ej. Redux)
     coroplethConfig = {
       field: coroplethConfig.field,
-      leyenda: JSON.parse(JSON.stringify(coroplethConfig.leyenda))
+      leyenda: JSON.parse(JSON.stringify(coroplethConfig.leyenda)),
+      titleCoropletico: coroplethConfig.titleCoropletico
+
     }
   }
 
@@ -537,22 +544,31 @@ export const dibujarFeaturesCoropletico = ({
     })
 
   jimuMapView.view.graphics.addMany(graphics)
+
+  abrirWidgetLeyenda({
+    widgetleyendaId: WIDGET_IDS.LEYENDA,
+    props,
+    title: coroplethConfig.titleCoropletico, // título que se mostrará en el widget de resultados
+    data: coroplethConfig.leyenda
+  })
+
   return graphics
 }
 
 // para cargar las capas del servicio de acuerdo a la consulta seleccionada, y mostrar un mensaje de error si la consulta falla
-  export const realizarQuery = async (url: string, name: string, setError: (arg0: string) => void, setLoading: (arg0: boolean) => void) => {
-    setError("")
-    try {
-      const response = await loadLayers(url)
-      if(validaLoggerLocalStorage('logger')) console.log({ response, url, name })
-      return response
-    }
-    catch (err) {
-      console.error("Error realizando consulta:", err)
-      setError("Ocurrio un error al realizar la consulta. Por favor intente nuevamente.")
-    }
-    finally {
-      setLoading(false)
-    }
+export const realizarQuery = async (url: string, name: string, setError: (arg0: string) => void, setLoading: (arg0: boolean) => void) => {
+  setError("")
+  try {
+    const response = await loadLayers(url)
+    if(validaLoggerLocalStorage('logger')) console.log({ response, url, name })
+    return response
   }
+  catch (err) {
+    console.error("Error realizando consulta:", err)
+    setError("Ocurrio un error al realizar la consulta. Por favor intente nuevamente.")
+  }
+  finally {
+    setLoading(false)
+  }
+}
+

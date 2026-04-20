@@ -178,12 +178,13 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
      */
     const activeField = fieldToFilter || data?.withGraphic?.fieldToFilter
     useDibujarCoropletico({
+        props: data?.withGraphic ? props : undefined, // solo pasar props al hook si se va a mostrar gráfico, para evitar cálculos innecesarios
         features: data?.features,
         jimuMapView,
         coroplethConfig: activeField && data?.withGraphic?.dataCoropletico?.leyenda
-            ? { field: activeField, leyenda: data.withGraphic.dataCoropletico.leyenda }
+            ? { field: activeField, leyenda: data.withGraphic.dataCoropletico.leyenda, titleCoropletico: data.withGraphic.titleCoropletico }
             : undefined,
-        enabled: !!data?.withGraphic?.showGraphic
+        enabled: !!data?.isCoropletico
     })
 
     /**
@@ -825,6 +826,7 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
  * @param widgetResultId Id del widget-result en el layout.
  */
 export const abrirTablaResultados = (
+  isCoropletico: boolean,
   features: any[],
   fields: any[],
   props: any,
@@ -832,8 +834,9 @@ export const abrirTablaResultados = (
   spatialReference?: any,
   withGraphic?:{
     showGraphic: boolean,
-    graphicData: any,
-    graphicType: string//"bar" | "pie",
+    titleCoropletico?: string, // título específico para el caso de coroplético, si se quiere mostrar uno diferente al título general
+    graphicData?: any,
+    graphicType?: string//"bar" | "pie",
     graphicTitle?: string,
     selectedIndicador?: number, // para manejar diferentes indicadores que pueden venir con la gráficafeaturesDibujados?: any[] // para manejar casos como el indicador 3 donde se dibujan características en el mapa además de mostrar la gráfica
   },
@@ -845,14 +848,15 @@ export const abrirTablaResultados = (
       widgetResultId, // id del WidgetResult en el layout desde el widget controller
       "results", // nombre de la propiedad que se va a actualizar en el estado del widget
       {
-        sourceWidgetId: props.id, // id del widget que envía los datos (este widget)
-        title: "Resultados de prueba", // título que se mostrará en el widget de resultados
+        props, // para tomar el id del widget que envía los datos (este widget)
+        title: `Resultados ${valorBusqueda ?? ""}`, // título que se mostrará en el widget de resultados
         features: features, // datos de las características a mostrar
         fields: fields, // campos a mostrar en la tabla de resultados
         spatialReference: spatialReference, // referencia espacial de los datos
         withGraphic, // información del gráfico asociado
         temporalLayer, // indica si los resultados corresponden a una capa temporal
-        valorBusqueda // valor de búsqueda asociado a los resultados, útil para identificar capas temporales por consulta
+        valorBusqueda, // valor de búsqueda asociado a los resultados, útil para identificar capas temporales por consulta
+        isCoropletico
       },
     ),
   );

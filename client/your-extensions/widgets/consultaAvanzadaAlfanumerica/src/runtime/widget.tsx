@@ -255,7 +255,7 @@ const Widget = (props: AllWidgetProps<any>) => {
   
         const resultSpatialReference = features[0]?.geometry?.spatialReference || varJimuMapView.view.spatialReference
         if(validaLoggerLocalStorage('logger')) console.log({fieldsToShow, featuresFixed})
-        abrirTablaResultados(featuresFixed, fieldsToShow, props, widgetResultId, resultSpatialReference)
+        abrirTablaResultados(false, featuresFixed, fieldsToShow, props, widgetResultId, resultSpatialReference)
       }else{
         return setError("No se encontraron resultados para la condición de búsqueda ingresada.")
       }

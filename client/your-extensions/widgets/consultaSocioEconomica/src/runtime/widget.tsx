@@ -32,174 +32,21 @@ interface interfaceConsultaPor { id: number, name: string, url: string }
 // interface interfaceCategories { id: number, name: string }
 // interface interfaceIndicadores { id: number, name: string }
 // interface interfaceMunicipio { IDMUNICIPIO: string, MUNICIPIO: string }
-interface interfaceEstablecimiento { NOMBREESTABLECIMIENTO: string, CODIGOESTABLECIMIENTO: string, DIRECCION: string, JORNADA: string, IMAGEN: string, geometry: __esri.Geometry, IDSECTOR: string, IDZONA: string, IDTIPOSEDE: string, IDGRUPO: string }
+// interface interfaceEstablecimiento { NOMBREESTABLECIMIENTO: string, CODIGOESTABLECIMIENTO: string, DIRECCION: string, JORNADA: string, IMAGEN: string, geometry: __esri.Geometry, IDSECTOR: string, IDZONA: string, IDTIPOSEDE: string, IDGRUPO: string }
 // interface interfaceLeyenda { label: string, colorFondo: string, colorLine: string }
 
-export const INDICADORES = {
-  "Poblacion": "Población",
-  "Desplazados": "Desplazados",
-  "NBI": "Necesidades Básicas Insatisfechas (NBI)",
-  "IndicadoresSocioeconomicos": "Indicadores Socieconómicos",
-  "CoberturaServiciosPublicos": "Cobertura de Servicios Públicos",
-}
-
 export const LEYENDA_COROPLETICO_QUINDIO = {
-  Cobertura: {
+  Desnutrición: {
     leyenda: [
-      {
-        colorFondo: "252,3,3,0.4",
-        colorLine: "252,3,3,1",
-        label: "0 a 1000",
-        minimo: 0,
-        maximo: 1000,
-      },
-      {
-        colorFondo: "246,254,6,0.4",
-        colorLine: "246,254,6,1",
-        label: "1001 a 5000",
-        minimo: 1001,
-        maximo: 5000,
-      },
-      {
-        colorFondo: "81,175,51,0.4",
-        colorLine: "81,175,51,1",
-        label: "Mayor a 5000",
-        minimo: 5001,
-        maximo: 50000000,
-      },
+      {"colorFondo":"51, 153, 51,0.4","colorLine":"51, 153, 51,1","minimo":"0","maximo":"8","label":"0 a 7%"},
+      {"colorFondo":"0,0,255,0.4","colorLine":"0,0,255,1","minimo":"8","maximo":"14","label":"8 al 14%"},
+      {"colorFondo":"255,255,0,0.4","colorLine":"255,255,0,1","minimo":"14","maximo":"20","label":"15 al 20%"},
+      {"colorFondo":"255,0,0,0.4","colorLine":"255,0,0,1","minimo":"20","maximo":"100","label":"Mayor a 20%"}
     ],
     fieldsToFilter: [
-      { field: "TOTALESTUDIANTES", label: "Total Estudiantes" }
+      { field: "PORCENTAJE", label: "Indice de desnutrición" }
     ],
-  },
-  Cupos_ofertados: {
-    leyenda: [
-      {
-        colorFondo: "77,246,22,0.4",
-        colorLine: "77,246,22,1",
-        label: "0 a 1000",
-        minimo: 0,
-        maximo: 1000,
-      },
-      {
-        colorFondo: "246,162,60,0.4",
-        colorLine: "246,162,60,1",
-        label: "1001 a 5000",
-        minimo: 1001,
-        maximo: 5000,
-      },
-      {
-        colorFondo: "135,240,226,0.4",
-        colorLine: "135,240,226,1",
-        label: "5001 a 10000",
-        minimo: 5001,
-        maximo: 10000,
-      },
-      {
-        colorFondo: "77,133,52,0.4",
-        colorLine: "77,133,52,1",
-        label: "Mayor a 10000",
-        minimo: 10001,
-        maximo: 50000000,
-      },
-    ],
-    fieldsToFilter: [{ field: "CANTIDADMATRICULADOS", label: "Cantidad Matriculados" }],
-  },
-  Eficiencia_interna: {
-    leyenda: [
-      {
-        colorFondo: "252,3,3,0.4",
-        colorLine: "252,3,3,1",
-        label: "0 a 1000",
-        minimo: 0,
-        maximo: 1000,
-      },
-      {
-        colorFondo: "246,254,6,0.4",
-        colorLine: "246,254,6,1",
-        label: "1001 a 10000",
-        minimo: 1001,
-        maximo: 10000,
-      },
-      {
-        colorFondo: "81,175,51,0.4",
-        colorLine: "81,175,51,1",
-        label: "Mayor a 10000",
-        minimo: 10001,
-        maximo: 50000000,
-      },
-    ],
-    fieldsToFilter: [
-      {
-        field:"ESTUDIANTESMATRICULADOS",
-        label: 'Matriculados'
-      },
-      {
-        field:"ESTUDIANTESDESERTORES",
-        label: 'Desertores'
-      },
-      {
-        field:"ESTUDIANTESAPROBADOS",
-        label: 'Aprobados'
-      },
-      {
-        field:"ESTUDIANTESREPROBADOS",
-        label: 'Reprobados'
-      },
-    ],
-  },
-  Tasa_analfabetismo_departamental: {
-    leyenda: [
-      {
-        colorFondo: "252,3,3,0.4",
-        colorLine: "252,3,3,1",
-        label: "0 a 1000",
-        minimo: 0,
-        maximo: 1000,
-      },
-      {
-        colorFondo: "246,254,6,0.4",
-        colorLine: "246,254,6,1",
-        label: "1001 a 5000",
-        minimo: 1001,
-        maximo: 5000,
-      },
-      {
-        colorFondo: "81,175,51,0.4",
-        colorLine: "81,175,51,1",
-        label: "Mayor a 5000",
-        minimo: 5001,
-        maximo: 50000000,
-      },
-    ],
-    fieldsToFilter: [{ field: "TOTALDEPTO", label: "Total Departamento" }],
-  },
-  Tasa_analfabetismo_municipal: {
-    leyenda: [
-      {
-        colorFondo: "252,3,3,0.4",
-        colorLine: "252,3,3,1",
-        label: "0 a 1000",
-        minimo: 0,
-        maximo: 1000,
-      },
-      {
-        colorFondo: "246,254,6,0.4",
-        colorLine: "246,254,6,1",
-        label: "1001 a 5000",
-        minimo: 1001,
-        maximo: 5000,
-      },
-      {
-        colorFondo: "81,175,51,0.4",
-        colorLine: "81,175,51,1",
-        label: "Mayor a 5000",
-        minimo: 5001,
-        maximo: 50000000,
-      },
-    ],
-    fieldsToFilter: [{ field: "TOTALMUNICIPIO", label: "Total Municipio" }],
-  },
+  }
 
 
 }
@@ -219,18 +66,22 @@ const WidgetSocioEconomica = (props: AllWidgetProps<any>) => {
   const [consultaPorSeleccionada, setConsultaPorSeleccionada] = React.useState< interfaceConsultaPor | null>({name: "", id: null, url: ""})
 
 
-  const [selectedIndicador, setSelectedIndicador] = React.useState<number | null>(null)
+  // const [selectedIndicador, setSelectedIndicador] = React.useState<number | null>(null)
 
   const [selectedAnio, setSelectedAnio] = React.useState<string | null>(null)
 
-  const [selectedEstablecimiento, setSelectedEstablecimiento] = React.useState<interfaceEstablecimiento | null>(null)
+  // const [selectedEstablecimiento, setSelectedEstablecimiento] = React.useState<interfaceEstablecimiento | null>(null)
 
   const [capasDisponibles, setCapasDisponibles] = React.useState<Array<{id: number, name: string}>>([])
+
+  const [aniosDisponibles, setAniosDisponibles] = React.useState<string[]>([])
 
   const [disabledTipoDesplazado, setDisabledTipoDesplazado] = React.useState(true)
   const [disabledTipoIndicador, setDisabledTipoIndicador] = React.useState(true)
   const [disabledTipoServicio, setDisabledTipoServicio] = React.useState(true)
   const [disabledAnio, setDisabledAnio] = React.useState(true)
+
+  const [buscarAble, setBuscarAble] = React.useState(false)
 
   const disableAllSelects = (disable: boolean) => {
     setDisabledTipoDesplazado(disable)
@@ -276,23 +127,40 @@ const WidgetSocioEconomica = (props: AllWidgetProps<any>) => {
   */
   const initialExtentRef = React.useRef<__esri.Extent | null>(null)
 
-  const handleConsultaPor = async(e: { target: { value: string; }; }) => {
+  const handleConsultaPor = (e: { target: { value: string; }; }) => {
     if (e.target.value === "") return
     // handleClear()
     const id = Number(e.target.value)
     const selected = capasDisponibles.find(c => c.id === id)
     const selectedUrl = `${ urls.SERVICIO_SOCIOECONOMICO }/${selected?.id}`
+    if(validaLoggerLocalStorage('logger')) console.log("handleConsultaPor", e.target.value, {id, selected, selectedUrl})
     setConsultaPorSeleccionada({ id: selected.id, name: selected.name, url: selectedUrl })
     setLoading(true)
+
+    if (id === 0) {
+      logicaDesnutricion(selectedUrl)
+
+    }
+  }
+
+  const logicaDesnutricion = async (selectedUrl: string) => {
     const features = await ejecutarConsulta({ returnGeometry: true, campos:['ANIO'], url: selectedUrl, where: '1=1' })
-    if(validaLoggerLocalStorage('logger')) console.log({selected, features})
+    if(validaLoggerLocalStorage('logger')) console.log({features})
 
     // obtener los años disponibles para el indicador seleccionado, y poblar el select de año
-    const aniosDisponibles = Array.from(new Set(features.map(f => f.attributes.ANIO))).sort()
-    if(validaLoggerLocalStorage('logger')) console.log({aniosDisponibles})
-
+    const anios = Array.from(new Set(features.map(f => f.attributes.ANIO))).sort() as string[]
+    if(validaLoggerLocalStorage('logger')) console.log({aniosDisponibles: anios})
+    setAniosDisponibles(anios)
+    setSelectedAnio(null)
     setDisabledAnio(false)
     setLoading(false)
+  }
+
+  const handleAnioChange = (e: { target: { value: string } }) => {
+    if (e.target.value === "") return
+    const anio = e.target.value
+    setSelectedAnio(anio)
+    setBuscarAble(true)
   }
 
   /**
@@ -327,10 +195,11 @@ const WidgetSocioEconomica = (props: AllWidgetProps<any>) => {
 
     setConsultaPorSeleccionada({name: "", id: null, url: ""})
 
-    setSelectedEstablecimiento(null)
+    // setSelectedEstablecimiento(null)
 
-    setSelectedIndicador(null)
+    // setSelectedIndicador(null)
     setSelectedAnio(null)
+    setAniosDisponibles([])
   }
 
   /**
@@ -364,18 +233,21 @@ const WidgetSocioEconomica = (props: AllWidgetProps<any>) => {
 
 
   const buscar = async () => {
-    if (!selectedEstablecimiento && !selectedIndicador) {
-      setError("Por favor seleccione un establecimiento o un indicador para realizar la búsqueda.")
-      return
-    }
+
     setLoading(true)
     // limpiar geometrías previamente dibujadas
     varJimuMapView?.view?.graphics?.removeAll()
     let urlCapa, campos, where
 
+    if (consultaPorSeleccionada?.id === 0) {
+      urlCapa = consultaPorSeleccionada.url
+      campos = ['*']
+      where = `ANIO='${selectedAnio}'`
+    }
+
 
     const features = await ejecutarConsulta({ returnGeometry: true, campos, url: urlCapa, where })
-
+    if(validaLoggerLocalStorage('logger')) console.log({features})
     // si la longitud de los features obtenidos es menor a 1, mostrar mensaje de error indicando que no se encontraron resultados para la consulta realizada
     if (features.length < 1) {
       setError("No se encontraron resultados para la consulta realizada.")
@@ -385,31 +257,35 @@ const WidgetSocioEconomica = (props: AllWidgetProps<any>) => {
     // ir al extend inicial del mapa para mostrar todos los resultados obtenidos
     restoreInitialExtent(varJimuMapView, initialExtentRef)
     // dibujar los features obtenidos en el mapa
-    // const esCoropletico = consultaPorSeleccionada?.name === INDICADORES.Poblacion && (selectedIndicador === 1 || selectedIndicador === 2 || selectedIndicador === 3 || selectedIndicador === 4 || selectedIndicador === 5) // el indicador "cobertura", "cupos ofertados", "eficiencia interna", "tasa de analfabetismo departamental" y "tasa de analfabetismo municipal" se representan con coropletico
 
-    let camposResultados; let _cloneFeatures; const withGraphic={
-        showGraphic: false,
-        graphicData: [
-            { name: "ejemplo_1", value: 65 },
-            { name: "ejemplo_2", value: 80 },
-            { name: "ejemplo_3", value: features.length }
-        ],
-        graphicType: "bar",
-        graphicTitle: 'Gráfico de ejemplo',
-        selectedIndicador,
-        dataCoropletico: {},
-        fieldToFilter:''
+    // obtener los camposResultados apartir de los features.attributes, omitiendo los campos (OBJECTID, SHAPE.AREA y SHAPE.LEN)
+    const camposResultados = Object.keys(features[0].attributes)
+      .filter(c => !["OBJECTID", "SHAPE.AREA", "SHAPE.LEN"].includes(c))
+      .map(field => ({
+        name: field,
+        alias: field
+          .replace(/_/g, ' ')
+          .toLowerCase()
+          .replace(/^\w/, c => c.toUpperCase())
+      }))
+    const titleCoropletico = consultaPorSeleccionada?.name === "Desnutrición" ? LEYENDA_COROPLETICO_QUINDIO.Desnutrición.fieldsToFilter[0].label : ""
+    const withGraphic = {
+      showGraphic: false,
+      titleCoropletico,
+      dataCoropletico: LEYENDA_COROPLETICO_QUINDIO[consultaPorSeleccionada?.name as keyof typeof LEYENDA_COROPLETICO_QUINDIO],
+      fieldToFilter: LEYENDA_COROPLETICO_QUINDIO[consultaPorSeleccionada?.name as keyof typeof LEYENDA_COROPLETICO_QUINDIO].fieldsToFilter[0].field // campo que se usará para el coroplético, debe venir en la consulta
     }
-
-    // abrir el widget de resultados y mostrar la información del establecimiento seleccionado
+    const temporalLayer = false
+    const _cloneFeatures = features.map(f => ({ attributes: f.attributes, geometry: f.geometry.toJSON() }))
     abrirTablaResultados(
+      true,
       _cloneFeatures,
       camposResultados,
       props,
       widgetResultId,
       varJimuMapView.view.spatialReference,
       withGraphic,
-      false,
+      temporalLayer,
       selectedAnio
     )
     setLoading(false)
@@ -499,17 +375,17 @@ const WidgetSocioEconomica = (props: AllWidgetProps<any>) => {
 
               <Label className={"styleLabel"}>Año</Label>
               <Select
-                  value={""}
+                  value={selectedAnio ?? ""}
                   disabled={loading || disabledAnio}
-                  onChange={() => { console.log("Seleccionar año") }}
+                  onChange={handleAnioChange}
               >
                   <Option value="">
                       {loading ? 'Cargando ...' : 'Seleccione...'}
                   </Option>
 
-                  {[{id: 1, name: "Tipo 1"}, {id: 2, name: "Tipo 2"}].map(layer => (
-                      <Option key={layer.id} value={layer.id}>
-                          {layer.name}
+                  {aniosDisponibles.map(anio => (
+                      <Option key={anio} value={anio}>
+                          {anio}
                       </Option>
                   ))}
               </Select>
@@ -524,6 +400,7 @@ const WidgetSocioEconomica = (props: AllWidgetProps<any>) => {
                   helpText="Seleccione un establecimiento desde consulta educación o un indicador para habilitar la búsqueda"
                   searchLabel="Buscar"
                   error={error}
+                  disableSearch={!buscarAble}
               />
             </div>
 

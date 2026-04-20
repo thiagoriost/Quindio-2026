@@ -608,7 +608,7 @@ const Widget = (props: any) => {
                 alias: f.alias
             })) || []
 
-            abrirTablaResultados(features, fields, props, widgetResultId, spatialReference)
+            abrirTablaResultados(false, features, fields, props, widgetResultId, spatialReference)
 
         } catch (error) {
             console.error("Error consultando estaciones:", error)
@@ -755,6 +755,7 @@ if(validaLoggerLocalStorage('logger')) console.log('onBuscar:', filters)
             }
 
             abrirTablaResultados(
+                false,
                 features,
                 fields,
                 props,

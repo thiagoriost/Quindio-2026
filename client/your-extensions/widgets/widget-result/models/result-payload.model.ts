@@ -38,6 +38,9 @@ export interface ResultPayload {
   /** Indica si la capa es temporal */
   valorBusqueda?: string
 
+  /** Indica si los features deben pintarse como coroplético en el mapa */
+  isCoropletico?: boolean
+
   /** Indica si muestra grafico cef 20260320 */
   withGraphic?: {
     showGraphic: boolean
@@ -50,6 +53,7 @@ export interface ResultPayload {
       fieldsToFilter: any[] // lista de campos disponibles para mostrar en el gráfico, se asume que el primer campo es el principal para mostrar inicialmente
       label: string // etiqueta para mostrar en la leyenda
       leyenda: Array<{ minimo: number; maximo: number; colorFondo: string; colorLine: string }>
+      titleCoropletico?: string // título específico para el caso de coroplético, si se quiere mostrar uno diferente al título general
     }
   }
 

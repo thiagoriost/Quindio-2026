@@ -27,7 +27,7 @@ import { useOnWidgetClose } from '../../../shared/hooks/useOnWidgetClose';
 import { appActions, getAppStore } from 'jimu-core'
 import { WidgetState } from 'jimu-core'
 import '../styles/widget_Leyenda_Floating.css'
-import { /* restoreInitialExtent, */ validaLoggerLocalStorage } from '../../../shared/utils/export.utils'
+import { /* restoreInitialExtent, */ CoroplethConfig, validaLoggerLocalStorage } from '../../../shared/utils/export.utils'
 
 /**
  * widget-leyenda
@@ -293,11 +293,7 @@ export const abrirWidgetLeyenda = ({
     widgetleyendaId: string;
     props: any;
     title: string;
-    data: {
-        label: string;
-        colorFondo: string;
-        colorLine: string;
-    }[];
+    data: CoroplethConfig[];
 }) => {
   getAppStore().dispatch(
     appActions.widgetStatePropChange(

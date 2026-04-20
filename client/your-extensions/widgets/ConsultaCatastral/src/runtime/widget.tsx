@@ -406,7 +406,7 @@ const Widget = (props: any) => {
             ] */
             const fields = response.data.fields
 
-            abrirTablaResultados(firstFeatureArray, fields, props, widgetResultId , spatialReference as __esri.SpatialReference, undefined, capaTemporal, valorBusqueda)
+            abrirTablaResultados(false, firstFeatureArray, fields, props, widgetResultId , spatialReference as __esri.SpatialReference, undefined, capaTemporal, valorBusqueda)
 
 //            pintarPredio(resultado.features[0])  ahora lo pinta WidgetResult
 
@@ -461,7 +461,7 @@ const Widget = (props: any) => {
 
             const fields = response.data.fields
 
-            abrirTablaResultados(firstFeatureArray, fields, props, widgetResultId , spatialReference as __esri.SpatialReference, undefined, capaTemporal, valorBusqueda)
+            abrirTablaResultados(false, firstFeatureArray, fields, props, widgetResultId , spatialReference as __esri.SpatialReference, undefined, capaTemporal, valorBusqueda)
 
 
         } catch (error) {

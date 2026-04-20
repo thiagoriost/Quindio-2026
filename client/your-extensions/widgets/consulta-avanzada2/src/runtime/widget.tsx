@@ -763,7 +763,7 @@ const ConsultaAvanzada = (props: AllWidgetProps<any>) => {
 
     const fields = responseConsulta.fields
 
-    abrirTablaResultados(features, fields, props, widgetResultId, spatialReference as unknown as __esri.SpatialReference)
+    abrirTablaResultados(false, features, fields, props, widgetResultId, spatialReference as unknown as __esri.SpatialReference)
 
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
