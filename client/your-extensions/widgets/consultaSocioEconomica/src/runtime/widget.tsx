@@ -36,7 +36,7 @@ interface interfaceConsultaPor { id: number, name: string, url: string }
 // interface interfaceLeyenda { label: string, colorFondo: string, colorLine: string }
 
 export const LEYENDA_COROPLETICO_QUINDIO = {
-  Desnutrición: {
+  desnutricion: {
     leyenda: [
       {"colorFondo":"51, 153, 51,0.4","colorLine":"51, 153, 51,1","minimo":"0","maximo":"8","label":"0 a 7%"},
       {"colorFondo":"0,0,255,0.4","colorLine":"0,0,255,1","minimo":"8","maximo":"14","label":"8 al 14%"},
@@ -84,7 +84,7 @@ export const LEYENDA_COROPLETICO_QUINDIO = {
 
 
 export const NAMES_CAPAS_CONSULTA_SOCIOECONOMICA = {
-  Desnutricion: 'Desnutrición',
+  desnutricion: 'Desnutrición',
   necesidadesBasicasInsatisfechas: 'Necesidades Básicas Insatisfechas',
   poblacionEdadSimple: 'Población Edad Simple',
   poblacionExpulsor:  'Población Expulsor',
@@ -110,12 +110,7 @@ const WidgetSocioEconomica = (props: AllWidgetProps<any>) => {
 
   const [consultaPorSeleccionada, setConsultaPorSeleccionada] = React.useState< interfaceConsultaPor | null>({name: "", id: null, url: ""})
 
-
-  // const [selectedIndicador, setSelectedIndicador] = React.useState<number | null>(null)
-
   const [selectedAnio, setSelectedAnio] = React.useState<string | null>(null)
-
-  // const [selectedEstablecimiento, setSelectedEstablecimiento] = React.useState<interfaceEstablecimiento | null>(null)
 
   const [capasDisponibles, setCapasDisponibles] = React.useState<Array<{id: number, name: string}>>([])
 
@@ -135,36 +130,6 @@ const WidgetSocioEconomica = (props: AllWidgetProps<any>) => {
     setDisabledAnio(disable)
   }
 
- /*  const NAMES = ["Infraestructura", "Cobertura" , "Cupos ofertados","Eficiencia interna", "Tasa de Analfabetismo Dep", "Tasa de Analfabetismo Mun"]
-
-  const consultaPor = [
-    {
-      id: 4,
-      name: INDICADORES.Poblacion,
-      url: urls.SERVICIO_SOCIOECONOMICO
-    },
-    {
-      id:1,
-      name: INDICADORES.NBI,
-      url: urls.SERVICIO_SOCIOECONOMICO
-    },
-    {
-      id: 2,
-      name: INDICADORES.Desplazados,
-      url: urls.SERVICIO_SOCIOECONOMICO
-    },
-    {
-      id: 3,
-      name: INDICADORES.IndicadoresSocioeconomicos,
-      url: urls.SERVICIO_SOCIOECONOMICO
-    },
-    {
-      id: 9,
-      name: INDICADORES.CoberturaServiciosPublicos,
-      url: urls.SERVICIO_SOCIOECONOMICO
-    }
-] */
-
   /**
      * Extent inicial del mapa.
      * Se guarda al cargar el widget para poder restaurar
@@ -183,7 +148,7 @@ const WidgetSocioEconomica = (props: AllWidgetProps<any>) => {
     setConsultaPorSeleccionada({ id: selected.id, name: selected.name, url: selectedUrl })
     setLoading(true)
 
-    if (name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.Desnutricion || name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.poblacionExpulsor || name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.poblacionReceptor
+    if (name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.desnutricion || name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.poblacionExpulsor || name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.poblacionReceptor
       || name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.necesidadesBasicasInsatisfechas
     ) {
       consultaPorAnio(selectedUrl)
@@ -281,12 +246,12 @@ const WidgetSocioEconomica = (props: AllWidgetProps<any>) => {
 
   const buscar = async () => {
 
-    setLoading(true)
+    // setLoading(true)
     // limpiar geometrías previamente dibujadas
     varJimuMapView?.view?.graphics?.removeAll()
     let urlCapa, campos, where
 
-    if (consultaPorSeleccionada?.name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.Desnutricion || consultaPorSeleccionada?.name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.poblacionExpulsor || consultaPorSeleccionada?.name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.poblacionReceptor || consultaPorSeleccionada?.name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.necesidadesBasicasInsatisfechas) {
+    if (consultaPorSeleccionada?.name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.desnutricion || consultaPorSeleccionada?.name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.poblacionExpulsor || consultaPorSeleccionada?.name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.poblacionReceptor || consultaPorSeleccionada?.name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.necesidadesBasicasInsatisfechas) {
       urlCapa = consultaPorSeleccionada.url
       campos = ['*']
       where = `ANIO='${selectedAnio}'`
@@ -315,30 +280,33 @@ const WidgetSocioEconomica = (props: AllWidgetProps<any>) => {
           .toLowerCase()
           .replace(/^\w/, c => c.toUpperCase())
       }))
-    const titleCoropletico = consultaPorSeleccionada?.name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.Desnutricion ? LEYENDA_COROPLETICO_QUINDIO.Desnutrición.fieldsToFilter[0].label :
+    const titleCoropletico = consultaPorSeleccionada?.name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.desnutricion ? LEYENDA_COROPLETICO_QUINDIO.desnutricion.fieldsToFilter[0].label :
       consultaPorSeleccionada?.name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.poblacionExpulsor ? LEYENDA_COROPLETICO_QUINDIO.poblacionExpulsor.fieldsToFilter[0].label :
       consultaPorSeleccionada?.name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.poblacionReceptor ? LEYENDA_COROPLETICO_QUINDIO.poblacionReceptor.fieldsToFilter[0].label :
       consultaPorSeleccionada?.name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.necesidadesBasicasInsatisfechas ? LEYENDA_COROPLETICO_QUINDIO.necesidadesBasicasInsatisfechas.fieldsToFilter[0].label : ""
 
     const showGraphic = consultaPorSeleccionada?.name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.necesidadesBasicasInsatisfechas
+    let fixDataToRenderGraphic = {}
+    if (showGraphic) { // actualmente se muestra gráfica solo para el indicador de necesidades básicas insatisfechas, por lo que se hace un mapeo específico para ese caso, asumiendo que los campos a mostrar en la gráfica son PROPOSICIONPORCENTUALU, PROPOSICIONPORCENTUALR, CVEU y CVER, y que el campo para filtrar en el coroplético es NOMBRE. Para otros indicadores se podría generalizar esta lógica dependiendo de la estructura de los datos devueltos por el servicio
 
-    const fixDataToRenderGraphic = features.map(f => ({
-      name: f.attributes.NOMBRE,
-      dataToRenderGraphics:[
-        {
-          titleLeyendX: `Proposición Porcentual de ${f.attributes.NOMBRE} en el año ${selectedAnio}`,
-          titleLeyendY: `Cantidad`,
-          urbano: f.attributes.PROPOSICIONPORCENTUALU,
-          rural: f.attributes.PROPOSICIONPORCENTUALR
-        },
-        {
-          titleLeyendX: `Coeficiente de variación estimado de ${f.attributes.NOMBRE} en el año ${selectedAnio}`,
-          titleLeyendY: `Cantidad`,
-          urbano: f.attributes.CVEU,
-          rural: f.attributes.CVER
-        }
-      ]
-    }))
+      fixDataToRenderGraphic = features.map(f => ({
+        name: f.attributes.NOMBRE,
+        dataToRenderGraphics:[
+          {
+            titleLeyendX: `Proposición Porcentual de ${f.attributes.NOMBRE} en el año ${selectedAnio}`,
+            titleLeyendY: `Cantidad`,
+            urbano: f.attributes.PROPOSICIONPORCENTUALU,
+            rural: f.attributes.PROPOSICIONPORCENTUALR
+          },
+          {
+            titleLeyendX: `Coeficiente de variación estimado de ${f.attributes.NOMBRE} en el año ${selectedAnio}`,
+            titleLeyendY: `Cantidad`,
+            urbano: f.attributes.CVEU,
+            rural: f.attributes.CVER
+          }
+        ]
+      }))
+    }
 
     const withGraphic = {
       showGraphic,

@@ -58,6 +58,25 @@ import { useDibujarCoropletico } from '../../../shared/hooks/useDibujarCoropleti
  * @returns {JSX.Element | null}
  */
 export default function Widget(props: AllWidgetProps<IMConfig>) {
+
+    
+
+    /**
+     * Resultados obtenidos desde Redux.
+     *
+     * Contiene:
+     * - features
+     * - fields
+     * - title
+     * - spatialReference
+     *
+     * @type {ResultPayload | null}
+     */
+    const data: ResultPayload | null = useSelector(
+        (state: IMState) =>
+            state.widgetsState?.[props.id]?.results ?? null
+    )
+
     // Estado para mostrar/ocultar el panel flotante
     const [open, setOpen] = React.useState(true)    
 
@@ -65,6 +84,20 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
     const [panelPos, setPanelPos] = React.useState<{ x: number; y: number } | null>(null)
     const draggingRef = React.useRef(false)
     const dragOffsetRef = React.useRef({ x: 0, y: 0 })
+
+    /**
+     * Vista activa del mapa proporcionada por JimuMapViewComponent.
+     * Permite interactuar con el MapView de ArcGIS.
+     * @type {JimuMapView | null}
+     */
+    const [jimuMapView, setJimuMapView] = React.useState<JimuMapView | null>(null)
+
+    const [isMultiChart, setIsMultiChart] = React.useState(false) // bandera para saber si la gráfica de barras es múltiple por indicador, se setea al recibir los datos
+
+    const [currentIndex, setCurrentIndex] = React.useState(0) // índice para manejar navegación entre gráficos en caso de ser múltiples por indicador
+
+    const [itemGraphicDataSelected, setItemGraphicDataSelected] = React.useState(0) // para manejar el item seleccionado en la gráfica y pasarlo al componente de gráfica para que lo resalte, se asume que el item seleccionado es un objeto con la información del gráfico, por ejemplo {name: "ESTUDIANTESMATRICULADOS", value: 100} para el caso de cobertura educativa, y que el campo "name" corresponde al fieldToFilter que se usa para dibujar el coroplético en el mapa
+
 
     /**
          * Inicia el arrastre del panel al hacer mousedown sobre el header.
@@ -94,12 +127,17 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
         document.addEventListener('mouseup', onMouseUp)
     }
 
-    /**
-     * Vista activa del mapa proporcionada por JimuMapViewComponent.
-     * Permite interactuar con el MapView de ArcGIS.
-     * @type {JimuMapView | null}
-     */
-    const [jimuMapView, setJimuMapView] = React.useState<JimuMapView | null>(null)
+    
+    
+    // estado de la vista para grafico y/o tabla 
+    const [viewMode, setViewMode] = React.useState<'tabla' | 'grafico'>(
+        data?.withGraphic?.showGraphic ? 'grafico' : 'tabla'
+    )
+
+    const [fieldToFilter, setFieldToFilter] = React.useState<string>("") // para manejar el campo que se va a mostrar en el gráfico cuando hay gráfica
+    const [overrideGraphicData, setOverrideGraphicData] = React.useState<any[] | null>(null) // datos de gráfica recalculados al cambiar indicador
+    const [overrideGraphicTitle, setOverrideGraphicTitle] = React.useState<string | null>(null) // título de gráfica recalculado al cambiar indicador
+
 
     /**
      * Referencia a la capa gráfica utilizada para resaltar
@@ -134,6 +172,7 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
      */
     const pageSize = 5
 
+   
     /**
      * estado para el gráfico //cef 20260313
      */
@@ -141,36 +180,11 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
 
 
     /**
-     * Resultados obtenidos desde Redux.
-     *
-     * Contiene:
-     * - features
-     * - fields
-     * - title
-     * - spatialReference
-     *
-     * @type {ResultPayload | null}
-     */
-    const data: ResultPayload | null = useSelector(
-        (state: IMState) =>
-            state.widgetsState?.[props.id]?.results ?? null
-    )
-
-    /**
      * Bandera para recordar si la última consulta fue temporal antes de que data pase a null.
      * Evita restaurar extent cuando la visualización corresponde a una capa temporal persistente.
      */
     const temporalLayerRef = React.useRef<boolean>(false)
 
-
-    // estado de la vista para grafico y/o tabla 
-    const [viewMode, setViewMode] = React.useState<'tabla' | 'grafico'>(
-        data?.withGraphic?.showGraphic ? 'grafico' : 'tabla'
-    )
-
-    const [fieldToFilter, setFieldToFilter] = React.useState<string>("") // para manejar el campo que se va a mostrar en el gráfico cuando hay gráfica
-    const [overrideGraphicData, setOverrideGraphicData] = React.useState<any[] | null>(null) // datos de gráfica recalculados al cambiar indicador
-    const [overrideGraphicTitle, setOverrideGraphicTitle] = React.useState<string | null>(null) // título de gráfica recalculado al cambiar indicador
 
     /**
      * Hook que dibuja/limpia automáticamente el coroplético en el mapa
@@ -224,6 +238,14 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
             const { features } = data
             if (!features?.length) return
             if(validaLoggerLocalStorage('logger')) console.log("Resultados recibidos en WidgetResult:", {features, data})
+                
+            /* 
+            bandera para saber si la grafica de barra es multiple por indicador
+            */
+            if(!isMultiChart){
+                setIsMultiChart(data.withGraphic?.barKeys && data.withGraphic.barKeys.length > 1)
+            }
+
             setOpen(true)
             setPage(1)
             setFieldToFilter(data.withGraphic ? data.withGraphic.fieldToFilter : "")
@@ -394,7 +416,7 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
      * await crearCapaTemporal(featureSeleccionado)
      * ```
    */
-  const crearCapaTemporal = async (featureData: any) => {
+    const crearCapaTemporal = async (featureData: any) => {
     const view = jimuMapView?.view;
     if (!view) return;
 
@@ -691,27 +713,42 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
     const renderizarSiguienteCropleticoYgrafica = () => {
         // lógica para cambiar el indicador seleccionado y actualizar la gráfica en consecuencia
         if (!data?.withGraphic) return
-            
-        const currentIndicador = fieldToFilter !== "" ? fieldToFilter : data.withGraphic.fieldToFilter
-        const fieldsToFilter = data.withGraphic.dataCoropletico.fieldsToFilter
-        const currentIndex = fieldsToFilter.findIndex(e=>e.field === currentIndicador)
-        const nextIndex = (currentIndex + 1) % fieldsToFilter.length
-        const nextField = fieldsToFilter[nextIndex].field
-        // Al actualizar fieldToFilter, el hook useDibujarCoropletico redibuja automáticamente
-        setFieldToFilter(nextField)
-        if(validaLoggerLocalStorage('logger')) console.log({data, currentIndicador, currentIndex, nextIndex, nextField})
-
-        // Recalcular graphicData con el nuevo campo, reutilizando los nombres originales
-        const originalGraphicData = data.withGraphic.graphicData
-        const newGraphicData = originalGraphicData.map((item, i) => ({
-            name: item.name,
-            value: Number(data.features[i]?.attributes?.[nextField]) || 0
-        }))
-        setOverrideGraphicData(newGraphicData)
-
-        // Actualizar título con la etiqueta del campo seleccionado
-        const nextFieldInfo = `Total de estudiantes ${fieldsToFilter[nextIndex].label || nextField} en el año ${data.valorBusqueda || ''}`
-        setOverrideGraphicTitle(nextFieldInfo)
+        if (isMultiChart) {
+            const currentDataGraphic = data.withGraphic.graphicData[itemGraphicDataSelected]
+            const nextIndex = currentIndex === 0 ? 1 : 0 // solo hay dos gráficos por indicador, entonces se alterna entre 0 y 1            
+            setCurrentIndex(nextIndex)
+            const nextDataGraphic = [
+                {
+                    name: currentDataGraphic.name,
+                    rural: currentDataGraphic.dataToRenderGraphics[nextIndex].rural,
+                    urbano: currentDataGraphic.dataToRenderGraphics[nextIndex].urbano
+                }
+            ]
+            setOverrideGraphicData(nextDataGraphic)
+            setOverrideGraphicTitle(currentDataGraphic.dataToRenderGraphics[nextIndex].titleLeyendX)
+            if(validaLoggerLocalStorage('logger')) console.log("Gráfica de barras múltiples, cambiando a siguiente indicador", {currentDataGraphic, itemGraphicDataSelected, nextIndex, nextDataGraphic})
+        }else{
+            const currentIndicador = fieldToFilter !== "" ? fieldToFilter : data.withGraphic.fieldToFilter
+            const fieldsToFilter = data.withGraphic.dataCoropletico.fieldsToFilter
+            const currentIndex = fieldsToFilter.findIndex(e=>e.field === currentIndicador)
+            const nextIndex = (currentIndex + 1) % fieldsToFilter.length
+            const nextField = fieldsToFilter[nextIndex].field
+            // Al actualizar fieldToFilter, el hook useDibujarCoropletico redibuja automáticamente
+            setFieldToFilter(nextField)
+            if(validaLoggerLocalStorage('logger')) console.log({data, currentIndicador, currentIndex, nextIndex, nextField})
+    
+            // Recalcular graphicData con el nuevo campo, reutilizando los nombres originales
+            const originalGraphicData = data.withGraphic.graphicData
+            const newGraphicData = originalGraphicData.map((item, i) => ({
+                name: item.name,
+                value: Number(data.features[i]?.attributes?.[nextField]) || 0
+            }))
+            setOverrideGraphicData(newGraphicData)
+    
+            // Actualizar título con la etiqueta del campo seleccionado
+            const nextFieldInfo = `Total de estudiantes ${fieldsToFilter[nextIndex].label || nextField} en el año ${data.valorBusqueda || ''}`
+            setOverrideGraphicTitle(nextFieldInfo)
+        }
     }
     
     return (
@@ -766,7 +803,7 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
                             )}
                             {/* Botones de siguiente y atras para visualización de diferentes graficas para la misma consulta */}
                             {
-                                (data.withGraphic.selectedIndicador === 3 && viewMode === 'grafico') && (
+                                ((data.withGraphic.selectedIndicador === 3 || isMultiChart) && viewMode === 'grafico') && (
                                     <Button size="sm" type="primary" className="widget-result-export-btn" onClick={renderizarSiguienteCropleticoYgrafica}> Siguiente </Button>
                                 )
                             }
