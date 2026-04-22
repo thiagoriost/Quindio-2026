@@ -70,15 +70,33 @@ export const LEYENDA_COROPLETICO_QUINDIO = {
       ],
   },
   necesidadesBasicasInsatisfechas: {
-      leyenda: [
-        {colorFondo: '51, 153, 51,0.4', colorLine: '51, 153, 51,1', minimo: '0', maximo: '8', label: 'Hasta el 7% Precisa'},
-        {colorFondo: '0,0,255,0.4', colorLine: '0,0,255,1', minimo: '8', maximo: '14', label: '8 al 14 % Aceptable'},
-        {colorFondo: '255,255,0,0.4', colorLine: '255,255,0,1', minimo: '14', maximo: '20', label: '15 al 20 % Regular'},
-        {colorFondo: '255,0,0,0.4', colorLine: '255,0,0,1', minimo: '20', maximo: '100', label: 'Mayor al 20% Poco precisa'}
-      ],
-      fieldsToFilter: [
-        { field: "NOMBRE", label: "NBI - Total Cve" }
-      ],
+    leyenda: [
+      {colorFondo: '51, 153, 51,0.4', colorLine: '51, 153, 51,1', minimo: '0', maximo: '8', label: 'Hasta el 7% Precisa'},
+      {colorFondo: '0,0,255,0.4', colorLine: '0,0,255,1', minimo: '8', maximo: '14', label: '8 al 14 % Aceptable'},
+      {colorFondo: '255,255,0,0.4', colorLine: '255,255,0,1', minimo: '14', maximo: '20', label: '15 al 20 % Regular'},
+      {colorFondo: '255,0,0,0.4', colorLine: '255,0,0,1', minimo: '20', maximo: '100', label: 'Mayor al 20% Poco precisa'}
+    ],
+    fieldsToFilter: [
+      { field: "NOMBRE", label: "NBI - Total Cve" }
+    ],
+  },
+  serviciosPublicos: {
+    leyenda: [
+      {colorFondo: '51, 153, 51,0.4', colorLine: '51, 153, 51,1', minimo: '0', maximo: '8', label: 'Hasta el 7% Precisa'},
+      {colorFondo: '0,0,255,0.4', colorLine: '0,0,255,1', minimo: '8', maximo: '14', label: '8 al 14 % Aceptable'},
+      {colorFondo: '255,255,0,0.4', colorLine: '255,255,0,1', minimo: '14', maximo: '20', label: '15 al 20 % Regular'},
+      {colorFondo: '255,0,0,0.4', colorLine: '255,0,0,1', minimo: '20', maximo: '100', label: 'Mayor al 20% Poco precisa'}
+    ],
+    fieldsToFilter: [
+      { field: "NOMBRE", label: "NBI - Total Cve" }
+    ],
+    valoresTipoServicio: {
+      "Acueducto": "Acueducto",
+      "Alcantarillado": "Alcantarillado",
+      "Aseo": "Aseo",
+      "Energía": "Energía",
+      "Gas": "Gas"
+    }
   },
 }
 
@@ -123,6 +141,8 @@ const WidgetSocioEconomica = (props: AllWidgetProps<any>) => {
 
   const [buscarAble, setBuscarAble] = React.useState(false)
 
+  const [selectedTipoServicio, setSelectedTipoServicio] = React.useState<string | null>(null)
+
   const disableAllSelects = (disable: boolean) => {
     setDisabledTipoDesplazado(disable)
     setDisabledTipoIndicador(disable)
@@ -152,6 +172,9 @@ const WidgetSocioEconomica = (props: AllWidgetProps<any>) => {
       || name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.necesidadesBasicasInsatisfechas
     ) {
       consultaPorAnio(selectedUrl)
+    } else if (name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.serviciosPublicos) {
+      setDisabledTipoServicio(false)
+      setLoading(false)
     }
   }
 
@@ -212,6 +235,7 @@ const WidgetSocioEconomica = (props: AllWidgetProps<any>) => {
     // setSelectedIndicador(null)
     setSelectedAnio(null)
     setAniosDisponibles([])
+    setSelectedTipoServicio(null)
   }
 
   /**
@@ -405,17 +429,17 @@ const WidgetSocioEconomica = (props: AllWidgetProps<any>) => {
 
               <Label className={"styleLabel"}>Tipo servicio</Label>
               <Select
-                  value={""}
+                  value={selectedTipoServicio ?? ""}
                   disabled={loading || disabledTipoServicio}
-                  onChange={() => { console.log("Seleccionar tipo servicio") }}
+                  onChange={(e: { target: { value: string } }) => { setSelectedTipoServicio(e.target.value) }}
               >
                   <Option value="">
                       {loading ? 'Cargando ...' : 'Seleccione...'}
                   </Option>
 
-                  {[{id: 1, name: "Tipo 1"}, {id: 2, name: "Tipo 2"}].map(layer => (
-                      <Option key={layer.id} value={layer.id}>
-                          {layer.name}
+                  {Object.entries(LEYENDA_COROPLETICO_QUINDIO.serviciosPublicos.valoresTipoServicio).map(([key, label]) => (
+                      <Option key={key} value={key}>
+                          {label}
                       </Option>
                   ))}
               </Select>
