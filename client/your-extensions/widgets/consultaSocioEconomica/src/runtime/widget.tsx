@@ -141,6 +141,7 @@ export const NAMES_CAPAS_CONSULTA_SOCIOECONOMICA = {
   poblacion: 'Población',
   desnutricion: 'Desnutrición',
   desplazados: 'Desplazados',
+  indicadoresSocioeconomicos: 'Indicadores Socioeconómicos',
   necesidadesBasicasInsatisfechasNbi: 'Necesidades Básicas Insatisfechas (NBI)',
   poblacionEdadSimple: 'Población Edad Simple',
   poblacionExpulsor:  'Población Expulsor',
@@ -148,9 +149,13 @@ export const NAMES_CAPAS_CONSULTA_SOCIOECONOMICA = {
   poblacionQuinquenal:  'Población Quinquenal',
   poblacionReceptor:  'Población Receptor',
   poblacionSISBEN:  'Población SISBEN',
-  serviciosPublicos:  'Servicios Públicos',
+  serviciosPublicos:  'Cobertura de Servicios Públicos',
   tasaDesempleo: 'Tasa de Desempleo'
 }
+
+export const INDICADORES_SOCIOECONOMICOS = [
+  { id: 'desnutricion', value: 'Indice de desnutrición', configName: 'Desnutrición' }
+]
 
 const WidgetSocioEconomica = (props: AllWidgetProps<any>) => {
   /**
@@ -181,6 +186,7 @@ const WidgetSocioEconomica = (props: AllWidgetProps<any>) => {
 
   const [selectedTipoServicio, setSelectedTipoServicio] = React.useState<string | null>(null)
   const [selectedTipoDesplazado, setSelectedTipoDesplazado] = React.useState<string | null>(null)
+  const [selectedTipoIndicador, setSelectedTipoIndicador] = React.useState<string | null>(null)
 
   const disableAllSelects = (disable: boolean) => {
     setDisabledTipoDesplazado(disable)
@@ -207,9 +213,12 @@ const WidgetSocioEconomica = (props: AllWidgetProps<any>) => {
     setConsultaPorSeleccionada({ id: selected.id, name: selected.name, url: selectedUrl })
     setLoading(true)
 
-    if (name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.poblacion || name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.desnutricion || name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.necesidadesBasicasInsatisfechasNbi
+    if (name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.poblacion || name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.necesidadesBasicasInsatisfechasNbi
     ) {
       consultaPorAnio(selectedUrl)
+    } else if (name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.indicadoresSocioeconomicos) {
+      setDisabledTipoIndicador(false)
+      setLoading(false)
     } else if (name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.serviciosPublicos) {
       setDisabledTipoServicio(false)
       setLoading(false)
@@ -245,6 +254,25 @@ const WidgetSocioEconomica = (props: AllWidgetProps<any>) => {
     const features = await ejecutarConsulta({ returnGeometry: false, campos: ['ANIO'], url, where: '1=1' })
     const anios = Array.from(new Set(features.map((f: any) => f.attributes.ANIO))).sort() as string[]
     if(validaLoggerLocalStorage('logger')) console.log({aniosTipoDesplazado: anios})
+    setAniosDisponibles(anios)
+    setDisabledAnio(false)
+    setLoading(false)
+  }
+
+  const handleTipoIndicadorChange = async (e: { target: { value: string } }) => {
+    if (e.target.value === "") return
+    const tipoIndicadorId = e.target.value
+    setSelectedTipoIndicador(tipoIndicadorId)
+    setLoading(true)
+    setSelectedAnio(null)
+    setAniosDisponibles([])
+    setDisabledAnio(true)
+    setBuscarAble(false)
+    const indicador = INDICADORES_SOCIOECONOMICOS.find(i => i.id === tipoIndicadorId)
+    setConsultaPorSeleccionada(prev => ({ ...prev, name: indicador?.configName ?? prev.name }))
+    const features = await ejecutarConsulta({ returnGeometry: false, campos: ['ANIO'], url: consultaPorSeleccionada.url, where: '1=1' })
+    const anios = Array.from(new Set(features.map((f: any) => f.attributes.ANIO))).sort() as string[]
+    if(validaLoggerLocalStorage('logger')) console.log({aniosTipoIndicador: anios})
     setAniosDisponibles(anios)
     setDisabledAnio(false)
     setLoading(false)
@@ -314,6 +342,7 @@ const WidgetSocioEconomica = (props: AllWidgetProps<any>) => {
     setAniosDisponibles([])
     setSelectedTipoServicio(null)
     setSelectedTipoDesplazado(null)
+    setSelectedTipoIndicador(null)
   }
 
   /**
@@ -537,17 +566,17 @@ const WidgetSocioEconomica = (props: AllWidgetProps<any>) => {
 
               <Label className={"styleLabel"}>Tipo indicador</Label>
               <Select
-                  value={""}
+                  value={selectedTipoIndicador ?? ""}
                   disabled={loading || disabledTipoIndicador}
-                  onChange={() => { console.log("Seleccionar tipo indicador") }}
+                  onChange={handleTipoIndicadorChange}
               >
                   <Option value="">
                       {loading ? 'Cargando ...' : 'Seleccione...'}
                   </Option>
 
-                  {[{id: 1, name: "Tipo 1"}, {id: 2, name: "Tipo 2"}].map(layer => (
-                      <Option key={layer.id} value={layer.id}>
-                          {layer.name}
+                  {INDICADORES_SOCIOECONOMICOS.map(item => (
+                      <Option key={item.id} value={item.id}>
+                          {item.value}
                       </Option>
                   ))}
               </Select>
