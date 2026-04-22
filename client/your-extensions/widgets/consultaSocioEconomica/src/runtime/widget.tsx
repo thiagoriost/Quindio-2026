@@ -17,8 +17,8 @@ import { Label, Select, Option } from "jimu-ui"
 
 import { abrirTablaResultados, limpiarYCerrarWidgetResultados } from "../../../widget-result/src/runtime/widget"
 import { limpiarYCerrarwidgetLeyenda } from '../../../widget-leyenda/src/runtime/widget'
-import { ejecutarConsulta, restoreInitialExtent, validaLoggerLocalStorage, limpiarFeaturesDibujados, realizarQuery, transformToCamelCase} from "../../../shared/utils/export.utils"
-import type { LayerInfo } from "widgets/shared/types/types_consultaAvanzadaAlfanumerica"
+import { ejecutarConsulta, restoreInitialExtent, validaLoggerLocalStorage, limpiarFeaturesDibujados, /* realizarQuery,  */transformToCamelCase} from "../../../shared/utils/export.utils"
+// import type { LayerInfo } from "widgets/shared/types/types_consultaAvanzadaAlfanumerica"
 import { SearchActionBar } from "../../../shared/components/search-action-bar"
 import { WIDGET_IDS } from "../../../shared/constants/widget-ids"
 import { clearPoint } from "../../../../widgets/utils/module"
@@ -35,7 +35,26 @@ interface interfaceConsultaPor { id: number, name: string, url: string }
 // interface interfaceEstablecimiento { NOMBREESTABLECIMIENTO: string, CODIGOESTABLECIMIENTO: string, DIRECCION: string, JORNADA: string, IMAGEN: string, geometry: __esri.Geometry, IDSECTOR: string, IDZONA: string, IDTIPOSEDE: string, IDGRUPO: string }
 // interface interfaceLeyenda { label: string, colorFondo: string, colorLine: string }
 
+export const opcionesConsultaPor = [
+  { id: 4, name: "Población" },
+  { id: 2, name: "Desplazados" },
+  { id: 1, name: "Necesidades Básicas Insatisfechas (NBI)" },
+  { id: 0, name: "Indicadores Socioeconómicos" },
+  { id: 9, name: "Cobertura de Servicios Públicos" }
+]
+
 export const LEYENDA_COROPLETICO_QUINDIO = {
+  poblacion: {
+    leyenda: [
+      {"colorFondo":"255,0,0,0.4","colorLine":"255,0,0,1","minimo":"0","maximo":"10000","label":"0 a 10.000"},
+      {"colorFondo":"0,0,255,0.4","colorLine":"0,0,255,1","minimo":"10001","maximo":"20000","label":"10.001 a 20.000"},
+      {"colorFondo":"255,255,0,0.4","colorLine":"255,255,0,1","minimo":"20001","maximo":"50000","label":"20.001 a 50.000"},
+      {"colorFondo":"51, 153, 51,0.4","colorLine":"51, 153, 51,1","minimo":"50001","maximo":"20000000","label":"Mayor a 50.000"}
+    ],
+    fieldsToFilter: [
+      { field: "TOTAL", label: "Población Total" }
+    ],
+  },
   desnutricion: {
     leyenda: [
       {"colorFondo":"51, 153, 51,0.4","colorLine":"51, 153, 51,1","minimo":"0","maximo":"8","label":"0 a 7%"},
@@ -47,6 +66,22 @@ export const LEYENDA_COROPLETICO_QUINDIO = {
       { field: "PORCENTAJE", label: "Indice de desnutrición" }
     ],
   },
+  desplazados: {
+      leyenda: [
+        {colorFondo: '255,0,0,0.4', colorLine: '255,0,0,1', minimo: '0', maximo: '50', label: '0 a 50'},
+        {colorFondo: '0,0,255,0.4', colorLine: '0,0,255,1', minimo: '51', maximo: '100', label: '51 a 100'},
+        {colorFondo: '255,255,0,0.4', colorLine: '255,255,0,1', minimo: '101', maximo: '150', label: '101 a 150'},
+        {colorFondo: '51, 153, 51,0.4', colorLine: '51, 153, 51,1', minimo: '151', maximo: '10000000', label: 'Mayor a 150'}
+      ],
+      fieldsToFilter: [
+        { field: "PERSONAS", label: "Personas desplazadas" }
+      ],
+      valoresSubCampo: [
+        { id: 3, value: "Expulsor" },
+        { id: 6, value: "Receptor" }
+      ]
+  },
+  /*
   poblacionExpulsor: {
       leyenda: [
         {colorFondo: '255,0,0,0.4', colorLine: '255,0,0,1', minimo: '0', maximo: '50', label: '0 a 50'},
@@ -68,7 +103,7 @@ export const LEYENDA_COROPLETICO_QUINDIO = {
       fieldsToFilter: [
         { field: "PERSONAS", label: "Personas desplazadas" }
       ],
-  },
+  }, */
   necesidadesBasicasInsatisfechas: {
     leyenda: [
       {colorFondo: '51, 153, 51,0.4', colorLine: '51, 153, 51,1', minimo: '0', maximo: '8', label: 'Hasta el 7% Precisa'},
@@ -82,27 +117,29 @@ export const LEYENDA_COROPLETICO_QUINDIO = {
   },
   serviciosPublicos: {
     leyenda: [
-      {colorFondo: '51, 153, 51,0.4', colorLine: '51, 153, 51,1', minimo: '0', maximo: '8', label: 'Hasta el 7% Precisa'},
-      {colorFondo: '0,0,255,0.4', colorLine: '0,0,255,1', minimo: '8', maximo: '14', label: '8 al 14 % Aceptable'},
-      {colorFondo: '255,255,0,0.4', colorLine: '255,255,0,1', minimo: '14', maximo: '20', label: '15 al 20 % Regular'},
-      {colorFondo: '255,0,0,0.4', colorLine: '255,0,0,1', minimo: '20', maximo: '100', label: 'Mayor al 20% Poco precisa'}
+      {"colorFondo":"0,0,255,0.4","colorLine":"0,0,255,1","minimo":"0","maximo":"25","label":"0 al 25%"},
+      {"colorFondo":"51, 153, 51,0.4","colorLine":"51, 153, 51,1","minimo":"25","maximo":"50","label":"25 al 50%"},
+      {"colorFondo":"255,255,0,0.4","colorLine":"255,255,0,1","minimo":"50","maximo":"75","label":"50 al 75%"},
+      {"colorFondo":"255,171,0,0.4","colorLine":"255,171,0,1","minimo":"75","maximo":"100","label":"Mayor a 75%"}
     ],
     fieldsToFilter: [
-      { field: "NOMBRE", label: "NBI - Total Cve" }
+      { field: "COBERTURA", label: "Cobertura del servicio público" }
     ],
-    valoresTipoServicio: {
-      "Acueducto": "Acueducto",
-      "Alcantarillado": "Alcantarillado",
-      "Aseo": "Aseo",
-      "Energía": "Energía",
-      "Gas": "Gas"
-    }
+    fieldTipoServicio: "SERVICIO_PUBLICO",
+    valoresSubCampo: [
+      { id: "Acueducto", value: "Acueducto" },
+      { id: "Alcantarillado", value: "Alcantarillado" },
+      { id: "Aseo", value: "Aseo" },
+      { id: "Energía", value: "Energía" },
+      { id: "Gas", value: "Gas" }
+    ]
   },
 }
 
 
 export const NAMES_CAPAS_CONSULTA_SOCIOECONOMICA = {
   desnutricion: 'Desnutrición',
+  desplazados: 'Desplazados',
   necesidadesBasicasInsatisfechas: 'Necesidades Básicas Insatisfechas',
   poblacionEdadSimple: 'Población Edad Simple',
   poblacionExpulsor:  'Población Expulsor',
@@ -130,7 +167,7 @@ const WidgetSocioEconomica = (props: AllWidgetProps<any>) => {
 
   const [selectedAnio, setSelectedAnio] = React.useState<string | null>(null)
 
-  const [capasDisponibles, setCapasDisponibles] = React.useState<Array<{id: number, name: string}>>([])
+  // const [capasDisponibles, setCapasDisponibles] = React.useState<Array<{id: number, name: string}>>([])
 
   const [aniosDisponibles, setAniosDisponibles] = React.useState<string[]>([])
 
@@ -142,6 +179,7 @@ const WidgetSocioEconomica = (props: AllWidgetProps<any>) => {
   const [buscarAble, setBuscarAble] = React.useState(false)
 
   const [selectedTipoServicio, setSelectedTipoServicio] = React.useState<string | null>(null)
+  const [selectedTipoDesplazado, setSelectedTipoDesplazado] = React.useState<string | null>(null)
 
   const disableAllSelects = (disable: boolean) => {
     setDisabledTipoDesplazado(disable)
@@ -161,32 +199,70 @@ const WidgetSocioEconomica = (props: AllWidgetProps<any>) => {
     if (e.target.value === "") return
     // handleClear()
     const id = Number(e.target.value)
-    const name = capasDisponibles.find(c => c.id === id)?.name ?? ""
-    const selected = capasDisponibles.find(c => c.id === id)
+    const name = opcionesConsultaPor.find(c => c.id === id)?.name ?? ""
+    const selected = opcionesConsultaPor.find(c => c.id === id)
     const selectedUrl = `${ urls.SERVICIO_SOCIOECONOMICO }/${selected?.id}`
-    if(validaLoggerLocalStorage('logger')) console.log("handleConsultaPor", e.target.value, {id, selected, selectedUrl, capasDisponibles})
+    if(validaLoggerLocalStorage('logger')) console.log("handleConsultaPor", e.target.value, {id, selected, selectedUrl, opcionesConsultaPor})
     setConsultaPorSeleccionada({ id: selected.id, name: selected.name, url: selectedUrl })
     setLoading(true)
 
-    if (name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.desnutricion || name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.poblacionExpulsor || name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.poblacionReceptor
-      || name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.necesidadesBasicasInsatisfechas
+    if (name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.desnutricion || opcionesConsultaPor.find(e=>id===e.id) || name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.necesidadesBasicasInsatisfechas
     ) {
       consultaPorAnio(selectedUrl)
     } else if (name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.serviciosPublicos) {
       setDisabledTipoServicio(false)
+      setLoading(false)
+    } else if (name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.desplazados) {
+      setDisabledTipoDesplazado(false)
       setLoading(false)
     }
   }
 
   const consultaPorAnio = async (selectedUrl: string) => {
     const features = await ejecutarConsulta({ returnGeometry: true, campos:['ANIO'], url: selectedUrl, where: '1=1' })
-    if(validaLoggerLocalStorage('logger')) console.log({features})
 
     // obtener los años disponibles para el indicador seleccionado, y poblar el select de año
     const anios = Array.from(new Set(features.map(f => f.attributes.ANIO))).sort() as string[]
-    if(validaLoggerLocalStorage('logger')) console.log({aniosDisponibles: anios})
+    if(validaLoggerLocalStorage('logger')) console.log({features, aniosDisponibles: anios})
     setAniosDisponibles(anios)
     setSelectedAnio(null)
+    setDisabledAnio(false)
+    setLoading(false)
+  }
+
+  const handleTipoDesplazadoChange = async (e: { target: { value: string } }) => {
+    if (e.target.value === "") return
+    const tipoDesplazadoId = e.target.value
+    setSelectedTipoDesplazado(tipoDesplazadoId)
+    setLoading(true)
+    setSelectedAnio(null)
+    setAniosDisponibles([])
+    setDisabledAnio(true)
+    setBuscarAble(false)
+    const url = `${urls.SERVICIO_SOCIOECONOMICO}/${tipoDesplazadoId}`
+    setConsultaPorSeleccionada(prev => ({ ...prev, url }))
+    const features = await ejecutarConsulta({ returnGeometry: false, campos: ['ANIO'], url, where: '1=1' })
+    const anios = Array.from(new Set(features.map((f: any) => f.attributes.ANIO))).sort() as string[]
+    if(validaLoggerLocalStorage('logger')) console.log({aniosTipoDesplazado: anios})
+    setAniosDisponibles(anios)
+    setDisabledAnio(false)
+    setLoading(false)
+  }
+
+  const handleTipoServicioChange = async (e: { target: { value: string } }) => {
+    if (e.target.value === "") return
+    const tipoServicio = e.target.value
+    setSelectedTipoServicio(tipoServicio)
+    setLoading(true)
+    setSelectedAnio(null)
+    setAniosDisponibles([])
+    setDisabledAnio(true)
+    setBuscarAble(false)
+    const where = `${LEYENDA_COROPLETICO_QUINDIO.serviciosPublicos.fieldTipoServicio}='${tipoServicio}'`
+    const features = await ejecutarConsulta({ returnGeometry: false, campos: ['ANIO'], url: consultaPorSeleccionada.url, where })
+    const anios = Array.from(new Set(features.map((f: any) => f.attributes.ANIO))).sort() as string[]
+    if(validaLoggerLocalStorage('logger')) console.log({aniosTipoServicio: anios})
+    setAniosDisponibles(anios)
     setDisabledAnio(false)
     setLoading(false)
   }
@@ -236,6 +312,7 @@ const WidgetSocioEconomica = (props: AllWidgetProps<any>) => {
     setSelectedAnio(null)
     setAniosDisponibles([])
     setSelectedTipoServicio(null)
+    setSelectedTipoDesplazado(null)
   }
 
   /**
@@ -251,7 +328,7 @@ const WidgetSocioEconomica = (props: AllWidgetProps<any>) => {
   }, [props])
 
   // realizar consulta al servicio consulta socioeconomica para obtener las capas disponibles y poblar el select de consulta por
-  const cargarCapasIniciales = async () => {
+  /* const cargarCapasIniciales = async () => {
     setLoading(true)
     const response = await realizarQuery(urls.SERVICIO_SOCIOECONOMICO, "Inicial", setError, setLoading)
     if (response && response.layers) {
@@ -265,7 +342,7 @@ const WidgetSocioEconomica = (props: AllWidgetProps<any>) => {
   React.useEffect(() => {
 
     cargarCapasIniciales()
-  }, [])
+  }, []) */
 
 
   const buscar = async () => {
@@ -275,10 +352,16 @@ const WidgetSocioEconomica = (props: AllWidgetProps<any>) => {
     varJimuMapView?.view?.graphics?.removeAll()
     let urlCapa, campos, where
 
-    if (consultaPorSeleccionada?.name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.desnutricion || consultaPorSeleccionada?.name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.poblacionExpulsor || consultaPorSeleccionada?.name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.poblacionReceptor || consultaPorSeleccionada?.name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.necesidadesBasicasInsatisfechas) {
+    const esServiciosPublicos = consultaPorSeleccionada?.name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.serviciosPublicos
+
+    if (consultaPorSeleccionada?.name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.desnutricion || consultaPorSeleccionada?.name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.desplazados || consultaPorSeleccionada?.name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.necesidadesBasicasInsatisfechas || opcionesConsultaPor.find(e=>consultaPorSeleccionada.id===e.id)) {
       urlCapa = consultaPorSeleccionada.url
       campos = ['*']
       where = `ANIO='${selectedAnio}'`
+    } else if (esServiciosPublicos) {
+      urlCapa = consultaPorSeleccionada.url
+      campos = ['*']
+      where = `${LEYENDA_COROPLETICO_QUINDIO.serviciosPublicos.fieldTipoServicio}='${selectedTipoServicio}' AND ANIO='${selectedAnio}'`
     }
 
 
@@ -305,9 +388,10 @@ const WidgetSocioEconomica = (props: AllWidgetProps<any>) => {
           .replace(/^\w/, c => c.toUpperCase())
       }))
     const titleCoropletico = consultaPorSeleccionada?.name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.desnutricion ? LEYENDA_COROPLETICO_QUINDIO.desnutricion.fieldsToFilter[0].label :
-      consultaPorSeleccionada?.name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.poblacionExpulsor ? LEYENDA_COROPLETICO_QUINDIO.poblacionExpulsor.fieldsToFilter[0].label :
-      consultaPorSeleccionada?.name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.poblacionReceptor ? LEYENDA_COROPLETICO_QUINDIO.poblacionReceptor.fieldsToFilter[0].label :
-      consultaPorSeleccionada?.name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.necesidadesBasicasInsatisfechas ? LEYENDA_COROPLETICO_QUINDIO.necesidadesBasicasInsatisfechas.fieldsToFilter[0].label : ""
+      consultaPorSeleccionada?.name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.poblacionExpulsor ? LEYENDA_COROPLETICO_QUINDIO.desplazados.fieldsToFilter[0].label :
+      consultaPorSeleccionada?.name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.poblacionReceptor ? LEYENDA_COROPLETICO_QUINDIO.desplazados.fieldsToFilter[0].label :
+      consultaPorSeleccionada?.name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.necesidadesBasicasInsatisfechas ? LEYENDA_COROPLETICO_QUINDIO.necesidadesBasicasInsatisfechas.fieldsToFilter[0].label :
+      esServiciosPublicos ? LEYENDA_COROPLETICO_QUINDIO.serviciosPublicos.fieldsToFilter[0].label : ""
 
     const showGraphic = consultaPorSeleccionada?.name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.necesidadesBasicasInsatisfechas
     let fixDataToRenderGraphic = {}
@@ -342,11 +426,17 @@ const WidgetSocioEconomica = (props: AllWidgetProps<any>) => {
       ],
       titleCoropletico,
       dataCoropletico: LEYENDA_COROPLETICO_QUINDIO[transformToCamelCase(consultaPorSeleccionada?.name) as keyof typeof LEYENDA_COROPLETICO_QUINDIO],
-      fieldToFilter: LEYENDA_COROPLETICO_QUINDIO[transformToCamelCase(consultaPorSeleccionada?.name) as keyof typeof LEYENDA_COROPLETICO_QUINDIO].fieldsToFilter[0].field // campo que se usará para el coroplético, debe venir en la consulta
+      fieldToFilter: esServiciosPublicos
+        ? LEYENDA_COROPLETICO_QUINDIO.serviciosPublicos.fieldsToFilter[0].field
+        : LEYENDA_COROPLETICO_QUINDIO[transformToCamelCase(consultaPorSeleccionada?.name) as keyof typeof LEYENDA_COROPLETICO_QUINDIO].fieldsToFilter[0].field
     }
     const temporalLayer = false
     const _cloneFeatures = features.map(f => ({ attributes: f.attributes, geometry: f.geometry.toJSON() }))
-    const titleTable = consultaPorSeleccionada?.name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.poblacionExpulsor ? `${consultaPorSeleccionada?.name} en el año ${selectedAnio}` : `${consultaPorSeleccionada?.name} - ${selectedAnio}`
+    const titleTable = esServiciosPublicos
+      ? `${consultaPorSeleccionada?.name} - ${selectedTipoServicio} - ${selectedAnio}`
+      : consultaPorSeleccionada?.name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.poblacionExpulsor
+        ? `${consultaPorSeleccionada?.name} en el año ${selectedAnio}`
+        : `${consultaPorSeleccionada?.name} - ${selectedAnio}`
     abrirTablaResultados(
       true,
       _cloneFeatures,
@@ -386,7 +476,7 @@ const WidgetSocioEconomica = (props: AllWidgetProps<any>) => {
                       {loading ? 'Cargando ...' : 'Seleccione...'}
                   </Option>
 
-                  {capasDisponibles.map(layer => (
+                  {opcionesConsultaPor.map(layer => (
                       <Option key={layer.id} value={layer.id}>
                           {layer.name}
                       </Option>
@@ -395,17 +485,16 @@ const WidgetSocioEconomica = (props: AllWidgetProps<any>) => {
 
               <Label className={"styleLabel"}>Tipo desplazado</Label>
               <Select
-                  value={""}
+                  value={selectedTipoDesplazado ?? ""}
                   disabled={loading || disabledTipoDesplazado}
-                  onChange={() => { console.log("Seleccionar tipo desplazado") }}
+                  onChange={handleTipoDesplazadoChange}
               >
                   <Option value="">
                       {loading ? 'Cargando ...' : 'Seleccione...'}
                   </Option>
-
-                  {[{id: 1, name: "Tipo 1"}, {id: 2, name: "Tipo 2"}].map(layer => (
-                      <Option key={layer.id} value={layer.id}>
-                          {layer.name}
+                  {LEYENDA_COROPLETICO_QUINDIO.desplazados.valoresSubCampo.map(item => (
+                      <Option key={item.id} value={item.id}>
+                          {item.value}
                       </Option>
                   ))}
               </Select>
@@ -431,15 +520,15 @@ const WidgetSocioEconomica = (props: AllWidgetProps<any>) => {
               <Select
                   value={selectedTipoServicio ?? ""}
                   disabled={loading || disabledTipoServicio}
-                  onChange={(e: { target: { value: string } }) => { setSelectedTipoServicio(e.target.value) }}
+                  onChange={handleTipoServicioChange}
               >
                   <Option value="">
                       {loading ? 'Cargando ...' : 'Seleccione...'}
                   </Option>
 
-                  {Object.entries(LEYENDA_COROPLETICO_QUINDIO.serviciosPublicos.valoresTipoServicio).map(([key, label]) => (
-                      <Option key={key} value={key}>
-                          {label}
+                  {LEYENDA_COROPLETICO_QUINDIO.serviciosPublicos.valoresSubCampo.map(item => (
+                      <Option key={item.id} value={item.id}>
+                          {item.value}
                       </Option>
                   ))}
               </Select>
