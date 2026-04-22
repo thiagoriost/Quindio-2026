@@ -92,7 +92,7 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
      */
     const [jimuMapView, setJimuMapView] = React.useState<JimuMapView | null>(null)
 
-    const [isMultiChart, setIsMultiChart] = React.useState(false) // bandera para saber si la gráfica de barras es múltiple por indicador, se setea al recibir los datos
+    const [isMultiBar, setIsMultiBar] = React.useState(false) // bandera para saber si la gráfica de barras es múltiple por indicador, se setea al recibir los datos
 
     const [currentIndex, setCurrentIndex] = React.useState(0) // índice para manejar navegación entre gráficos en caso de ser múltiples por indicador
 
@@ -235,6 +235,10 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
          if (!data) return
         if (data){
             temporalLayerRef.current = data.temporalLayer === true //Guarda el valor de temporalLayer cuando llegan los datos
+
+            // Limpiar gráficos del mapa al recibir nuevos resultados
+            graphicsLayerRef.current?.removeAll()
+
             const { features } = data
             if (!features?.length) return
             if(validaLoggerLocalStorage('logger')) console.log("Resultados recibidos en WidgetResult:", {features, data})
@@ -242,8 +246,8 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
             /* 
             bandera para saber si la grafica de barra es multiple por indicador
             */
-            if(!isMultiChart){
-                setIsMultiChart(data.withGraphic?.barKeys && data.withGraphic.barKeys.length > 1)
+            if(!isMultiBar && data.withGraphic.showGraphic){
+                setIsMultiBar(data.withGraphic?.barKeys && data.withGraphic.barKeys.length > 1)
             }
 
             setOpen(true)
@@ -637,6 +641,19 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
             })
 
         }
+
+        if (isMultiBar && data.withGraphic.showGraphic) {
+            const selectedName = feature?.attributes?.NOMBRE
+            const selectedIndex = data?.withGraphic?.graphicData?.findIndex((item: any) => item?.name === selectedName)
+
+            if (selectedIndex != null && selectedIndex >= 0) {
+                setItemGraphicDataSelected(selectedIndex)
+                updateDataMultiBar(selectedIndex)
+            } else {
+                updateDataMultiBar()
+            }
+            setViewMode('grafico') // asegurar que al seleccionar una entidad se muestre la gráfica, en caso de que haya gráfica disponible
+        }
     }
 
     const getSymbolByGeometry = ( // 20260313
@@ -710,23 +727,42 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
         return undefined // usa el ancho por defecto del CSS para modo tabla
     }
 
+    const updateDataMultiBar = (selectedGraphicIndex?: number) => {
+        if (!data?.withGraphic?.graphicData?.length) return
+
+        const currentGraphicIndex = selectedGraphicIndex ?? itemGraphicDataSelected
+        const currentDataGraphic = data.withGraphic.graphicData[currentGraphicIndex]
+        if (!currentDataGraphic?.dataToRenderGraphics?.length) return
+
+        const nextIndex = currentIndex === 0 ? 1 : 0 // solo hay dos gráficos por indicador, entonces se alterna entre 0 y 1
+        setCurrentIndex(nextIndex)
+
+        const nextDataGraphic = [
+            {
+                name: currentDataGraphic.name,
+                rural: currentDataGraphic.dataToRenderGraphics[nextIndex].rural,
+                urbano: currentDataGraphic.dataToRenderGraphics[nextIndex].urbano
+            }
+        ]
+
+        setOverrideGraphicData(nextDataGraphic)
+        setOverrideGraphicTitle(currentDataGraphic.dataToRenderGraphics[nextIndex].titleLeyendX)
+
+        if (validaLoggerLocalStorage('logger')) {
+            console.log("Gráfica de barras múltiples, cambiando a siguiente indicador", {
+                currentDataGraphic,
+                itemGraphicDataSelected: currentGraphicIndex,
+                nextIndex,
+                nextDataGraphic
+            })
+        }
+    }
+
     const renderizarSiguienteCropleticoYgrafica = () => {
         // lógica para cambiar el indicador seleccionado y actualizar la gráfica en consecuencia
         if (!data?.withGraphic) return
-        if (isMultiChart) {
-            const currentDataGraphic = data.withGraphic.graphicData[itemGraphicDataSelected]
-            const nextIndex = currentIndex === 0 ? 1 : 0 // solo hay dos gráficos por indicador, entonces se alterna entre 0 y 1            
-            setCurrentIndex(nextIndex)
-            const nextDataGraphic = [
-                {
-                    name: currentDataGraphic.name,
-                    rural: currentDataGraphic.dataToRenderGraphics[nextIndex].rural,
-                    urbano: currentDataGraphic.dataToRenderGraphics[nextIndex].urbano
-                }
-            ]
-            setOverrideGraphicData(nextDataGraphic)
-            setOverrideGraphicTitle(currentDataGraphic.dataToRenderGraphics[nextIndex].titleLeyendX)
-            if(validaLoggerLocalStorage('logger')) console.log("Gráfica de barras múltiples, cambiando a siguiente indicador", {currentDataGraphic, itemGraphicDataSelected, nextIndex, nextDataGraphic})
+        if (isMultiBar) {
+            updateDataMultiBar()
         }else{
             const currentIndicador = fieldToFilter !== "" ? fieldToFilter : data.withGraphic.fieldToFilter
             const fieldsToFilter = data.withGraphic.dataCoropletico.fieldsToFilter
@@ -803,7 +839,7 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
                             )}
                             {/* Botones de siguiente y atras para visualización de diferentes graficas para la misma consulta */}
                             {
-                                ((data.withGraphic.selectedIndicador === 3 || isMultiChart) && viewMode === 'grafico') && (
+                                ((data.withGraphic.selectedIndicador === 3 || isMultiBar) && viewMode === 'grafico') && (
                                     <Button size="sm" type="primary" className="widget-result-export-btn" onClick={renderizarSiguienteCropleticoYgrafica}> Siguiente </Button>
                                 )
                             }
