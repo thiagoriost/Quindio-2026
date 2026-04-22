@@ -104,7 +104,7 @@ export const LEYENDA_COROPLETICO_QUINDIO = {
         { field: "PERSONAS", label: "Personas desplazadas" }
       ],
   }, */
-  necesidadesBasicasInsatisfechas: {
+  necesidadesBasicasInsatisfechasNbi: {
     leyenda: [
       {colorFondo: '51, 153, 51,0.4', colorLine: '51, 153, 51,1', minimo: '0', maximo: '8', label: 'Hasta el 7% Precisa'},
       {colorFondo: '0,0,255,0.4', colorLine: '0,0,255,1', minimo: '8', maximo: '14', label: '8 al 14 % Aceptable'},
@@ -138,9 +138,10 @@ export const LEYENDA_COROPLETICO_QUINDIO = {
 
 
 export const NAMES_CAPAS_CONSULTA_SOCIOECONOMICA = {
+  poblacion: 'Población',
   desnutricion: 'Desnutrición',
   desplazados: 'Desplazados',
-  necesidadesBasicasInsatisfechas: 'Necesidades Básicas Insatisfechas',
+  necesidadesBasicasInsatisfechasNbi: 'Necesidades Básicas Insatisfechas (NBI)',
   poblacionEdadSimple: 'Población Edad Simple',
   poblacionExpulsor:  'Población Expulsor',
   poblacionGeneral: 'Población General',
@@ -206,7 +207,7 @@ const WidgetSocioEconomica = (props: AllWidgetProps<any>) => {
     setConsultaPorSeleccionada({ id: selected.id, name: selected.name, url: selectedUrl })
     setLoading(true)
 
-    if (name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.desnutricion || opcionesConsultaPor.find(e=>id===e.id) || name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.necesidadesBasicasInsatisfechas
+    if (name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.poblacion || name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.desnutricion || name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.necesidadesBasicasInsatisfechasNbi
     ) {
       consultaPorAnio(selectedUrl)
     } else if (name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.serviciosPublicos) {
@@ -354,7 +355,7 @@ const WidgetSocioEconomica = (props: AllWidgetProps<any>) => {
 
     const esServiciosPublicos = consultaPorSeleccionada?.name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.serviciosPublicos
 
-    if (consultaPorSeleccionada?.name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.desnutricion || consultaPorSeleccionada?.name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.desplazados || consultaPorSeleccionada?.name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.necesidadesBasicasInsatisfechas || opcionesConsultaPor.find(e=>consultaPorSeleccionada.id===e.id)) {
+    if (consultaPorSeleccionada?.name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.poblacion || consultaPorSeleccionada?.name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.desnutricion || consultaPorSeleccionada?.name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.desplazados || consultaPorSeleccionada?.name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.necesidadesBasicasInsatisfechasNbi) {
       urlCapa = consultaPorSeleccionada.url
       campos = ['*']
       where = `ANIO='${selectedAnio}'`
@@ -387,30 +388,67 @@ const WidgetSocioEconomica = (props: AllWidgetProps<any>) => {
           .toLowerCase()
           .replace(/^\w/, c => c.toUpperCase())
       }))
-    const titleCoropletico = consultaPorSeleccionada?.name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.desnutricion ? LEYENDA_COROPLETICO_QUINDIO.desnutricion.fieldsToFilter[0].label :
+    const titleCoropletico = consultaPorSeleccionada?.name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.poblacion ? LEYENDA_COROPLETICO_QUINDIO.poblacion.fieldsToFilter[0].label :
+      consultaPorSeleccionada?.name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.desnutricion ? LEYENDA_COROPLETICO_QUINDIO.desnutricion.fieldsToFilter[0].label :
       consultaPorSeleccionada?.name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.poblacionExpulsor ? LEYENDA_COROPLETICO_QUINDIO.desplazados.fieldsToFilter[0].label :
       consultaPorSeleccionada?.name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.poblacionReceptor ? LEYENDA_COROPLETICO_QUINDIO.desplazados.fieldsToFilter[0].label :
-      consultaPorSeleccionada?.name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.necesidadesBasicasInsatisfechas ? LEYENDA_COROPLETICO_QUINDIO.necesidadesBasicasInsatisfechas.fieldsToFilter[0].label :
+      consultaPorSeleccionada?.name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.necesidadesBasicasInsatisfechasNbi ? LEYENDA_COROPLETICO_QUINDIO.necesidadesBasicasInsatisfechasNbi.fieldsToFilter[0].label :
       esServiciosPublicos ? LEYENDA_COROPLETICO_QUINDIO.serviciosPublicos.fieldsToFilter[0].label : ""
 
-    const showGraphic = consultaPorSeleccionada?.name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.necesidadesBasicasInsatisfechas
-    let fixDataToRenderGraphic = {}
-    if (showGraphic) { // actualmente se muestra gráfica solo para el indicador de necesidades básicas insatisfechas, por lo que se hace un mapeo específico para ese caso, asumiendo que los campos a mostrar en la gráfica son PROPOSICIONPORCENTUALU, PROPOSICIONPORCENTUALR, CVEU y CVER, y que el campo para filtrar en el coroplético es NOMBRE. Para otros indicadores se podría generalizar esta lógica dependiendo de la estructura de los datos devueltos por el servicio
-
+    const esNBI = consultaPorSeleccionada?.name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.necesidadesBasicasInsatisfechasNbi
+    const esPoblacion = consultaPorSeleccionada?.name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.poblacion
+    const showGraphic = esNBI || esPoblacion
+    let fixDataToRenderGraphic: any[] = []
+    // const barKeys: Array<{ key: string; label: string; color: string }>=[]
+    if (esNBI) {
       fixDataToRenderGraphic = features.map(f => ({
         name: f.attributes.NOMBRE,
         dataToRenderGraphics:[
           {
             titleLeyendX: `Proposición Porcentual de ${f.attributes.NOMBRE} en el año ${selectedAnio}`,
             titleLeyendY: `Cantidad`,
-            urbano: f.attributes.PROPOSICIONPORCENTUALU,
-            rural: f.attributes.PROPOSICIONPORCENTUALR
+            dato_1: f.attributes.PROPOSICIONPORCENTUALU,
+            dato_2: f.attributes.PROPOSICIONPORCENTUALR,
+            barKeys:  [
+              { key: 'dato_1', label: 'Urbano', color: '#9b2d6e' },
+              { key: 'dato_2', label: 'Rural', color: '#b59b00' }
+            ]
           },
           {
             titleLeyendX: `Coeficiente de variación estimado de ${f.attributes.NOMBRE} en el año ${selectedAnio}`,
             titleLeyendY: `Cantidad`,
-            urbano: f.attributes.CVEU,
-            rural: f.attributes.CVER
+            dato_1: f.attributes.CVEU,
+            dato_2: f.attributes.CVER,
+            barKeys:  [
+              { key: 'dato_1', label: 'Urbano', color: '#9b2d6e' },
+              { key: 'dato_2', label: 'Rural', color: '#b59b00' }
+            ]
+          }
+        ]
+      }))
+    } else if (esPoblacion) {
+      fixDataToRenderGraphic = features.map(f => ({
+        name: f.attributes.NOMBRE,
+        dataToRenderGraphics: [
+          {
+            titleLeyendX: `Cantidad de población por zona en ${f.attributes.NOMBRE} - año ${selectedAnio}`,
+            titleLeyendY: `Habitantes`,
+            dato_1: f.attributes.URBANO,
+            dato_2: f.attributes.RURAL,
+            barKeys:  [
+              { key: 'dato_1', label: 'Urbano', color: '#9b2d6e' },
+              { key: 'dato_2', label: 'Rural', color: '#b59b00' }
+            ]
+          },
+          {
+            titleLeyendX: `Cantidad de población por sexo en ${f.attributes.NOMBRE} - año ${selectedAnio}`,
+            titleLeyendY: `Habitantes`,
+            dato_1: f.attributes.POBLACIONHOMBRES,
+            dato_2: f.attributes.POBLACIONMUJERES,
+            barKeys:  [
+              { key: 'dato_1', label: 'Hombres', color: '#9b2d6e' },
+              { key: 'dato_2', label: 'Mujeres', color: '#b59b00' }
+            ]
           }
         ]
       }))
@@ -420,10 +458,7 @@ const WidgetSocioEconomica = (props: AllWidgetProps<any>) => {
       showGraphic,
       graphicData: fixDataToRenderGraphic,
       graphicType: 'bar' as const,
-      barKeys: [
-        { key: 'urbano', label: 'Urbano', color: '#9b2d6e' },
-        { key: 'rural', label: 'Rural', color: '#b59b00' }
-      ],
+      barKeys: showGraphic ? fixDataToRenderGraphic[0].dataToRenderGraphics[0].barKeys : [],
       titleCoropletico,
       dataCoropletico: LEYENDA_COROPLETICO_QUINDIO[transformToCamelCase(consultaPorSeleccionada?.name) as keyof typeof LEYENDA_COROPLETICO_QUINDIO],
       fieldToFilter: esServiciosPublicos
@@ -437,6 +472,7 @@ const WidgetSocioEconomica = (props: AllWidgetProps<any>) => {
       : consultaPorSeleccionada?.name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.poblacionExpulsor
         ? `${consultaPorSeleccionada?.name} en el año ${selectedAnio}`
         : `${consultaPorSeleccionada?.name} - ${selectedAnio}`
+    if(validaLoggerLocalStorage('logger')) console.log({features, camposResultados, titleTable, withGraphic})
     abrirTablaResultados(
       true,
       _cloneFeatures,

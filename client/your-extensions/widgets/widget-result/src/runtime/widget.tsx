@@ -137,6 +137,7 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
     const [fieldToFilter, setFieldToFilter] = React.useState<string>("") // para manejar el campo que se va a mostrar en el gráfico cuando hay gráfica
     const [overrideGraphicData, setOverrideGraphicData] = React.useState<any[] | null>(null) // datos de gráfica recalculados al cambiar indicador
     const [overrideGraphicTitle, setOverrideGraphicTitle] = React.useState<string | null>(null) // título de gráfica recalculado al cambiar indicador
+    const [overrideBarKeys, setOverrideBarKeys] = React.useState<any[] | null>(null) // barKeys de la slide activa cuando se navega entre gráficos múltiples
 
 
     /**
@@ -255,6 +256,7 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
             setFieldToFilter(data.withGraphic ? data.withGraphic.fieldToFilter : "")
             setOverrideGraphicData(null)
             setOverrideGraphicTitle(null)
+            setOverrideBarKeys(null)
             // El hook useDibujarCoropletico se encarga de dibujar automáticamente
             setViewMode(data.withGraphic?.showGraphic ? 'grafico' : 'tabla')
         }
@@ -740,13 +742,14 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
         const nextDataGraphic = [
             {
                 name: currentDataGraphic.name,
-                rural: currentDataGraphic.dataToRenderGraphics[nextIndex].rural,
-                urbano: currentDataGraphic.dataToRenderGraphics[nextIndex].urbano
+                dato_2: currentDataGraphic.dataToRenderGraphics[nextIndex].dato_2,
+                dato_1: currentDataGraphic.dataToRenderGraphics[nextIndex].dato_1
             }
         ]
 
         setOverrideGraphicData(nextDataGraphic)
         setOverrideGraphicTitle(currentDataGraphic.dataToRenderGraphics[nextIndex].titleLeyendX)
+        setOverrideBarKeys(currentDataGraphic.dataToRenderGraphics[nextIndex].barKeys ?? null)
 
         if (validaLoggerLocalStorage('logger')) {
             console.log("Gráfica de barras múltiples, cambiando a siguiente indicador", {
@@ -854,7 +857,7 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
                                 <ResultGraphic
                                     data={overrideGraphicData ?? data.withGraphic.graphicData}
                                     type={data.withGraphic.graphicType}
-                                    barKeys={data.withGraphic.barKeys}
+                                    barKeys={overrideBarKeys ?? data.withGraphic.barKeys}
                                     title={overrideGraphicTitle ?? data.withGraphic.graphicTitle ?? 'Sin título'}
                                 />
                             ) : (

@@ -61,6 +61,7 @@ interface BarKeyDef {
 interface GraphDataItem {
   titleLeyendX?: string;
   titleLeyendY?: string;
+  barKeys?: BarKeyDef[];
   [key: string]: any;
 }
 
@@ -97,6 +98,7 @@ const ResultGraphic = ({ data, type = "bar", xKey = "name", yKey = "value", barK
   let chartData: any[]
   let chartTitle: string
   let totalCharts: number
+  let activeBarKeys: BarKeyDef[] | undefined = barKeys
 
   if (isMultiChart) {
     const multiData = data as MultiChartDataItem[]
@@ -104,12 +106,15 @@ const ResultGraphic = ({ data, type = "bar", xKey = "name", yKey = "value", barK
       
       totalCharts = multiData[0]?.dataToRenderGraphics?.length ?? 1
       const safeIndex = Math.min(currentIndex, totalCharts - 1)
+
+      // Derive barKeys from current slide; fall back to prop
+      activeBarKeys = multiData[0]?.dataToRenderGraphics[safeIndex]?.barKeys ?? barKeys
   
       chartData = multiData.map(item => {
         const slide = item.dataToRenderGraphics[safeIndex]
         const point: any = { name: item.name }
-        if (barKeys && barKeys.length > 0) {
-          barKeys.forEach(bk => { point[bk.key] = slide[bk.key] })
+        if (activeBarKeys && activeBarKeys.length > 0) {
+          activeBarKeys.forEach(bk => { point[bk.key] = slide[bk.key] })
         }
         return point
       })
@@ -118,10 +123,10 @@ const ResultGraphic = ({ data, type = "bar", xKey = "name", yKey = "value", barK
       chartData = chartData.slice(0, 1)
       chartTitle = multiData[0]?.dataToRenderGraphics[safeIndex]?.titleLeyendX ?? title ?? ''
     }else{
+      // Derive barKeys from first slide for single-feature case
+      activeBarKeys = multiData[0]?.dataToRenderGraphics[0]?.barKeys ?? barKeys
       chartData = multiData[0].dataToRenderGraphics
-      chartTitle = multiData[0].dataToRenderGraphics[0] ?
-        multiData[0].dataToRenderGraphics[0]?.titleLeyendX
-        : multiData[0].dataToRenderGraphics.titleLeyendX       
+      chartTitle = multiData[0].dataToRenderGraphics[0]?.titleLeyendX ?? title ?? ''
     }
 
   } else {
@@ -135,7 +140,7 @@ const ResultGraphic = ({ data, type = "bar", xKey = "name", yKey = "value", barK
       // setCurrentIndex(prev => (prev + 1) % totalCharts)
   }, [chartData, chartTitle])
 
-  const isMultiBar = barKeys && barKeys.length > 0  
+  const isMultiBar = activeBarKeys && activeBarKeys.length > 0  
 
   return (
     <div className="widget-result-graphic">
@@ -157,7 +162,7 @@ const ResultGraphic = ({ data, type = "bar", xKey = "name", yKey = "value", barK
                 <Tooltip />
                 <Legend />
                 {isMultiBar
-                  ? barKeys.map(bk => (
+                  ? activeBarKeys.map(bk => (
                       <Bar key={bk.key} dataKey={bk.key} name={bk.label} fill={bk.color} />
                     ))
                   : <Bar dataKey={yKey} fill="#b59b00" />
