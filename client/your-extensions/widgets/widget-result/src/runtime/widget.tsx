@@ -211,22 +211,22 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
         const view = jimuMapView?.view
         if (!view) return
 
-    if (!initialExtentRef.current) {
-      initialExtentRef.current = view.extent.clone();
-    }
+        if (!initialExtentRef.current) {
+            initialExtentRef.current = view.extent.clone();
+        }
 
-    const layer = new GraphicsLayer({
-      id: "result-selection-layer",
-    });
-    view.map.add(layer);
-    graphicsLayerRef.current = layer;
+        const layer = new GraphicsLayer({
+            id: "result-selection-layer",
+        });
+        view.map.add(layer);
+        graphicsLayerRef.current = layer;
 
-    return () => {
-        console.log("closed widget result")
-      view.map.remove(layer);
-      layer.destroy();
-      graphicsLayerRef.current = null;
-    };
+        return () => {
+            console.log("closed widget result")
+            view.map.remove(layer);
+            layer.destroy();
+            graphicsLayerRef.current = null;
+        };
     }, [jimuMapView]);
 
     /**
@@ -593,7 +593,7 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
      * @param feature Entidad seleccionada.
      */
     //  const handleSelectFeature = (feature: __esri.Graphic) => {
-    const handleSelectFeature = async (feature: any) => {
+    const handleSelectFeature = async (feature: any, zoomLevel = 20) => {
         if(validaLoggerLocalStorage('logger')) console.log('feature seleccionada:', feature)
 
         if (data?.temporalLayer) {
@@ -630,7 +630,6 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
         graphicsLayerRef.current.add(graphic)
 
         if (geometry.type === "point") {  // cef 20260313
-            const zoomLevel = 20
             await view.goTo({
                 target: geometry,
                 zoom: zoomLevel

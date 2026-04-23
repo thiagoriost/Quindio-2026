@@ -6,6 +6,7 @@ import Polygon from '@arcgis/core/geometry/Polygon'
 import { coloresMapaCoropletico } from './constantes'
 import Graphic from "@arcgis/core/Graphic"
 import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer"
+import { validaLoggerLocalStorage } from '../shared/utils/export.utils'
 
 
 let consecutivoConsultas = 0
@@ -836,8 +837,9 @@ const discriminarRepetidos = (data, campo) => {
  * @param {string} textoGeographicDMS - Texto formateado de coordenadas DMS (solo aplica si typeCoordinate es "GEOGRAPHIC_DMS")
  * @returns {void}
  */
-const drawPoint = (varJimuMapView, point, typeCoordeninate, textoGeographicDMS) => {
+const drawPoint = (varJimuMapView, point, typeCoordeninate, textoGeographicDMS, scale = 2000, widgetFrom="") => {
 
+  if(validaLoggerLocalStorage('logger')) console.log({point, typeCoordeninate, textoGeographicDMS, scale, widgetFrom})
   // Validación defensiva
   if (!varJimuMapView || !varJimuMapView.view) {
     console.error("drawPoint: 'varJimuMapView' o 'varJimuMapView.view' es undefined", { varJimuMapView })
@@ -907,10 +909,20 @@ const drawPoint = (varJimuMapView, point, typeCoordeninate, textoGeographicDMS) 
   layer.add(pointGraphic)
   layer.add(textGraphic)
 
-  varJimuMapView.view.goTo({
-    center: point,
-    zoom: 16
-  })
+  if (widgetFrom === "consulta-educacion-establecimiento") {
+    varJimuMapView.view.goTo(
+      { target: point },
+      { animate: true }
+    ).then(() => {
+      varJimuMapView.view.scale = scale
+    })
+  }else{
+    varJimuMapView.view.goTo({
+      center: point,
+      zoom: 16
+    })
+  }
+
 }
 
 /**

@@ -208,7 +208,7 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
      * Hook que detecta el cierre del widget
      * y ejecuta la función de limpieza.
      */
-    useOnWidgetClose(props.id, onClose)
+    useOnWidgetClose(props.id, jimuMapView, initialExtentRef, onClose)
 
     if(validaLoggerLocalStorage('logger')) console.log('Resultados recibidos en widget-leyenda:', data)
     if (!data) return

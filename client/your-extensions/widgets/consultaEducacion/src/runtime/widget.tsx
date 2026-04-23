@@ -22,7 +22,7 @@ import { LayerInfo } from "widgets/shared/types/types_consultaAvanzadaAlfanumeri
 import { SearchActionBar } from "../../../shared/components/search-action-bar";
 import { loadLayers } from "../../../shared/services/queryMapServer.service"
 import { WIDGET_IDS } from "../../../shared/constants/widget-ids";
-import { clearPoint } from "../../../../widgets/utils/module"
+import { clearPoint, drawPoint } from "../../../../widgets/utils/module"
 import { urls} from "../../../api/serviciosQuindio"
 import OurLoading from '../../../commonWidgets/our_loading/OurLoading'
 import DetalleEstablecimiento from './components/detalleEstablecimiento'
@@ -562,7 +562,7 @@ const Widget = (props: AllWidgetProps<any>) => {
         selectedIndicador,
         dataCoropletico: {},
         fieldToFilter:''
-    }
+    }, titleTable = ""
     if(consultaPorSeleccionada?.name === INDICADORES.ConsultaEducacion){
       const URL_ARCHIVOS_QUINDIO = urls.URL_ARCHIVOS_QUINDIO
       // construir la url de la imagen del establecimiento utilizando la propiedad IMAGEN y la constante URL_ARCHIVOS_QUINDIO
@@ -597,8 +597,14 @@ const Widget = (props: AllWidgetProps<any>) => {
         }))
       setCloneFeatures(_cloneFeatures)
       if(validaLoggerLocalStorage('logger')) console.log({_cloneFeatures})
+      // dibujar el punto del establecimiento en el mapa y centrar la vista con zoom cercano
+      if (selectedEstablecimiento.geometry) {
+        drawPoint(varJimuMapView, selectedEstablecimiento.geometry, "PLANAR", "", 4000, "consulta-educacion-establecimiento")
+      }
       // cambiar a la pestaña de vista atributos en donde se debe mostrar la información del establecimiento seleccionado
       setVerAtributos(true)
+      titleTable = `Información del establecimiento ${selectedEstablecimiento.NOMBREESTABLECIMIENTO}`
+
     }else if(esCoropletico){
       camposResultados = camposIndicador ? camposIndicador.map(c => ({ name: c, alias: c })) : [{ name: "OBJECTID", alias: "OBJECTID" }]
       _cloneFeatures = features.map(f => ({ attributes: f.attributes, geometry: f.geometry.toJSON() }))
@@ -642,12 +648,12 @@ const Widget = (props: AllWidgetProps<any>) => {
       }
     if(validaLoggerLocalStorage('logger')) console.log({fixDataToRenderGrafic, withGraphic})
       
-      abrirWidgetLeyenda({
+      /* abrirWidgetLeyenda({
         widgetleyendaId: WIDGET_IDS.LEYENDA,
         props,
         title: selectedIndicador === 1 ? "Cobertura de estudiantes" : selectedIndicador === 2 ? "Cupos ofertados" : "Eficiencia interna", // título que se mostrará en el widget de resultados
         data: dataLeyenda
-      })
+      }) */
     }
     // abrir el widget de resultados y mostrar la información del establecimiento seleccionado
     abrirTablaResultados(
@@ -656,7 +662,8 @@ const Widget = (props: AllWidgetProps<any>) => {
       camposResultados,
       props,
       widgetResultId,
-      varJimuMapView.view.spatialReference,      
+      varJimuMapView.view.spatialReference,
+      titleTable,
       withGraphic,
       false,
       selectedAnio
