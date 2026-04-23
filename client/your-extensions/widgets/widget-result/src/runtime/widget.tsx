@@ -841,7 +841,7 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
                             )}
                             {/* Botones de siguiente y atras para visualización de diferentes graficas para la misma consulta */}
                             {
-                                ((data.withGraphic.selectedIndicador === 3 || isMultiBar) && viewMode === 'grafico') && (
+                                (data.withGraphic && (data.withGraphic?.selectedIndicador === 3 || isMultiBar) && viewMode === 'grafico') && (
                                     <Button size="sm" type="primary" className="widget-result-export-btn" onClick={renderizarSiguienteCropleticoYgrafica}> Siguiente </Button>
                                 )
                             }

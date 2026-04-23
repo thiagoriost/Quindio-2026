@@ -255,7 +255,25 @@ const Widget = (props: AllWidgetProps<any>) => {
   
         const resultSpatialReference = features[0]?.geometry?.spatialReference || varJimuMapView.view.spatialReference
         if(validaLoggerLocalStorage('logger')) console.log({fieldsToShow, featuresFixed})
-        abrirTablaResultados(false, featuresFixed, fieldsToShow, props, widgetResultId, resultSpatialReference)
+        const titleTable = `Resultados para ${layers.find(l => l.id === selectedLayer)?.nameServicio || "capa seleccionada"}`
+        const withGraphic = {
+          showGraphic: false,
+          titleCoropletico: "", // título específico para el caso de coroplético, si se quiere mostrar uno diferente al título general
+          graphicData: {},
+          graphicType: "",//"bar" | "pie",
+          graphicTitle: "",
+          selectedIndicador: 999, // para manejar diferentes indicadores que pueden venir con la gráficafeaturesDibujados?: any[] // para manejar casos como el indicador 3 donde se dibujan características en el mapa además de mostrar la gráfica
+        }
+        abrirTablaResultados(
+          false,
+          featuresFixed,
+          fieldsToShow,
+          props,
+          widgetResultId,
+          resultSpatialReference,
+          titleTable,
+          withGraphic
+        )
       }else{
         return setError("No se encontraron resultados para la condición de búsqueda ingresada.")
       }

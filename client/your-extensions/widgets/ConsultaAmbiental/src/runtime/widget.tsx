@@ -608,7 +608,25 @@ const Widget = (props: any) => {
                 alias: f.alias
             })) || []
 
-            abrirTablaResultados(false, features, fields, props, widgetResultId, spatialReference)
+            const titleTable = `Predios de Reforestación en ${filters.municipionombre || "el municipio seleccionado"}`
+            const withGraphic = {
+            showGraphic: false,
+            titleCoropletico: "", // título específico para el caso de coroplético, si se quiere mostrar uno diferente al título general
+            graphicData: {},
+            graphicType: "",//"bar" | "pie",
+            graphicTitle: "",
+            selectedIndicador: 999, // para manejar diferentes indicadores que pueden venir con la gráficafeaturesDibujados?: any[] // para manejar casos como el indicador 3 donde se dibujan características en el mapa además de mostrar la gráfica
+            }
+            abrirTablaResultados(
+                false,
+                features,
+                fields,
+                props,
+                widgetResultId,
+                spatialReference,
+                titleTable,
+                withGraphic
+            )
 
         } catch (error) {
             console.error("Error consultando estaciones:", error)
@@ -754,6 +772,8 @@ if(validaLoggerLocalStorage('logger')) console.log('onBuscar:', filters)
                 graphicTitle: graphicTitle
             }
 
+            const titleTable = `Trámites Ambientales de ${filters.municipionombre || "el municipio seleccionado"}`
+    
             abrirTablaResultados(
                 false,
                 features,
@@ -761,6 +781,7 @@ if(validaLoggerLocalStorage('logger')) console.log('onBuscar:', filters)
                 props,
                 widgetResultId,
                 spatialReference,
+                titleTable,
                 withGraphic
             )
 

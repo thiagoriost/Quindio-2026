@@ -762,8 +762,26 @@ const ConsultaAvanzada = (props: AllWidgetProps<any>) => {
     ] */
 
     const fields = responseConsulta.fields
+    const titleTable = `Resultados de la consulta - ${capas.find(capa => capa.value === capaselected)?.label || 'Capa desconocida'}`
+    const withGraphic = {
+      showGraphic: false,
+      titleCoropletico: "", // título específico para el caso de coroplético, si se quiere mostrar uno diferente al título general
+      graphicData: {},
+      graphicType: "",//"bar" | "pie",
+      graphicTitle: "",
+      selectedIndicador: 999, // para manejar diferentes indicadores que pueden venir con la gráficafeaturesDibujados?: any[] // para manejar casos como el indicador 3 donde se dibujan características en el mapa además de mostrar la gráfica
+    }
 
-    abrirTablaResultados(false, features, fields, props, widgetResultId, spatialReference as unknown as __esri.SpatialReference)
+    abrirTablaResultados(
+      false,
+      features,
+      fields,
+      props,
+      widgetResultId,
+      spatialReference as unknown as __esri.SpatialReference,
+      titleTable,
+      withGraphic
+    )
 
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
