@@ -375,6 +375,7 @@ const Widget = (props: AllWidgetProps<any>) => {
     setSelectedCategory(id)
     setMunicipios(null)
     setSelectedMunicipio(null)
+    setSelectedEstablecimiento(null)
     // obtener los municipios asociados a la categoria seleccionada y poblar el select de municipios
     const { url } = consultaPorSeleccionada
     const URL_LAYER_SELECTED = `${url}/${id}`
@@ -469,6 +470,7 @@ const Widget = (props: AllWidgetProps<any>) => {
 
   const handleMunicipioChange = async(e: { target: { value: any; }; }) => {
     if (!municipios) return
+    restoreInitialExtent(varJimuMapView, initialExtentRef)
     const id = e.target.value
     const selected = municipios?.find(m => m.IDMUNICIPIO === id)
     
@@ -546,7 +548,7 @@ const Widget = (props: AllWidgetProps<any>) => {
       return
     }
     // ir al extend inicial del mapa para mostrar todos los resultados obtenidos
-    restoreInitialExtent(varJimuMapView, initialExtentRef)
+    // restoreInitialExtent(varJimuMapView, initialExtentRef)
     // dibujar los features obtenidos en el mapa
     const esCoropletico = consultaPorSeleccionada?.name === INDICADORES.ConsultaPorIndicadores && (selectedIndicador === 1 || selectedIndicador === 2 || selectedIndicador === 3 || selectedIndicador === 4 || selectedIndicador === 5) // el indicador "cobertura", "cupos ofertados", "eficiencia interna", "tasa de analfabetismo departamental" y "tasa de analfabetismo municipal" se representan con coropletico    
 
@@ -599,7 +601,7 @@ const Widget = (props: AllWidgetProps<any>) => {
       if(validaLoggerLocalStorage('logger')) console.log({_cloneFeatures})
       // dibujar el punto del establecimiento en el mapa y centrar la vista con zoom cercano
       if (selectedEstablecimiento.geometry) {
-        drawPoint(varJimuMapView, selectedEstablecimiento.geometry, "PLANAR", "", 4000, "consulta-educacion-establecimiento")
+        drawPoint(varJimuMapView, selectedEstablecimiento.geometry, "PLANAR", "", 6000, "consulta-educacion-establecimiento")
       }
       // cambiar a la pestaña de vista atributos en donde se debe mostrar la información del establecimiento seleccionado
       setVerAtributos(true)
