@@ -9,31 +9,23 @@
  * @since 2026
  */
 import { JimuMapViewComponent, type JimuMapView } from 'jimu-arcgis'
-// import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer"
-// import Graphic from "@arcgis/core/Graphic"
 import { React, type AllWidgetProps } from "jimu-core"
 import { Label, Select, Option } from "jimu-ui"
-// import esriRequest from "@arcgis/core/request"
 
 import { abrirTablaResultados, limpiarYCerrarWidgetResultados } from "../../../widget-result/src/runtime/widget"
 import { limpiarYCerrarwidgetLeyenda } from '../../../widget-leyenda/src/runtime/widget'
-import { ejecutarConsulta, restoreInitialExtent, validaLoggerLocalStorage, limpiarFeaturesDibujados, /* realizarQuery,  */transformToCamelCase} from "../../../shared/utils/export.utils"
-// import type { LayerInfo } from "widgets/shared/types/types_consultaAvanzadaAlfanumerica"
+import { ejecutarConsulta, restoreInitialExtent, validaLoggerLocalStorage, limpiarFeaturesDibujados, transformToCamelCase} from "../../../shared/utils/export.utils"
+
 import { SearchActionBar } from "../../../shared/components/search-action-bar"
 import { WIDGET_IDS } from "../../../shared/constants/widget-ids"
 import { clearPoint } from "../../../../widgets/utils/module"
 import { urls} from "../../../api/serviciosQuindio"
 import OurLoading from '../../../commonWidgets/our_loading/OurLoading'
 import '../styles/styles.css'
-// import { MUNICIPIOS_QUINDIO } from '../../../shared/constants/municipiosQuindio'
 
 
 interface interfaceConsultaPor { id: number, name: string, url: string }
-// interface interfaceCategories { id: number, name: string }
-// interface interfaceIndicadores { id: number, name: string }
-// interface interfaceMunicipio { IDMUNICIPIO: string, MUNICIPIO: string }
-// interface interfaceEstablecimiento { NOMBREESTABLECIMIENTO: string, CODIGOESTABLECIMIENTO: string, DIRECCION: string, JORNADA: string, IMAGEN: string, geometry: __esri.Geometry, IDSECTOR: string, IDZONA: string, IDTIPOSEDE: string, IDGRUPO: string }
-// interface interfaceLeyenda { label: string, colorFondo: string, colorLine: string }
+
 
 export const opcionesConsultaPor = [
   { id: 4, name: "Población" },
@@ -81,29 +73,6 @@ export const LEYENDA_COROPLETICO_QUINDIO = {
         { id: 6, value: "Receptor" }
       ]
   },
-  /*
-  poblacionExpulsor: {
-      leyenda: [
-        {colorFondo: '255,0,0,0.4', colorLine: '255,0,0,1', minimo: '0', maximo: '50', label: '0 a 50'},
-        {colorFondo: '0,0,255,0.4', colorLine: '0,0,255,1', minimo: '51', maximo: '100', label: '51 a 100'},
-        {colorFondo: '255,255,0,0.4', colorLine: '255,255,0,1', minimo: '101', maximo: '150', label: '101 a 150'},
-        {colorFondo: '51, 153, 51,0.4', colorLine: '51, 153, 51,1', minimo: '151', maximo: '10000000', label: 'Mayor a 150'}
-      ],
-      fieldsToFilter: [
-        { field: "PERSONAS", label: "Personas desplazadas" }
-      ],
-  },
-  poblacionReceptor: {
-      leyenda: [
-        {colorFondo: '255,0,0,0.4', colorLine: '255,0,0,1', minimo: '0', maximo: '50', label: '0 a 50'},
-        {colorFondo: '0,0,255,0.4', colorLine: '0,0,255,1', minimo: '51', maximo: '100', label: '51 a 100'},
-        {colorFondo: '255,255,0,0.4', colorLine: '255,255,0,1', minimo: '101', maximo: '150', label: '101 a 150'},
-        {colorFondo: '51, 153, 51,0.4', colorLine: '51, 153, 51,1', minimo: '151', maximo: '10000000', label: 'Mayor a 150'}
-      ],
-      fieldsToFilter: [
-        { field: "PERSONAS", label: "Personas desplazadas" }
-      ],
-  }, */
   necesidadesBasicasInsatisfechasNbi: {
     leyenda: [
       {colorFondo: '51, 153, 51,0.4', colorLine: '51, 153, 51,1', minimo: '0', maximo: '8', label: 'Hasta el 7% Precisa'},
@@ -173,8 +142,6 @@ const WidgetSocioEconomica = (props: AllWidgetProps<any>) => {
 
   const [selectedAnio, setSelectedAnio] = React.useState<string | null>(null)
 
-  // const [capasDisponibles, setCapasDisponibles] = React.useState<Array<{id: number, name: string}>>([])
-
   const [aniosDisponibles, setAniosDisponibles] = React.useState<string[]>([])
 
   const [disabledTipoDesplazado, setDisabledTipoDesplazado] = React.useState(true)
@@ -193,6 +160,12 @@ const WidgetSocioEconomica = (props: AllWidgetProps<any>) => {
     setDisabledTipoIndicador(disable)
     setDisabledTipoServicio(disable)
     setDisabledAnio(disable)
+    setSelectedTipoServicio(null)
+    setSelectedTipoDesplazado(null)
+    setSelectedTipoIndicador(null)
+    setSelectedAnio(null)
+    setAniosDisponibles([])
+    setBuscarAble(false)
   }
 
   /**
@@ -212,6 +185,8 @@ const WidgetSocioEconomica = (props: AllWidgetProps<any>) => {
     if(validaLoggerLocalStorage('logger')) console.log("handleConsultaPor", e.target.value, {id, selected, selectedUrl, opcionesConsultaPor})
     setConsultaPorSeleccionada({ id: selected.id, name: selected.name, url: selectedUrl })
     setLoading(true)
+    disableAllSelects(true)
+
 
     if (name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.poblacion || name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.necesidadesBasicasInsatisfechasNbi
     ) {
@@ -324,25 +299,12 @@ const WidgetSocioEconomica = (props: AllWidgetProps<any>) => {
    * @returns {void}
    */
   const handleClear = () => {
-    if (varJimuMapView) {
-      clearPoint(varJimuMapView, [])
-    }
-
+    
     limpiarYCerrarWidgetResultados(widgetResultId)
     limpiarYCerrarwidgetLeyenda(WIDGET_IDS.LEYENDA)
     limpiarFeaturesDibujados(varJimuMapView, [])
     disableAllSelects(true)
-
     setConsultaPorSeleccionada({name: "", id: null, url: ""})
-
-    // setSelectedEstablecimiento(null)
-
-    // setSelectedIndicador(null)
-    setSelectedAnio(null)
-    setAniosDisponibles([])
-    setSelectedTipoServicio(null)
-    setSelectedTipoDesplazado(null)
-    setSelectedTipoIndicador(null)
   }
 
   /**
@@ -351,33 +313,15 @@ const WidgetSocioEconomica = (props: AllWidgetProps<any>) => {
   React.useEffect(() => {
     if (props.state === 'CLOSED') {
       console.log("Widget cerrado, limpiando estado...")
-      // handleClear()
+      handleClear()
     }
 
 
   }, [props])
 
-  // realizar consulta al servicio consulta socioeconomica para obtener las capas disponibles y poblar el select de consulta por
-  /* const cargarCapasIniciales = async () => {
-    setLoading(true)
-    const response = await realizarQuery(urls.SERVICIO_SOCIOECONOMICO, "Inicial", setError, setLoading)
-    if (response && response.layers) {
-      const capas = response.layers.map((layer: LayerInfo) => ({ id: layer.id, name: layer.name }))
-      capas.sort((a: {name: string}, b: {name: string}) => a.name.localeCompare(b.name))
-      setCapasDisponibles(capas)
-      if(validaLoggerLocalStorage('logger')) console.log({response})
-    }
-    setLoading(false)
-  }
-  React.useEffect(() => {
-
-    cargarCapasIniciales()
-  }, []) */
-
-
   const buscar = async () => {
 
-    // setLoading(true)
+    setLoading(true)
     // limpiar geometrías previamente dibujadas
     varJimuMapView?.view?.graphics?.removeAll()
     let urlCapa, campos, where
@@ -405,7 +349,6 @@ const WidgetSocioEconomica = (props: AllWidgetProps<any>) => {
     }
     // ir al extend inicial del mapa para mostrar todos los resultados obtenidos
     restoreInitialExtent(varJimuMapView, initialExtentRef)
-    // dibujar los features obtenidos en el mapa
 
     // obtener los camposResultados apartir de los features.attributes, omitiendo los campos (OBJECTID, SHAPE.AREA y SHAPE.LEN)
     const camposResultados = Object.keys(features[0].attributes)
@@ -428,7 +371,7 @@ const WidgetSocioEconomica = (props: AllWidgetProps<any>) => {
     const esPoblacion = consultaPorSeleccionada?.name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.poblacion
     const showGraphic = esNBI || esPoblacion
     let fixDataToRenderGraphic: any[] = []
-    // const barKeys: Array<{ key: string; label: string; color: string }>=[]
+
     if (esNBI) {
       fixDataToRenderGraphic = features.map(f => ({
         name: f.attributes.NOMBRE,
@@ -489,7 +432,9 @@ const WidgetSocioEconomica = (props: AllWidgetProps<any>) => {
       graphicType: 'bar' as const,
       barKeys: showGraphic ? fixDataToRenderGraphic[0].dataToRenderGraphics[0].barKeys : [],
       titleCoropletico,
-      dataCoropletico: LEYENDA_COROPLETICO_QUINDIO[transformToCamelCase(consultaPorSeleccionada?.name) as keyof typeof LEYENDA_COROPLETICO_QUINDIO],
+      dataCoropletico: esServiciosPublicos
+        ? LEYENDA_COROPLETICO_QUINDIO.serviciosPublicos
+        : LEYENDA_COROPLETICO_QUINDIO[transformToCamelCase(consultaPorSeleccionada?.name) as keyof typeof LEYENDA_COROPLETICO_QUINDIO],
       fieldToFilter: esServiciosPublicos
         ? LEYENDA_COROPLETICO_QUINDIO.serviciosPublicos.fieldsToFilter[0].field
         : LEYENDA_COROPLETICO_QUINDIO[transformToCamelCase(consultaPorSeleccionada?.name) as keyof typeof LEYENDA_COROPLETICO_QUINDIO].fieldsToFilter[0].field
