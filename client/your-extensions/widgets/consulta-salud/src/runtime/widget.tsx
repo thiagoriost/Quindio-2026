@@ -82,18 +82,36 @@ const Widget = (props: AllWidgetProps<IMConfig>) => {
 
     const consultar = async ()=> {        
         const result = await refs[tipoConsulta].current.consultar()
-        const isCoropletico = false
         
-        
-        abrirTablaResultados(
-            isCoropletico,
-            result.features,
-            result.fields,
-            props,
-            widgetResultId,
-            result.spatialReference,
-            result.withGraphic
-        )
+        if (result.features.length > 0) {
+            
+            const withGraphic = result.withGraphic ? result.withGraphic : {
+                showGraphic:false,
+                titleCoropletico:'',
+                graphicData:{},
+                graphicType: 'bar',
+                graphicTitle: '',
+                selectedIndicador:999
+            }
+            
+            const isCoropletico = tipoConsulta === 'indicadores'?true:false
+            const titleTable = `Resultado`
+            const temporalLayer = false
+            const valorBusqueda = tipoConsulta
+
+            abrirTablaResultados(
+                isCoropletico,
+                result.features,
+                result.fields,
+                props,
+                widgetResultId,
+                result.spatialReference,
+                titleTable,
+                withGraphic,                
+                temporalLayer,
+                valorBusqueda
+            )            
+        }
         
         if (tipoConsulta === 'general') {
             setMostrarBusqueda(false)            
