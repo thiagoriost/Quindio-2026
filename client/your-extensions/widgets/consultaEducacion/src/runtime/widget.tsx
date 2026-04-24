@@ -10,14 +10,13 @@
  */
 import { JimuMapViewComponent, type JimuMapView } from 'jimu-arcgis'
 import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer"
-import Graphic from "@arcgis/core/Graphic"
 import { React, type AllWidgetProps } from "jimu-core"
 import { Label, Select, Option } from "jimu-ui";
 import esriRequest from "@arcgis/core/request"
 
 import { abrirTablaResultados, limpiarYCerrarWidgetResultados } from "../../../widget-result/src/runtime/widget";
-import { abrirWidgetLeyenda, limpiarYCerrarwidgetLeyenda } from '../../../widget-leyenda/src/runtime/widget';
-import {  ejecutarConsulta, restoreInitialExtent, validaLoggerLocalStorage, dibujarFeaturesCoropletico, limpiarFeaturesDibujados} from "../../../shared/utils/export.utils";
+
+import {  ejecutarConsulta, restoreInitialExtent, validaLoggerLocalStorage, limpiarFeaturesDibujados} from "../../../shared/utils/export.utils";
 import { LayerInfo } from "widgets/shared/types/types_consultaAvanzadaAlfanumerica"
 import { SearchActionBar } from "../../../shared/components/search-action-bar";
 import { loadLayers } from "../../../shared/services/queryMapServer.service"
@@ -335,7 +334,6 @@ const Widget = (props: AllWidgetProps<any>) => {
     }
 
     limpiarYCerrarWidgetResultados(widgetResultId)
-    limpiarYCerrarwidgetLeyenda(WIDGET_IDS.LEYENDA)
     limpiarFeaturesDibujados(varJimuMapView, featuresDibujados)
     setVerAtributos(false)
     setConsultaPorSeleccionada({name: "", id: null, url: ""})
@@ -670,6 +668,8 @@ const Widget = (props: AllWidgetProps<any>) => {
       false,
       selectedAnio
     )
+    // ir al extend inicial del mapa para mostrar todos los resultados obtenidos
+    restoreInitialExtent(varJimuMapView, initialExtentRef)
     setLoading(false)
 
   }  

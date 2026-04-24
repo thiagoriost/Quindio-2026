@@ -165,14 +165,14 @@ const ResultGraphic = ({ data, type = "bar", xKey = "name", yKey = "value", barK
                   ? activeBarKeys.map(bk => (
                       <Bar key={bk.key} dataKey={bk.key} name={bk.label} fill={bk.color} />
                     ))
-                  : <Bar dataKey={yKey} fill="#b59b00" />
+                  : <Bar dataKey={yKey} name={yKey === "value" ? "Municipio" : yKey} fill="#b59b00" />
                 }
               </BarChart>
             ) : (
               <PieChart>
                 <Pie
                   data={chartData}
-                  dataKey={yKey}
+                  dataKey={yKey} 
                   nameKey={xKey}
                   cx="50%"
                   cy="50%"

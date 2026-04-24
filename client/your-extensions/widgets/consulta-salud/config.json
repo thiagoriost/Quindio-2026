@@ -1,0 +1,16 @@
+{
+  "urlSalud0": "https://sigquindio.gov.co/arcgis/rest/services/QUINDIO_III/Salud_T/MapServer",
+  "urlSalud": "https://pruebassig.igac.gov.co/server/rest/services/SIG_QUINDIO/Salud/MapServer",
+  "urlSaludAlfanumerico": "https://sigquindio.gov.co/arcgis/rest/services/QUINDIO_III/SaludAlfanumerico/MapServer",
+  "layerSaludAlfanumericoCategoriaIndicadores": 3,
+  "tipoEstablecimientos": {
+    "0": "313",
+    "1": "314",
+    "2": "315",
+    "3": "317",
+    "4": "318",
+    "5": "319",
+    "6": "314",
+    "7": "314"
+  }
+}

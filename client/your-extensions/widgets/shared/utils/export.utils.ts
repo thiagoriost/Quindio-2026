@@ -293,15 +293,23 @@ export const drawFeaturesOnMap = async (response: { features: any; spatialRefere
  * Restaura la vista del mapa a la extensión y zoom iniciales.
  * @returns {void}
  */
-export const goToInitialExtent = (varJimuMapView: JimuMapView, initialExtent: any, initialZoom: number) => {
+export const goToInitialExtent = (varJimuMapView: JimuMapView, initialExtent: any, initialZoom?: number, initialScale?: number) => {
 
+  if (validaLoggerLocalStorage('logger')) console.log("Restaurando extensión inicial =>", initialExtent)
     if (!varJimuMapView || !initialExtent) return
 
     varJimuMapView.view.goTo({
-      target: initialExtent,
-      zoom: initialZoom
+      target: initialExtent
     }, {
       duration: 1000 // Duración de la animación en milisegundos
+    }).then(() => {
+      // Restaurar exactamente la vista inicial cuando se dispone de zoom/scale capturados.
+      if (typeof initialZoom === 'number') {
+        varJimuMapView.view.zoom = initialZoom
+      }
+      if (typeof initialScale === 'number') {
+        varJimuMapView.view.scale = initialScale
+      }
     })
 
   }
@@ -378,7 +386,7 @@ export const restoreInitialExtent = (jimuMapView: any, initialExtentRef: any) =>
 /**
  * Funcion que limpia el mapa eliminando todas las capas gráficas execpto la capa jimuMapView.view.map.layers.items[0].displayField === 'IDMUNICIPIO' y restablece el extent inicial.
  */
-export const clearMapAndResetExtent = (jimuMapView: any, initialExtent: any, initialZoom= 12) => {
+export const clearMapAndResetExtent = (jimuMapView: any, initialExtent: any, initialZoom?: number, initialScale?: number) => {
   if (jimuMapView && jimuMapView.view) {
     try {
       // Eliminar todas las capas gráficas excepto la capa con displayField 'IDMUNICIPIO'
@@ -388,7 +396,7 @@ export const clearMapAndResetExtent = (jimuMapView: any, initialExtent: any, ini
         }
       })
       // Restablecer el extent inicial
-      goToInitialExtent(jimuMapView, initialExtent, initialZoom) // Ajusta el nivel de zoom según sea necesario
+      goToInitialExtent(jimuMapView, initialExtent, initialZoom, initialScale)
     } catch (e) {
       console.error('Error al limpiar el mapa:', e)
     }
