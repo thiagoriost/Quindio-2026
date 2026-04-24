@@ -45,8 +45,16 @@ const Widget = (props: AllWidgetProps<any>) => {
   const [anios, setAnios] = React.useState<string[]>([])
   const [selectedAnio, setSelectedAnio] = React.useState<string>("")
 
+  const resetResultsView = () => {
+    if (graphicsLayer) {
+      graphicsLayer.removeAll()
+    }
+    limpiarYCerrarWidgetResultados(widgetResultId)
+  }
+
   const handleMunicipioChange = async (e: { target: { value: string } }) => {
     const idMunicipio = e.target.value
+    resetResultsView()
     setSelectedMunicipio(idMunicipio)
     setAnios([])
     setSelectedAnio("")
@@ -133,8 +141,10 @@ const Widget = (props: AllWidgetProps<any>) => {
       .map(([tipo, value]) => {
         const porcentaje = totalProduccion > 0 ? (value / totalProduccion) * 100 : 0
         return {
-          name: `${tipo} (${porcentaje.toFixed(2)}%)`,
-          value: Number(value.toFixed(2))
+          name: tipo,
+          value: Number(value.toFixed(2)),
+          porcentaje: Number(porcentaje.toFixed(2)),
+          produccion: Number(value.toFixed(2))
         }
       })
       .sort((a, b) => b.value - a.value)
@@ -146,12 +156,7 @@ const Widget = (props: AllWidgetProps<any>) => {
     setAnios([])
     setSelectedAnio("")
     setError("")
-
-    if (graphicsLayer) {
-      graphicsLayer.removeAll()
-    }
-
-    limpiarYCerrarWidgetResultados(widgetResultId)
+    resetResultsView()
   }
 
   const handleBuscar = async () => {
@@ -198,6 +203,8 @@ const Widget = (props: AllWidgetProps<any>) => {
         }))
 
       const graphicData = buildPieData(features)
+      const municipioNombre = municipiosOrdenados.find(m => m.IDMUNICIPI === selectedMunicipio)?.NOMBRE ?? selectedMunicipio
+      const tipoTitulo = selectedTipo || "Consulta"
 
       abrirTablaResultados(
         false,
@@ -206,12 +213,12 @@ const Widget = (props: AllWidgetProps<any>) => {
         props,
         widgetResultId,
         features[0]?.geometry?.spatialReference || jimuMapView.view.spatialReference,
-        `Resultados Agropecuarios ${selectedMunicipio} - ${selectedAnio}`,
+        `Resultados Agropecuarios ${municipioNombre} - ${selectedAnio}`,
         {
           showGraphic: true,
           graphicData,
           graphicType: "pie",
-          graphicTitle: "Distribución de producción por tipo de cultivo"
+          graphicTitle: `${tipoTitulo} en el municipio de ${municipioNombre} año ${selectedAnio}`
         }
       )
     } catch (err) {
@@ -241,7 +248,14 @@ const Widget = (props: AllWidgetProps<any>) => {
       <Select
         value={selectedTipo}
         disabled={loading}
-        onChange={(e) => { setSelectedTipo(e.target.value) }}
+        onChange={(e) => {
+          resetResultsView()
+          setSelectedTipo(e.target.value)
+          setSelectedMunicipio("")
+          setAnios([])
+          setSelectedAnio("")
+          setError("")
+        }}
       >
         <Option value="">Seleccione...</Option>
         {tiposConsulta.map((tipo) => (
@@ -269,7 +283,11 @@ const Widget = (props: AllWidgetProps<any>) => {
       <Select
         value={selectedAnio}
         disabled={loading || anios.length === 0}
-        onChange={(e) => { setSelectedAnio(e.target.value) }}
+        onChange={(e) => {
+          resetResultsView()
+          setSelectedAnio(e.target.value)
+          setError("")
+        }}
       >
         <Option value="">{loading ? 'Cargando...' : 'Seleccione...'}</Option>
         {anios.map((anio) => (
