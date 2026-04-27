@@ -148,6 +148,7 @@ const ResultGraphic = ({ data, type = "bar", xKey = "name", yKey = "value", barK
   }, [chartData, chartTitle])
 
   const isMultiBar = activeBarKeys && activeBarKeys.length > 0  
+  const isAgropecuariaPie = type === "pie" && chartData.some((item) => item?.produccion != null && item?.porcentaje != null)// si al menos un item tiene las propiedades "produccion" y "porcentaje", se asume que es un gráfico de pastel agropecuario que requiere tooltip personalizado
 
   const renderPieTooltip = ({ active, payload }: any) => {
     if (!active || !payload || payload.length === 0) return null
@@ -201,13 +202,14 @@ const ResultGraphic = ({ data, type = "bar", xKey = "name", yKey = "value", barK
                   cx="50%"
                   cy="50%"
                   outerRadius="80%"
-                  label={false}
+                  label={isAgropecuariaPie ? false : true}
                 >
                   {chartData.map((_, index) => (
                     <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip content={renderPieTooltip} />
+                <Tooltip content={isAgropecuariaPie ? renderPieTooltip : undefined} />
+                {!isAgropecuariaPie && <Legend />}
               </PieChart>
             )}
         </ResponsiveContainer>

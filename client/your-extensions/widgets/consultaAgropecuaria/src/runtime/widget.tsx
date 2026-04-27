@@ -38,12 +38,43 @@ const Widget = (props: AllWidgetProps<any>) => {
   const widgetResultId = WIDGET_IDS.RESULT
   const [jimuMapView, setJimuMapView] = React.useState<JimuMapView | null>(null)
   const [graphicsLayer, setGraphicsLayer] = React.useState<GraphicsLayer | null>(null)
+  const initialExtentRef = React.useRef<__esri.Extent | null>(null)
+  const initialZoomRef = React.useRef<number | null>(null)
+  const initialScaleRef = React.useRef<number | null>(null)
   const [loading, setLoading] = React.useState(false)
   const [error, setError] = React.useState("")
   const [selectedTipo, setSelectedTipo] = React.useState<string>("")
   const [selectedMunicipio, setSelectedMunicipio] = React.useState<string>("")
   const [anios, setAnios] = React.useState<string[]>([])
   const [selectedAnio, setSelectedAnio] = React.useState<string>("")
+
+  const handleActiveViewChange = (view: JimuMapView) => {
+    if (!view) return
+
+    setJimuMapView(view)
+
+    if (!initialExtentRef.current) {
+      initialExtentRef.current = view.view.extent?.clone() ?? null
+      initialZoomRef.current = typeof view.view.zoom === "number" ? view.view.zoom : null
+      initialScaleRef.current = typeof view.view.scale === "number" ? view.view.scale : null
+    }
+  }
+
+  const resetToDefaultMapView = async () => {
+    const view = jimuMapView?.view
+    const initialExtent = initialExtentRef.current
+    if (!view || !initialExtent) return
+
+    await view.goTo({ target: initialExtent })
+
+    if (typeof initialZoomRef.current === "number") {
+      view.zoom = initialZoomRef.current
+    }
+
+    if (typeof initialScaleRef.current === "number") {
+      view.scale = initialScaleRef.current
+    }
+  }
 
   const resetResultsView = () => {
     if (graphicsLayer) {
@@ -232,6 +263,7 @@ const Widget = (props: AllWidgetProps<any>) => {
   React.useEffect(() => {
     if (props.state === "CLOSED") {
       handleClear()
+      resetToDefaultMapView()
     }
   }, [props.state])
 
@@ -240,7 +272,7 @@ const Widget = (props: AllWidgetProps<any>) => {
       {props.useMapWidgetIds && props.useMapWidgetIds.length === 1 && (
         <JimuMapViewComponent
           useMapWidgetId={props.useMapWidgetIds?.[0]}
-          onActiveViewChange={(view) => setJimuMapView(view)}
+          onActiveViewChange={handleActiveViewChange}
         />
       )}
 
@@ -250,6 +282,7 @@ const Widget = (props: AllWidgetProps<any>) => {
         disabled={loading}
         onChange={(e) => {
           resetResultsView()
+          void resetToDefaultMapView()
           setSelectedTipo(e.target.value)
           setSelectedMunicipio("")
           setAnios([])
