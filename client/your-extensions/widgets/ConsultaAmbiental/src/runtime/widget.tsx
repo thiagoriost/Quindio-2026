@@ -14,6 +14,7 @@ import { WIDGET_IDS } from '../../../shared/constants/widget-ids'
 import { JimuMapViewComponent, type JimuMapView } from 'jimu-arcgis'
 import FeatureLayer from "esri/layers/FeatureLayer"
 import { consultarCapasAmbientales, obtenerOpcionesNombres } from '../services/ambiental.service'
+import OurLoading from '../../../commonWidgets/our_loading/OurLoading'
 
 import {
     AREAS,
@@ -23,6 +24,7 @@ import {
     toOptions
 } from './config/consulta-ambiental.config'
 import { abrirTablaResultados, limpiarYCerrarWidgetResultados } from '../../../widget-result/src/runtime/widget'
+// @ts-ignore
 import './styles/consulta-ambiental.css'
 import { validaLoggerLocalStorage } from '../../../shared/utils/export.utils'
 
@@ -813,7 +815,7 @@ if(validaLoggerLocalStorage('logger')) console.log('onBuscar:', filters)
                 }}
             />
 
-            <div className="consulta-widget consulta-scroll">
+            <div className="consulta-widget consulta-scroll loading-host">
               <FiltrosClasificacion
                   filtros={filters}
                   setFiltro={setFilter}
@@ -834,6 +836,8 @@ if(validaLoggerLocalStorage('logger')) console.log('onBuscar:', filters)
                   disableSearch={loading}
                   helpText="Esta funcionalidad permite realizar consultas relacionadas de categorias ambientales"
               />
+
+              {loading && <OurLoading />}
             </div>
         </div>
 

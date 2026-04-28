@@ -2,9 +2,10 @@
 // import {useState, useCallback, useEffect, useRef } from 'react'
 import { React, type AllWidgetProps } from "jimu-core"
 import { JimuMapViewComponent, type JimuMapView } from 'jimu-arcgis'
-import '../styles/styles.scss'
 import { useCallback, useEffect, useRef, useState } from "react"
 
+// @ts-ignore
+import '../styles/styles.scss'
 
 /**
  * Representa un nivel de detalle (Level of Detail, LOD) para el mapa.

@@ -1,5 +1,7 @@
 import { React } from 'jimu-core'
 import { Label, Select } from 'jimu-ui' // import components
+
+// @ts-expect-error
 import './style.css'
 
 const InputSelect = ({

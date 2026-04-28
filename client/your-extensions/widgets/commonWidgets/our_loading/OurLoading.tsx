@@ -1,5 +1,6 @@
 import { Loading } from 'jimu-ui'
-import { React } from 'jimu-core'
+
+// @ts-expect-error
 import './style.css'
 
 /* Componente de carga personalizado */

@@ -45,6 +45,7 @@ import TablaResultCS from './components/tablaResultCS' */
 import DialogsCS from './components/dialogsCS'
 
 //Importación estilos
+// @ts-ignore
 import '../styles/style.css'
 
 //Importación interfaces

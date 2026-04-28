@@ -21,6 +21,8 @@ import { WIDGET_IDS } from "../../../shared/constants/widget-ids"
 import { clearPoint } from "../../../../widgets/utils/module"
 import { urls} from "../../../api/serviciosQuindio"
 import OurLoading from '../../../commonWidgets/our_loading/OurLoading'
+
+// @ts-ignore
 import '../styles/styles.css'
 
 

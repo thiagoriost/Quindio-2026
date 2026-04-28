@@ -27,9 +27,10 @@ import OurLoading from '../../../commonWidgets/our_loading/OurLoading'
 import DetalleEstablecimiento from './components/detalleEstablecimiento'
 import FormEducacion from './components/formEducacion'
 import FormIndicadores from './components/formIndicadores'
-import '../styles/styles.css'
 import { MUNICIPIOS_QUINDIO } from '../../../shared/constants/municipiosQuindio';
 
+// @ts-ignore
+import '../styles/styles.css'
 
 interface interfaceConsultaPor { id: number, name: string, url: string }
 interface interfaceCategories { id: number, name: string }
