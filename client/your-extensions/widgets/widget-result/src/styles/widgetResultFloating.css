@@ -32,14 +32,14 @@
 
 .widget-result-floating-panel { /*cef 20260304*/
   position: fixed;
-  bottom: 100px;
+  bottom: 140px;
   right: 50px;
   z-index: 10000;
 
-  width: max-content;             
+  width: max-content; 
   max-width: 40vw;        
   min-width: 500px;
-  height: 100%;           
+  height: auto;
   max-height: 40vh;
   background: var(--bg-color-white);
   border-radius: 5px;
@@ -48,6 +48,13 @@
   display: flex;
   flex-direction: column;
   animation: widgetResultFadeIn 0.25s;
+}
+
+/* Cuando muestra gráfico, el panel necesita más alto para que Recharts renderice bien */
+.widget-result-floating-panel.widget-result-panel--graphic {
+  max-height: 70vh;
+  min-height: 420px;
+  height: 60vh;
 }
 @keyframes widgetResultFadeIn {
   from {
@@ -71,7 +78,10 @@
   font-size: 1.1rem;
   font-weight: 600;
   flex: 0 0 auto;
-  /*cef 20260324*/
+  cursor: grab;
+}
+.widget-result-header:active, .widget-result-header:focus {
+  cursor: grabbing;
 }
 .widget-result-close-btn {
   align-items: center;
@@ -92,6 +102,7 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
+  width: 100%;
 }
 
 /* toolbar cef 20260424 */
@@ -125,9 +136,12 @@
 }
 
 .widget-result-view { /*cef 20260423*/
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
   overflow: hidden; 
+  width: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 .widget-result-table-container {
@@ -136,4 +150,34 @@
   height: auto;
   min-height: 0;
   padding: 5px;
+}
+
+/* ResultGraphic styles */
+.widget-result-graphic {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.widget-result-graphic-title {
+  flex: 0 0 auto;
+  text-align: center;
+  font-size: var(--font-size-sm);
+  margin-top: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
+  color: var(--text-color-secondary);
+  padding-top: var(--spacing-xs);
+  border-bottom: 1px solid var(--border-color-light);
+  font-weight: var(--font-weight-medium);
+  letter-spacing: 0.3px;
+}
+
+.widget-result-graphic-chart {
+  flex: 1 1 auto;
+  min-height: 280px;
+  height: 280px;
+  width: 100%;
 }

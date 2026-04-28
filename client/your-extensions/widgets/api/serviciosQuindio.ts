@@ -7,7 +7,7 @@ const urls = {
   SERVICIO_AMBIENTAL_ALFANUMERICO : "https://sigquindio.gov.co/arcgis/rest/services/QUINDIO_III/AmbientalAlfanumerico/MapServer",
   SERVICIO_CARTOGRAFIA_BASICA     : "https://sigquindio.gov.co/arcgis/rest/services/QUINDIO_III/CartografiaBasica/MapServer",
   // SERVICIO_EDUCACION              : "https://sigquindio.gov.co/arcgis/rest/services/QUINDIO_III/Educacion_T/MapServer",
-  SERVICIO_EDUCACION              : "https://pruebassig.igac.gov.co/server/rest/services/SIG_QUINDIO/Eduaci%C3%B3n/MapServer",
+  SERVICIO_EDUCACION              : "https://pruebassig.igac.gov.co/server/rest/services/SIG_QUINDIO/Eduacion/MapServer",
   SERVICIO_EDUCACION_ALFANUMERICO : "https://sigquindio.gov.co/arcgis/rest/services/QUINDIO_III/EducacionAlfanumerico/MapServer",
   SERVICIO_SALUD                  : "https://sigquindio.gov.co/arcgis/rest/services/QUINDIO_III/Salud_T/MapServer",
   SERVICIO_GENERAL_SALUD          : "https://sigquindio.gov.co/arcgis/rest/services/QUINDIO_III/Salud_T/MapServer",
@@ -56,6 +56,27 @@ const urls = {
     BASE: 'https://sigquindio.gov.co/arcgis/rest/services/QUINDIO_III/CartografiaBasica/MapServer',
     MUNICIPIOS: 75,
   },
+  /*
+  * Instrumentos de monitoreo ambiental
+  * 20260320
+  */
+  Ambiental: {
+    BASE: 'https://pruebassig.igac.gov.co/server/rest/services/SIG_QUINDIO/Ambiental/MapServer',
+    Estaciones_limnigraficas: 34,
+    Estaciones_climaticas: 35,
+    Monitoreo_calidad_aire: 36,
+    Monitoreo_calidad_agua: 37,
+  },
+  CuencaLaVieja:{
+    BASE: 'https://sigquindio.gov.co/arcgis/rest/services/QUINDIO_III/CuencaLaVieja/MapServer',
+    Cuenca_hidrografica: 45,
+    Suelos: 54
+  },
+  DemandaRecursosNaturales: {
+    BASE: 'https://pruebassig.igac.gov.co/server/rest/services/SIG_QUINDIO/Ambiental/MapServer',
+    _LAYERS: 'https://pruebassig.igac.gov.co/server/rest/services/SIG_QUINDIO/Ambiental/MapServer/layers?f=pjson',
+    PARENT_ID: 10,
+  }
 }
 
 export {

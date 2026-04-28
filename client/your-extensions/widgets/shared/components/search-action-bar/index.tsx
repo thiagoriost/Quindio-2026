@@ -2,6 +2,7 @@
 import { React, jsx } from 'jimu-core'
 import { Button, /* Loading, */ Tooltip, Icon } from 'jimu-ui'
 import HelpOutlined from 'jimu-icons/svg/outlined/suggested/help.svg'
+import { validaLoggerLocalStorage} from "../../../shared/utils/export.utils"
 import './style.scss'
 
 /**
@@ -116,6 +117,7 @@ export const SearchActionBar: React.FC<SearchActionBarProps> = ({
    * o si el botón está deshabilitado.
    */
   const handleSearch = () => {
+    if(validaLoggerLocalStorage('logger')) console.log({loading, disableSearch})
     if (!loading && !disableSearch) {
       onSearch?.()
     }

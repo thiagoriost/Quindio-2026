@@ -1,0 +1,280 @@
+/* Floating Button & Collapsible Widget Styles for WidgetResult */
+@import '../../../utils/styles/presetsQuindio.css';
+
+.widget-result-floating-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.widget-result-floating-btn {
+  position: fixed;
+  bottom: 270px;
+  right: 10px;
+  z-index: 9999;
+  background: var(--color-primary);
+  color: var(--color-primary-light);
+  border: none;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  box-shadow: 0 2px 8px var(--shadow-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.widget-result-floating-btn:hover {
+  background: var(--color-primary-hover);
+}
+
+.widget-result-floating-panel {
+  position: fixed;
+  bottom: 100px;
+  right: 50px;
+  z-index: 10000;
+
+  /* width: var(--panel-width, max-content); */
+  width: max-content; 
+  max-width: 40vw;        
+  min-width: 500px;
+  height: 100%;
+  /* height: max-content; */
+  max-height: 40vh;
+  /* min-height: 500px; */
+  background: var(--bg-color-white);
+  border-radius: 5px;
+  box-shadow: 0 4px 24px var(--shadow-light);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: widgetResultFadeIn 0.25s;
+}
+@keyframes widgetResultFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.widget-result-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--color-primary);
+  color: var(--bg-color-white);
+  padding: 12px 20px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  flex: 0 0 auto;
+}
+.widget-result-close-btn {
+  align-items: center;
+  border-radius: 50%;
+  border: none;
+  background: var(--color-primary);
+  color: var(--bg-color-white);
+  display: flex;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  font-size: 3.5rem;
+  padding-bottom: 5px;
+}
+
+.widget-result-content {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+/* ---- Leyenda floating button (minimized) ---- */
+.widget-leyenda-floating-btn {
+  position: fixed;
+  bottom: 320px;
+  right: 10px;
+  z-index: 9999;
+  background: var(--color-primary, #5a6e2e);
+  color: var(--bg-color-white, #fff);
+  border: none;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.widget-leyenda-floating-btn:hover {
+  background: var(--color-primary-hover, #4a5c26);
+}
+
+/* ---- Leyenda panel (expanded) ---- */
+.widget-leyenda-panel {
+  position: fixed;
+  bottom: 500px;
+  right: 30px;
+  z-index: 10000;
+  background: var(--bg-color-white);
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  min-width: 150px;
+  max-width: 260px;
+  overflow: hidden;
+  font-family: Arial, sans-serif;
+  animation: widgetLeyendaFadeIn 0.25s;
+}
+@keyframes widgetLeyendaFadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.widget-leyenda-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--color-primary);
+  color: var(--bg-color-white);
+  padding: 6px 10px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: grab;
+  user-select: none;
+}
+.widget-leyenda-header:active {
+  cursor: grabbing;
+}
+
+.widget-leyenda-close-btn {
+  background: transparent;
+  border: none;
+  color: var(--bg-color-white);
+  font-size: 1.2rem;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0 2px;
+}
+
+.widget-leyenda-content {
+  padding: 10px 14px;
+}
+
+.widget-leyenda-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 8px;
+  text-align: center;
+  color: #333;
+}
+
+.widget-leyenda-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.widget-leyenda-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.widget-leyenda-swatch {
+  display: inline-block;
+  width: 28px;
+  height: 16px;
+  border: 2px solid;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.widget-leyenda-label {
+  font-size: 0.82rem;
+  color: #333;
+}
+
+/* toolbar */
+.widget-result-toolbar {
+  flex: 0 0 auto;
+}
+
+.widget-result-toolbar-bar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+  margin-top: 4px;
+  padding: 4px 8px;
+  border-bottom: 1px solid #eee;
+}
+
+.widget-result-export-btn {
+  margin-left: auto;
+}
+
+.widget-result-body {  /*  20260424*/
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.widget-result-footer {  /* 20260423*/
+  flex: 0 0 auto;
+}
+
+.widget-result-view { /* 20260423*/
+  flex: 1;
+  min-height: 0;
+  overflow: hidden; 
+  width: 100%;
+}
+
+.widget-result-table-container {
+  display: flex;
+  flex-direction: column;
+  height: auto;
+  min-height: 0;
+  padding: 5px;
+}
+
+/* ResultGraphic styles */
+.widget-result-graphic {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  width: 100%;
+}
+
+.widget-result-graphic-title {
+  flex: 0 0 auto;
+  text-align: center;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-bold);
+  margin-top: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
+  color: var(--text-color-secondary);
+  padding-top: var(--spacing-xs);
+  border-bottom: 1px solid var(--border-color-light);
+  letter-spacing: 0.3px;
+}
+
+.widget-result-graphic-chart {
+  flex: 1;
+  min-height: 0;
+}

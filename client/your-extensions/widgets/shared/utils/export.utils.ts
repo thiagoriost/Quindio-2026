@@ -6,6 +6,10 @@ import { Point, Polygon, Polyline } from "@arcgis/core/geometry"
 import type { JimuMapView } from 'jimu-arcgis'
 import Query from "@arcgis/core/rest/support/Query"
 import { executeQueryJSON } from "@arcgis/core/rest/query"
+import { loadLayers } from "../../shared/services/queryMapServer.service"
+import { abrirWidgetLeyenda } from '../../widget-leyenda/src/runtime/widget'
+import { WIDGET_IDS } from '../../shared/constants/widget-ids'
+
 // import { appActions, getAppStore } from 'jimu-core'
 
 
@@ -169,9 +173,9 @@ export const downloadBlob = (
   URL.revokeObjectURL(url)
 }
 
-export const drawFeaturesOnMap = async (response, jimuMapView, zoom = 15) => {
-  let geometry = null
-  let symbol = null
+export const drawFeaturesOnMap = async (response: { features: any; spatialReference: any }, jimuMapView: JimuMapView, zoom = 15) => {
+  let geometry: __esri.Point | __esri.Polygon | __esri.Polyline = null
+  let symbol: { type: string; color: string; outline: { color: string; width: number } } = null
   if (!response)
     { return }
   const { features, spatialReference } = response
@@ -188,8 +192,8 @@ export const drawFeaturesOnMap = async (response, jimuMapView, zoom = 15) => {
 
   const graphicsLayer = new GraphicsLayer()
 
-  features.forEach((feature) => {
-    console.log("Tipo geometría =>",feature.geometry)
+  for (const feature of features as Array<{ geometry: { rings: any; x: any; y: any; paths: any }; attributes: { [x: string]: any } }>) {
+    if (validaLoggerLocalStorage('logger')) console.log("Tipo geometría =>",feature.geometry)
     //Validación de un Polígono
     if (feature.geometry.rings) {
       // setTypeGraphMap("polygon")
@@ -220,7 +224,7 @@ export const drawFeaturesOnMap = async (response, jimuMapView, zoom = 15) => {
         spatialReference: spatialReference
       })
 
-      console.log("Objeto Point =>",point)
+      if (validaLoggerLocalStorage('logger')) console.log("Objeto Point =>",point)
 
       const outlPoint = new SimpleLineSymbol({
         color: [255, 255, 0], // Amarillo
@@ -273,7 +277,7 @@ export const drawFeaturesOnMap = async (response, jimuMapView, zoom = 15) => {
     })
 
     graphicsLayer.add(graphic)
-  })
+  }
 
   jimuMapView.view.map.add(graphicsLayer)
 
@@ -289,13 +293,23 @@ export const drawFeaturesOnMap = async (response, jimuMapView, zoom = 15) => {
  * Restaura la vista del mapa a la extensión y zoom iniciales.
  * @returns {void}
  */
-export const goToInitialExtent = (varJimuMapView, initialExtent, initialZoom) => {
+export const goToInitialExtent = (varJimuMapView: JimuMapView, initialExtent: any, initialZoom?: number, initialScale?: number) => {
 
+  if (validaLoggerLocalStorage('logger')) console.log("Restaurando extensión inicial =>", initialExtent)
     if (!varJimuMapView || !initialExtent) return
 
     varJimuMapView.view.goTo({
-      target: initialExtent,
-      zoom: initialZoom
+      target: initialExtent
+    }, {
+      duration: 1000 // Duración de la animación en milisegundos
+    }).then(() => {
+      // Restaurar exactamente la vista inicial cuando se dispone de zoom/scale capturados.
+      if (typeof initialZoom === 'number') {
+        varJimuMapView.view.zoom = initialZoom
+      }
+      if (typeof initialScale === 'number') {
+        varJimuMapView.view.scale = initialScale
+      }
     })
 
   }
@@ -332,18 +346,260 @@ export const ejecutarConsulta = async ({
       })
 
       const response = await executeQueryJSON(url, query)
-     console.log({response})
+     if (validaLoggerLocalStorage('logger')) console.log({response})
       return response.features
 
     } catch (error) {
 
       console.error("Error ejecutando consulta:", error)
 
-      console.log(
+      if (validaLoggerLocalStorage('logger')) { console.log(
         "<B> Info </B>",
         "No se logró completar la operación"
-      )
+      ) }
 
       throw error
     }
   }
+
+  export const validaLoggerLocalStorage = (key: string): boolean => {
+    let loggerParsed = null
+    try {
+      loggerParsed = JSON.parse(localStorage.getItem(key))?.logger
+    } catch (e) {
+      loggerParsed = localStorage.getItem(key)
+    }
+    return loggerParsed === true
+  }
+
+   /**
+     * Restaura el extent inicial del mapa.
+     */
+export const restoreInitialExtent = (jimuMapView: any, initialExtentRef: any) => {
+        const view = jimuMapView?.view
+        const extent = initialExtentRef.current
+        if (view && extent) {
+            view.goTo(extent)
+        }
+    }
+
+/**
+ * Funcion que limpia el mapa eliminando todas las capas gráficas execpto la capa jimuMapView.view.map.layers.items[0].displayField === 'IDMUNICIPIO' y restablece el extent inicial.
+ */
+export const clearMapAndResetExtent = (jimuMapView: any, initialExtent: any, initialZoom?: number, initialScale?: number) => {
+  if (jimuMapView && jimuMapView.view) {
+    try {
+      // Eliminar todas las capas gráficas excepto la capa con displayField 'IDMUNICIPIO'
+      jimuMapView.view.map.layers.forEach((layer: any) => {
+        if (layer.displayField !== 'IDMUNICIPIO') {
+          jimuMapView.view.map.remove(layer)
+        }
+      })
+      // Restablecer el extent inicial
+      goToInitialExtent(jimuMapView, initialExtent, initialZoom, initialScale)
+    } catch (e) {
+      console.error('Error al limpiar el mapa:', e)
+    }
+} }
+
+/**
+ * Configuración coroplético para determinar la simbología de cada feature
+ * según el valor de un campo numérico y una leyenda de rangos.
+ *
+ * @interface CoroplethConfig
+ * @property {string} field - Nombre del campo numérico del feature para clasificar.
+ * @property {Array<{ minimo: number; maximo: number; colorFondo: string; colorLine: string }>} leyenda
+ *   - Rangos de clasificación con sus colores de fondo y línea (formato "r,g,b,a").
+ */
+export interface CoroplethConfig {
+  field: string
+  leyenda: Array<{ minimo: number; maximo: number; colorFondo: string; colorLine: string }>
+  titleCoropletico?: string
+}
+
+export const limpiarFeaturesDibujados = (jimuMapView: JimuMapView, features: __esri.Graphic[]) => {
+  if (jimuMapView && features?.length) {
+    jimuMapView.view.graphics.removeMany(features)
+  }
+}
+
+/**
+ * Genera gráficos (Graphic[]) a partir de features ArcGIS y los dibuja en el mapa.
+ *
+ * Clasifica cada feature según su tipo de geometría:
+ * - **Polígono con coroplético**: asigna color de relleno y borde según el valor del campo
+ *   configurado y los rangos definidos en la leyenda.
+ * - **Polígono sin coroplético**: aplica un relleno rojo semitransparente con borde rojo.
+ * - **Punto u otra geometría**: aplica un marcador circular rojo de 12px.
+ *
+ * @param {Object} params - Parámetros de la función.
+ * @param {__esri.Graphic[]} params.features - Features obtenidos de una consulta ArcGIS.
+ * @param {JimuMapView} params.jimuMapView - Referencia a la vista del mapa de Jimu.
+ * @param {CoroplethConfig} [params.coroplethConfig] - Configuración coroplética opcional.
+ *   Si se proporciona, se aplica simbología por rangos a polígonos.
+ *
+ * @returns {__esri.Graphic[]} Array de gráficos creados y ya añadidos al mapa.
+ *
+ * @example
+ * ```ts
+ * const graphics = dibujarFeaturesCoropletico({
+ *   features,
+ *   jimuMapView: varJimuMapView,
+ *   coroplethConfig: {
+ *     field: "TOTALESTUDIANTES",
+ *     leyenda: LEYENDA_COROPLETICO_QUINDIO.Cobertura.leyenda
+ *   }
+ * })
+ * ```
+ */
+export const dibujarFeaturesCoropletico = ({
+  props,
+  features,
+  jimuMapView,
+  coroplethConfig
+}: {
+  props: any
+  features: __esri.Graphic[]
+  jimuMapView: JimuMapView
+  coroplethConfig?: CoroplethConfig
+}): __esri.Graphic[] => {
+  if (!features?.length || !jimuMapView) return []
+
+  // Deep-clone features para garantizar mutabilidad (ej. objetos congelados de Redux)
+  const mutableFeatures: __esri.Graphic[] = JSON.parse(JSON.stringify(features))
+
+  // Validar y deep-clone la leyenda si se proporcionó coroplethConfig
+  if (coroplethConfig) {
+    if (!coroplethConfig.field) {
+      console.warn('dibujarFeaturesCoropletico: coroplethConfig.field es requerido')
+      return []
+    }
+    if (!coroplethConfig.leyenda?.length) {
+      console.warn('dibujarFeaturesCoropletico: coroplethConfig.leyenda está vacía o no definida')
+      return []
+    }
+    // Validar que cada rango tenga las propiedades necesarias
+    const leyendaValida = coroplethConfig.leyenda.every(
+      l => l.minimo != null && l.maximo != null && l.colorFondo && l.colorLine
+    )
+    if (!leyendaValida) {
+      console.warn('dibujarFeaturesCoropletico: leyenda contiene rangos incompletos (minimo, maximo, colorFondo, colorLine requeridos)')
+      return []
+    }
+    // Deep-clone leyenda para evitar mutar el objeto original (ej. Redux)
+    coroplethConfig = {
+      field: coroplethConfig.field,
+      leyenda: JSON.parse(JSON.stringify(coroplethConfig.leyenda)),
+      titleCoropletico: coroplethConfig.titleCoropletico
+
+    }
+  }
+
+  const viewSR = jimuMapView.view.spatialReference
+
+  const graphics = mutableFeatures
+    .filter(f => f?.geometry)
+    .map(f => {
+      const raw = f.geometry as any
+      const sr = raw.spatialReference ?? viewSR
+
+      // Determinar tipo de geometría: propiedad .type explícita o inferir por estructura
+      const geoType = raw.type
+        || (raw.rings ? 'polygon' : null)
+        || (raw.paths ? 'polyline' : null)
+        || (raw.x != null && raw.y != null ? 'point' : null)
+
+      let geometry: __esri.Geometry
+      if (geoType === 'polygon' && raw.rings) {
+        geometry = new Polygon({ rings: raw.rings, spatialReference: sr })
+      } else if (geoType === 'polyline' && raw.paths) {
+        geometry = new Polyline({ paths: raw.paths, spatialReference: sr })
+      } else if (geoType === 'point' && raw.x != null) {
+        geometry = new Point({ x: raw.x, y: raw.y, spatialReference: sr })
+      } else {
+        // Si ya es una instancia válida de geometría, usarla directamente
+        geometry = raw
+      }
+
+      let symbol: any
+      if (geoType === 'polygon') {
+        if (coroplethConfig) {
+          const valor = Number(f.attributes[coroplethConfig.field]) || 0
+          const rango = coroplethConfig.leyenda.find(l => valor >= l.minimo && valor <= l.maximo) ?? coroplethConfig.leyenda[0]
+          const colorFondo = rango.colorFondo.split(',').map(Number)
+          const colorLine = rango.colorLine.split(',').map(Number)
+          symbol = {
+            type: 'simple-fill',
+            color: colorFondo,
+            outline: { color: colorLine, width: 2 }
+          }
+        } else {
+          symbol = {
+            type: 'simple-fill',
+            color: [255, 0, 0, 0.25],
+            outline: { color: 'red', width: 2 }
+          }
+        }
+      } else {
+        symbol = {
+          type: 'simple-marker',
+          style: 'circle',
+          color: 'red',
+          size: '12px'
+        }
+      }
+      return new Graphic({ geometry, symbol })
+    })
+
+  jimuMapView.view.graphics.addMany(graphics)
+
+  abrirWidgetLeyenda({
+    widgetleyendaId: WIDGET_IDS.LEYENDA,
+    props,
+    title: coroplethConfig.titleCoropletico, // título que se mostrará en el widget de resultados
+    data: coroplethConfig.leyenda
+  })
+
+  return graphics
+}
+
+// para cargar las capas del servicio de acuerdo a la consulta seleccionada, y mostrar un mensaje de error si la consulta falla
+export const realizarQuery = async (url: string, name: string, setError: (arg0: string) => void, setLoading: (arg0: boolean) => void) => {
+  setError("")
+  try {
+    const response = await loadLayers(url)
+    if(validaLoggerLocalStorage('logger')) console.log({ response, url, name })
+    return response
+  }
+  catch (err) {
+    console.error("Error realizando consulta:", err)
+    setError("Ocurrio un error al realizar la consulta. Por favor intente nuevamente.")
+  }
+  finally {
+    setLoading(false)
+  }
+}
+
+/**
+ * Transforma el valor de consultaPorSeleccionada?.name:
+ * 1. Normaliza para eliminar tildes (NFD + regex).
+ * 2. Limpia caracteres no alfanuméricos.
+ * 3. Convierte a formato camelCase.
+ */
+export const transformToCamelCase = (str: string) => {
+  if (!str) return str
+
+  return str
+    .normalize("NFD")
+    // Elimina diacríticos (tildes)
+    .replace(/[\u0300-\u036f]/g, "")
+    // Elimina caracteres especiales dejando solo letras, números y espacios
+    .replace(/[^a-zA-Z0-9 ]/g, "")
+    .split(/\s+/)
+    .map((word, index) => {
+      const cleaned = word.toLowerCase()
+      if (index === 0) return cleaned
+      return cleaned.charAt(0).toUpperCase() + cleaned.slice(1)
+    })
+    .join("")
+}

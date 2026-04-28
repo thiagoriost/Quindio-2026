@@ -6,6 +6,7 @@
 
 import type MapView from "@arcgis/core/views/MapView"
 import type SceneView from "@arcgis/core/views/SceneView"
+import { validaLoggerLocalStorage } from "../../../shared/utils/export.utils"
 
 /**
  * Resultado de la captura de pantalla del mapa.
@@ -32,9 +33,9 @@ export interface ScreenshotResult {
  *          la imagen en data URL y sus dimensiones originales.
  * @example
  * const result = await captureMap(mapView);
- * console.log(result.dataUrl);   // "data:image/png;base64,..."
- * console.log(result.width);     // 1920
- * console.log(result.height);    // 1080
+ * if(validaLoggerLocalStorage('logger')) console.log(result.dataUrl);   // "data:image/png;base64,..."
+ * if(validaLoggerLocalStorage('logger')) console.log(result.width);     // 1920
+ * if(validaLoggerLocalStorage('logger')) console.log(result.height);    // 1080
  */
 export const captureMap = async (
   view: MapView | SceneView
@@ -50,6 +51,6 @@ export const captureMap = async (
     width: screenshot.data.width,
     height: screenshot.data.height
   }
-  console.log({responseCaptureMap})
+  if (validaLoggerLocalStorage('logger')) console.log({responseCaptureMap})
   return responseCaptureMap
 }

@@ -1,7 +1,8 @@
 
 import { React } from 'jimu-core'
 import FeatureLayer from '@arcgis/core/layers/FeatureLayer'
-import '../../styles/legendDisplay.css'
+import '../../styles/LegendDisplay.css'
+import { validaLoggerLocalStorage } from '../../../../shared/utils/export.utils'
 
 /**
  * LegendDisplay
@@ -28,7 +29,7 @@ import '../../styles/legendDisplay.css'
  * @param {Array<string>} props.activeLayerUrls - URLs de las capas activas
  * @returns {JSX.Element}
  */
-const LegendDisplay = ({ activeLayerUrls = [] }) => {
+const LegendDisplay = ({ activeLayerUrls = [] }: { activeLayerUrls: string[] }): JSX.Element => {
   /**
    * legends: Estado local que almacena la información de leyenda de cada capa activa.
    * Estructura: Array de objetos con { url, title, legendInfo, error }
@@ -66,9 +67,10 @@ const LegendDisplay = ({ activeLayerUrls = [] }) => {
             const response = await fetch(legendUrl)
             if (response.ok) {
               const data = await response.json()
+              if(validaLoggerLocalStorage('logger')) console.log({data})
               if (data && data.layers && Array.isArray(data.layers)) {
-                legendInfo = data.layers.flatMap(layerItem => // Aplanamos el array de capas para obtener todos los símbolos
-                  (layerItem.legend || []).map(legendItem => ({ // Para cada símbolo en la leyenda, extraemos la etiqueta y la URL de la imagen
+                legendInfo = data.layers.flatMap((layerItem: { legend: any }) => // Aplanamos el array de capas para obtener todos los símbolos
+                  (layerItem.legend || []).map((legendItem: { label: any; url: any }) => ({ // Para cada símbolo en la leyenda, extraemos la etiqueta y la URL de la imagen
                     label: legendItem.label, // Etiqueta del símbolo
                     symbol: { url: legendItem.url }, // URL de la imagen del símbolo
                   }))
@@ -85,8 +87,20 @@ const LegendDisplay = ({ activeLayerUrls = [] }) => {
                   const renderer = dataInfo.drawingInfo.renderer
                   // 2a. Soporte para uniqueValue: genera un símbolo por valor único
                   if (renderer.type === 'uniqueValue' && Array.isArray(renderer.uniqueValueInfos)) {
-                    legendInfo = renderer.uniqueValueInfos.map(info => {
+                    legendInfo = renderer.uniqueValueInfos.map((info: { symbol: any; label: any; value: any }) => {
                       const symbol = info.symbol
+                      // Soporte para PictureMarkerSymbol (esriPMS) dentro de uniqueValueInfos
+                      if (symbol.type === 'esriPMS' && symbol.imageData) {
+                        const imageUrl = `data:${symbol.contentType};base64,${symbol.imageData}`
+                        return {
+                          label: info.label || info.value || 'Símbolo',
+                          symbol: {
+                            svg: (
+                              <img src={imageUrl} alt={info.label || info.value || 'Símbolo'} className='imgLeyend' />
+                            )
+                          }
+                        }
+                      }
                       const colorArr = symbol.color || [0,0,0,0]
                       const fillColor = `rgba(${colorArr[0]},${colorArr[1]},${colorArr[2]},${colorArr[3]/255})`
                       let outlineStyle = {}
@@ -101,11 +115,51 @@ const LegendDisplay = ({ activeLayerUrls = [] }) => {
                         symbol: { color: fillColor, style: symbol.style, outline: symbol.outline, outlineStyle }
                       }
                     })
-                  // 2b. Soporte para renderer simple (un solo símbolo)
+                  // 2b. Soporte para classBreaks: genera un símbolo por rango de clase
+                  } else if (renderer.type === 'classBreaks' && Array.isArray(renderer.classBreakInfos)) {
+                    legendInfo = renderer.classBreakInfos.map((info: { symbol: any; label: any; classMaxValue: any; description: any }) => {
+                      const symbol = info.symbol
+                      if (symbol.type === 'esriPMS' && symbol.imageData) {
+                        const imageUrl = `data:${symbol.contentType};base64,${symbol.imageData}`
+                        return {
+                          label: info.label || `≤ ${info.classMaxValue}`,
+                          symbol: {
+                            svg: (
+                              <img src={imageUrl} alt={info.label || `≤ ${info.classMaxValue}`} className='imgLeyend' />
+                            )
+                          }
+                        }
+                      }
+                      const colorArr = symbol.color || [0,0,0,0]
+                      const fillColor = `rgba(${colorArr[0]},${colorArr[1]},${colorArr[2]},${colorArr[3]/255})`
+                      let outlineStyle = {}
+                      if (symbol.outline && symbol.outline.color) {
+                        const outlineArr = symbol.outline.color
+                        outlineStyle = {
+                          border: `${symbol.outline.width || 2}px solid rgba(${outlineArr[0]},${outlineArr[1]},${outlineArr[2]},${outlineArr[3]/255})`
+                        }
+                      }
+                      return {
+                        label: info.label || `≤ ${info.classMaxValue}`,
+                        symbol: { color: fillColor, style: symbol.style, outline: symbol.outline, outlineStyle }
+                      }
+                    })
+                  // 2c. Soporte para renderer simple (un solo símbolo)
                   } else if (renderer.type === 'simple' && renderer.symbol) {
                     const symbol = renderer.symbol
+                    // Soporte para PictureMarkerSymbol (esriPMS): muestra la imagen directamente
+                    if (symbol.type === 'esriPMS' && symbol.imageData) {
+                      const imageUrl = `data:${symbol.contentType};base64,${symbol.imageData}`
+                      legendInfo = [{
+                        label: dataInfo.name || 'Símbolo',
+                        symbol: {
+                          svg: (
+                            <img src={imageUrl} alt={dataInfo.name || 'Símbolo'} className='imgLeyend' />
+                          )
+                        }
+                      }]
                     // Soporte para PictureFillSymbol (esriPFS): genera SVG con patrón de imagen
-                    if (symbol.type === 'esriPFS' && symbol.imageData) {
+                    } else if (symbol.type === 'esriPFS' && symbol.imageData) {
                       const imageUrl = `data:${symbol.contentType};base64,${symbol.imageData}`
                       let outlineColor = 'rgba(0,0,0,1)'
                       let outlineWidth = 1
@@ -213,25 +267,39 @@ const LegendDisplay = ({ activeLayerUrls = [] }) => {
                 listStyle: 'none'
               }}
             >
-              {legendInfo.map((item, idx) => (
+              {legendInfo.map((item: { symbol: { svg: string | number | boolean | React.ReactElement<any, string > | Iterable<React.ReactNode> | React.ReactPortal; color: string; outline: { color: number[]; width: string | number } }; label: string | number | boolean | React.ReactElement<any, string > | Iterable<React.ReactNode> } , idx: React.Key) => (
                 <li key={idx} className="legendItem" style={{ width: '100%', minWidth: 0 }}>
                   {/* Si el símbolo es SVG (PictureFillSymbol), lo muestra como SVG */}
                   {item.symbol && item.symbol.svg && (
-                    <span className="legendSymbol" style={{ padding: 0, background: 'none' }}>{item.symbol.svg}</span>
+                    <div className={legendInfo.length > 1 ? 'divImgLeyendCol' : 'divImgLeyendRow'}>
+                      <p>{item.label}</p>
+                      <span className="legendSymbol" style={{ padding: 0, background: 'none' }}>{item.symbol.svg}</span>
+                    </div>
                   )}
                   {/* Si el símbolo es un color sólido, lo muestra como bloque de color con borde */}
                   {item.symbol && item.symbol.color && !item.symbol.svg && (
-                    <span
-                      style={{
-                        display: 'inline-block',
-                        width: '100%',
-                        height: '20px',
-                        background: item.symbol.color,
-                        ...((item.symbol.outlineStyle) ? item.symbol.outlineStyle : {})
-                      }}
-                    >
-                      {item.label}
-                    </span>
+                    <div className="divImgLeyendRow" style={{ padding: 0, background: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <svg overflow="hidden" width="30" height="30" style={{ touchAction: 'none', flexShrink: 0 }}>
+                        <path
+                          fill={item.symbol.color}
+                          fillOpacity="1"
+                          stroke={item.symbol.outline && item.symbol.outline.color
+                            ? `rgba(${item.symbol.outline.color[0]},${item.symbol.outline.color[1]},${item.symbol.outline.color[2]},${item.symbol.outline.color[3] / 255})`
+                            : 'rgb(110, 110, 110)'}
+                          strokeOpacity="1"
+                          strokeWidth={item.symbol.outline && item.symbol.outline.width ? item.symbol.outline.width : 0.53}
+                          strokeLinecap="butt"
+                          strokeLinejoin="miter"
+                          strokeMiterlimit={4}
+                          d="M-10-10L 10 0L 10 10L-10 10L-10-10Z"
+                          fillRule="evenodd"
+                          transform="matrix(1,0,0,1,15,15)"
+                        />
+                      </svg>
+                      <p style={{ margin: 0 }}>
+                        {item.label}
+                      </p>
+                    </div>
                   )}
                 </li>
               ))}

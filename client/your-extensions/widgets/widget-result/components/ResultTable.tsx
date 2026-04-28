@@ -1,6 +1,7 @@
 /** @jsx jsx */
 import { Table } from 'jimu-ui'
 import { React } from 'jimu-core'
+import { validaLoggerLocalStorage } from '../../shared/utils/export.utils'
 
 
 /**
@@ -25,7 +26,12 @@ interface Props {
   onChangeView?: (view: 'tabla' | 'grafico') => void
   withGraphic?: boolean
   data?: {
-    withGraphic?: boolean
+    withGraphic?: {
+      showGraphic: boolean
+      graphicData: any[]
+      graphicType: string
+      graphicTitle?: string
+    }
   }
   setViewMode?: (view: 'tabla' | 'grafico') => void
 }
@@ -65,7 +71,7 @@ interface Props {
  */
 export const ResultTable = ({ features, fields, onSelectFeature, data }: Props) => {
 
-  console.log({data})
+  if(validaLoggerLocalStorage('logger')) console.log({data})
   /**
    * Índice de la fila actualmente seleccionada.
    *

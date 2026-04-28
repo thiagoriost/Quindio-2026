@@ -7,6 +7,7 @@
 import { React } from "jimu-core"
 import { getLayoutTemplates } from "./printService"
 import type { LayoutTemplate } from "./types"
+import { validaLoggerLocalStorage } from "../../../shared/utils/export.utils"
 
 const { useState, useEffect } = React
 
@@ -37,9 +38,9 @@ export const useLayoutTemplates = () => {
       try {
         setLoading(true)
         setError(null)
-        console.log("Iniciando carga de plantillas...")
+        if (validaLoggerLocalStorage('logger')) console.log("Iniciando carga de plantillas...")
         const result = await getLayoutTemplates()
-        console.log("Plantillas cargadas:", result)
+        if (validaLoggerLocalStorage('logger')) console.log("Plantillas cargadas:", result)
         setTemplates(result)
       } catch (err: any) {
         console.error("Error en useLayoutTemplates:", err)

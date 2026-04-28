@@ -6,6 +6,7 @@
 
 import esriRequest from "@arcgis/core/request"
 import type { ExecutePrintParams, PrintResult, LayoutTemplate } from "./types"
+import { validaLoggerLocalStorage } from "../../../shared/utils/export.utils"
 
 /** URL base del servicio de impresión de IGAC */
 const PRINT_SERVICE_BASE = "https://pruebassig.igac.gov.co/server/rest/services/Utilities/PrintingTools/GPServer"
@@ -37,10 +38,10 @@ export const executePrint = async (
   // Preparar los parámetros de impresión
   const webMapAsJson = JSON.stringify(params.webMapJson)
 
-  console.log("Print Service URL:", url)
-  console.log("WebMap JSON:", webMapAsJson)
-  console.log("Layout:", params.config.layout)
-  console.log("Format:", params.config.format.toUpperCase())
+  if (validaLoggerLocalStorage('logger')) console.log("Print Service URL:", url)
+  if (validaLoggerLocalStorage('logger')) console.log("WebMap JSON:", webMapAsJson)
+  if (validaLoggerLocalStorage('logger')) console.log("Layout:", params.config.layout)
+  if (validaLoggerLocalStorage('logger')) console.log("Format:", params.config.format.toUpperCase())
 
   const response = await esriRequest(url, {
     method: "post",
@@ -54,7 +55,7 @@ export const executePrint = async (
   })
 
   const json = response.data
-  console.log("Print Service Response:", json)
+  if (validaLoggerLocalStorage('logger')) console.log("Print Service Response:", json)
 
   // Verificar si hubo error en el servicio
   if (json.error) {
@@ -84,7 +85,7 @@ export const executePrint = async (
 export const getLayoutTemplates = async (): Promise<LayoutTemplate[]> => {
   const url = `${PRINT_SERVICE_BASE}/Get%20Layout%20Templates%20Info%20Task/execute`
 
-  console.log("Fetching layout templates from:", url)
+  if (validaLoggerLocalStorage('logger')) console.log("Fetching layout templates from:", url)
 
   try {
     const response = await esriRequest(url, {
@@ -96,7 +97,7 @@ export const getLayoutTemplates = async (): Promise<LayoutTemplate[]> => {
     })
 
     const json = response.data
-    console.log("Layout Templates Response:", json)
+    if (validaLoggerLocalStorage('logger')) console.log("Layout Templates Response:", json)
 
     if (json.error) {
       console.error("Layout Templates Error:", json.error)
@@ -110,7 +111,7 @@ export const getLayoutTemplates = async (): Promise<LayoutTemplate[]> => {
 
     // El valor ya viene como array, no como string JSON
     const templates = json.results[0].value
-    console.log("Parsed Templates:", templates)
+    if (validaLoggerLocalStorage('logger')) console.log("Parsed Templates:", templates)
     return templates
   } catch (err) {
     console.error("Error fetching templates:", err)

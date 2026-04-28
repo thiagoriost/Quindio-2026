@@ -12,6 +12,11 @@
   "translatedLocales": [
     "en"
   ],
+  
+  "useMapWidget": true,
+  "supportMap": true,
+  "useMapWidgetIds": [],
+
   "defaultSize": {
     "width": 400,
     "height": 300

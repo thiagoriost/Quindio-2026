@@ -1,6 +1,8 @@
 import { React } from 'jimu-core'
 import { IMState } from 'jimu-core'
 import { useSelector } from 'react-redux'
+import { goToInitialExtent } from '../utils/export.utils'
+import { JimuMapView } from 'jimu-arcgis'
 
 /**
  * Hook personalizado que detecta cuando un widget de ArcGIS Experience Builder
@@ -40,7 +42,9 @@ import { useSelector } from 'react-redux'
  */
 export const useOnWidgetClose = (
   widgetId: string,
-  onClose?: () => void
+  jimuMapView: JimuMapView,
+  initialExtent: React.MutableRefObject<__esri.Extent>,
+  onClose?: () => void,
 ) => {
 
   const widgetState = useSelector((state: IMState) =>
@@ -54,6 +58,7 @@ export const useOnWidgetClose = (
       prevState.current === 'OPENED' &&
       widgetState === 'CLOSED'
     ) {
+      goToInitialExtent( jimuMapView, initialExtent, 12 )
       onClose?.()
     }
 

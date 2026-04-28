@@ -150,3 +150,55 @@
    position: relative;
    min-height: 0;
 }
+
+
+.consulta-scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: var(--spacing-xs);
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+.consulta-scroll::-webkit-scrollbar {
+    width: 8px;
+}
+
+.consulta-scroll::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+    border-radius: var(--border-radius-lg);
+}
+
+.consulta-scroll::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+    border-radius: var(--border-radius-lg);
+}
+
+.consulta-scroll::-webkit-scrollbar-thumb:hover {
+    background: var(--scrollbar-thumb-hover);
+}
+
+
+.jimu-icon-img{
+   width: 35px !important;
+   height: 35px !important;
+}
+
+.app-root-emotion-cache-ltr-1jfu7pg .avatar .avatar-button{
+   width: 40px !important;
+   height: 40px !important;
+}
+
+.styleLabel{
+    margin-top: 10px;
+    margin-bottom: 0px;
+}
+
+.mb0{
+   margin-bottom: 0px;
+}
+.mt10{
+    margin-top: 10px;
+}

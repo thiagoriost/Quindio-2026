@@ -1,16 +1,19 @@
 /** @jsx jsx */
 
-import { React, jsx , appActions, getAppStore } from 'jimu-core'
+import { React } from 'jimu-core'
 import { useCascadingFilters } from './hooks/useCascadingFilters'
 import { FiltrosClasificacion } from './components/FiltrosClasificacion'
 import { SearchActionBar } from '../../../shared/components/search-action-bar'
 import { ArcgisService } from '../../../shared/services/arcgis.service'
 import { alertService } from '../../../shared/services/alert.service'
+import { urls } from '../../../api/serviciosQuindio'
 import type { ApiResponse } from 'widgets/shared/models/api-response.model'
 import { useCancelableHttp } from '../../../shared/hooks/useCancelableHttp'
 
 import { WIDGET_IDS } from '../../../shared/constants/widget-ids'
-
+import { JimuMapViewComponent, type JimuMapView } from 'jimu-arcgis'
+import FeatureLayer from "esri/layers/FeatureLayer"
+import { consultarCapasAmbientales, obtenerOpcionesNombres } from '../services/ambiental.service'
 
 import {
     AREAS,
@@ -19,15 +22,22 @@ import {
     SUBCATEGORIAS_PUNTOSDECALIDAD,
     toOptions
 } from './config/consulta-ambiental.config'
-import { urls } from '../../../api/serviciosQuindio'
+import { abrirTablaResultados, limpiarYCerrarWidgetResultados } from '../../../widget-result/src/runtime/widget'
+import './styles/consulta-ambiental.css'
+import { validaLoggerLocalStorage } from '../../../shared/utils/export.utils'
+
+export const layersById = {
+    "cuenca_la_vieja_feature": "cuenca-la-vieja-feature",
+    "capas_temporales": "capas-temporales"
+}
 
 
 const Widget = (props: any) => {
 
-    const widgetResultId = WIDGET_IDS.RESULT
-    const widgetChartId = WIDGET_IDS.CHART
+    const [mensaje, setMensaje] = React.useState<string | null>(null)
 
-    const outputDs = props.outputDataSources?.[0] // 20260317
+    const widgetResultId = WIDGET_IDS.RESULT
+
 
     const {
         filters,
@@ -35,7 +45,7 @@ const Widget = (props: any) => {
         clearFilters
     } = useCascadingFilters()
 
-    //    console.log("GLOBAL FILTERS:", filters)
+    //    if(validaLoggerLocalStorage('logger')) console.log("GLOBAL FILTERS:", filters)
 
     const [loading, setLoading] = React.useState(false)
 
@@ -45,8 +55,6 @@ const Widget = (props: any) => {
         categorias: toOptions(CATEGORIAS, "categoria", "idCategoria"),
         subcategorias: [],
         nombres: [],
-
-        //        anios: generarAnios(),
         municipios: [],
 
     })
@@ -77,32 +85,71 @@ const Widget = (props: any) => {
         subcategoriasPuntosCalidad: SUBCATEGORIAS_PUNTOSDECALIDAD
     }
 
+    const [jimuMapView, setJimuMapView] = React.useState<JimuMapView | null>(null)
+
     React.useEffect(() => {
-        console.log("iniciando useEffecy DS:", outputDs)
+        if (!jimuMapView) return
 
-        if (!outputDs) return
+        if(validaLoggerLocalStorage('logger')) console.log("Mapa listo:", jimuMapView)
 
-        console.log("DS listo:", outputDs)
+    }, [jimuMapView])
 
-        outputDs.setSchema({
-            idField: 'id',
-            fields: [
-                { name: 'id', type: 'esriFieldTypeOID' },
-                { name: 'categoria', type: 'esriFieldTypeString' },
-                { name: 'valor', type: 'esriFieldTypeDouble' }
-            ]
-        })
+    /**
+     * Efecto que limpia el punto y restaura la vista inicial cuando el widget se cierra.
+     */
+    React.useEffect(() => {
+    if (props.state === 'CLOSED') {
+        clearFilters()
+        setMensaje(null)
+        limpiarYCerrarWidgetResultados(widgetResultId)
 
-    }, [outputDs])
+        // Limpiar capas dibujadas en el mapa
+        if (jimuMapView?.view) {
+            const map = jimuMapView.view.map
+            const layerIds = Object.keys(layersById)
+            if(validaLoggerLocalStorage('logger')) console.log({layerIds})
+            layerIds.forEach(id => {
+                const layer = map.findLayerById(layersById[id]) as __esri.FeatureLayer
+                if (layer) map.remove(layer)
+            })
+        }
+    }  
+    
+    }, [props])
 
     const handlers = {
 
-        onChangeAreaTematica:  () => {
+        onChangeAreaTematica: (categoria: number) => {
+            if(validaLoggerLocalStorage('logger')) console.log('onChangeAreaTematica:', categoria)
+
             handlers.cargarMunicipios_All()
+
+            if (categoria === 2) {
+                handlers.activarCuencaLaVieja()
+            } else {
+                if (!jimuMapView?.view) return
+
+                const map = jimuMapView.view.map
+                const layer = map.findLayerById(layersById.cuenca_la_vieja_feature) as __esri.FeatureLayer
+
+                if (layer) {
+                    layer.visible = false
+                }
+            }
         },
-        onChangeSubcategoria:  (subcategoria, configFiltro, filtros) => {
-            console.log("onChangeSubcategoria:filtros ", filtros)
+        onChangeSubcategoria: (subcategoria: string, filtro: any, filtros: { categoria: any }, setFiltro: (arg0: string, arg1: any) => void) => {
+            if(validaLoggerLocalStorage('logger')) console.log("onChangeSubcategoria:filtros ", filtros)
             const categoriaId = filtros.categoria
+
+            // buscar el objeto completo (id + name)
+            const selected = opciones.subcategorias.find(
+                (s: any) => s.value === subcategoria
+            )
+
+            const nombreSubCat = selected?.label ?? ""
+
+            setFiltro("subcategoria", subcategoria)
+            setFiltro("subcategorianombre", nombreSubCat)
 
             const categoria = CATEGORIAS.find(c => c.idCategoria === categoriaId)
 
@@ -110,157 +157,13 @@ const Widget = (props: any) => {
 
             const categoriaNombre = categoria.categoria.toLowerCase()
 
-            // CASO ESTACIONES
-            if (categoriaNombre === "estaciones") {
-                handlers.cargarNombresEstaciones(subcategoria)
-                return
+            // CASO ESTACIONES y PUNTOS DE CALIDAD
+            if (["estaciones", "puntos de calidad"].includes(categoriaNombre)) {
+                handlers.cargarNombres(subcategoria)
+
             }
-            // CASO PUNTOS DE CALIDAD
-            if (categoriaNombre === "puntos de calidad") {
-                handlers.cargarNombresPuntosDeCalidad(subcategoria)
-                return
-            }
-
-            // OTROS CASOS
-            //            handlers.cargarMunicipios()
-
-            const where = "1=1"
-            const urlBase = urls.CARTOGRAFIA.BASE
-            const layerId = urls.CARTOGRAFIA.MUNICIPIOS
-            const outFields = "NOMBRE,IDMUNICIPIO"
-
-            handlers.cargarMunicipios(
-                where,
-                urlBase,
-                layerId,
-                outFields
-            )
         },
-        /*
-                onChangeNombre_ant: async (nombre, configFiltro, filtros) => {
-                    console.log("onChangeNombre filtros >>> ", filtros)
-                    console.log("onChangeNombre nombre >>> ", nombre)
-
-                    const idSubcategoria = filtros.subcategoria
-                    let urlBase = null
-                    let layerId = null
-                    let where = null
-                    let outFields = null
-
-                    if (idSubcategoria === "metereologica") { // Metereológica 69
-                        urlBase = urls.Ambiental_T2025.BASE
-                        layerId = urls.Ambiental_T2025.Estaciones_climaticas
-                        where = 'NOMBRE=' + nombre
-                        outFields = 'MUNICIPIO, IDMUNICIPIO'
-
-                    }
-                    if (idSubcategoria === "limnigrafica") { // Limnigráfica 68
-                        urlBase = urls.Ambiental_T_Ajustado.BASE
-                        layerId = urls.Ambiental_T_Ajustado.Estaciones_limnigraficas
-                        where = 'NOMBRE=' + nombre
-                        outFields = 'MUNICIPIO, IDMUNICIPIO'
-                    }
-                    if (idSubcategoria === "calidadagua") { // Calidad del agua 0
-                        urlBase = urls.AmbientalAlfanumerico.BASE
-                        layerId = urls.AmbientalAlfanumerico.V_CALAAGUAAFLUMUN
-                        where = `'NOMBREESTACION' = '${nombre}'`
-                        outFields = `'NOMBRE ,IDMUNICIPIO'`
-
-                    }
-                    if (idSubcategoria === "calidadaire") { // Calidad del aire 4
-                        urlBase = urls.AmbientalAlfanumerico.BASE
-                        layerId = urls.AmbientalAlfanumerico.V_CALAIREESTMUN
-                        where = 'NOMBREESTACION=' + nombre
-                        outFields = 'NOMBRE ,IDMUNICIPIO'
-                    }
-
-                    handlers.cargarMunicipiosSegunNombre(where, urlBase, layerId, outFields)
-
-                },
-        */
-        onChangeNombre:  (nombre, configFiltro, filtros) => { // 20260321 se usa ahore onChangeEstacion
-
-            console.log("onChangeNombre >>>", { nombre, filtros })
-
-            const selected = opciones.nombres.find(n => n.value === nombre)
-
-            const idMunicipio = selected?.idMunicipio
-            console.log("seleccionado >>>", { nombre, idMunicipio })
-
-
-            const idSubcategoria = filtros.subcategoria
-
-            // Validación básica
-            if (!idSubcategoria || !nombre) {
-                console.warn("Faltan datos:", { idSubcategoria, nombre })
-                return
-            }
-
-            let urlBase = null
-            let layerId = null
-            let campoNombre = null
-            let outFields = null
-
-            switch (idSubcategoria) {
-
-                case "metereologica": // 69
-                    urlBase = urls.Ambiental_T2025.BASE
-                    layerId = urls.Ambiental_T2025.Estaciones_climaticas
-                    campoNombre = "NOMBRE"
-                    outFields = "MUNICIPIO, IDMUNICIPIO"
-                    break
-
-                case "limnigrafica": // 68
-                    urlBase = urls.Ambiental_T_Ajustado.BASE
-                    layerId = urls.Ambiental_T_Ajustado.Estaciones_limnigraficas
-                    campoNombre = "NOMBRE"
-                    outFields = "MUNICIPIO, IDMUNICIPIO"
-                    break
-
-                case "calidadagua": // 0
-                    urlBase = urls.AmbientalAlfanumerico.BASE
-                    layerId = urls.AmbientalAlfanumerico.V_CALAAGUAAFLUMUN
-                    campoNombre = "NOMBREESTACION"
-                    //campoNombre_new = "NOMBRE" // nombre de la estacion
-                    //const subCategoria = SUBCATEGORIAS_PUNTOSDECALIDAD.find(sc => sc.idSubCategoria === idSubcategoria )
-                    //const campoNombre = subCategoria?.campoFiltro1
-
-                    outFields = "NOMBRE, IDMUNICIPIO"
-                    //outFields = "IDMUNICIPIO, IDMUNICIPIO"
-                    break
-
-                case "calidadaire": // 4
-                    urlBase = urls.AmbientalAlfanumerico.BASE
-                    layerId = urls.AmbientalAlfanumerico.V_CALAIREESTMUN
-                    campoNombre = "NOMBREESTACION"
-                    outFields = "NOMBRE, IDMUNICIPIO"
-                    break
-
-                default:
-                    console.warn("Subcategoría no soportada:", idSubcategoria)
-                    return
-            }
-
-            // Para evitar errores SQL
-            const safeNombre = String(nombre).replace(/'/g, "''").trim()
-
-            // WHERE SIN comillas en el campo
-            const where = `${campoNombre} = '${safeNombre}'`
-
-            console.log("WHERE >>>", where)
-
-            handlers.cargarMunicipios(
-                where,
-                urlBase,
-                layerId,
-                outFields
-            )
-
-
-            //handlers.filtrarMunicipios()
-        },
-
-        onChangeEstacion: (nombreSeleccionado, filtro, filtros, setFiltro) => {
+        onChangeEstacion: (nombreSeleccionado: any, filtro: any, filtros: any, setFiltro: (arg0: string, arg1: string) => void) => {
 
             const estacion = opciones.nombres.find(
                 n => n.value === nombreSeleccionado
@@ -270,33 +173,30 @@ const Widget = (props: any) => {
 
             const idMunicipio = estacion.idMunicipio
 
-            console.log("onChangeEstacion >>>", { nombreSeleccionado, filtros, setFiltro, idMunicipio })
-            console.log("idMunicipio:", idMunicipio)
-            console.log("municipios:", opciones.municipios)
+            if(validaLoggerLocalStorage('logger')) console.log("onChangeEstacion >>>", { nombreSeleccionado, filtros, setFiltro, idMunicipio })
+            if(validaLoggerLocalStorage('logger')) console.log("idMunicipio:", idMunicipio)
+            if(validaLoggerLocalStorage('logger')) console.log("municipios:", opciones.municipios)
 
             setFiltro("idMunicipio", String(idMunicipio))
 
         },
 
-        cargarSubcategorias: async (categoriaId, configFiltro) => {
-            console.log('cargarSubcategorias >>> ', categoriaId)
-            console.log('configFiltro >>> ', configFiltro)
+        cargarSubcategorias: (categoriaId: number, filtro: { casosEspeciales: { [x: string]: any } }, filtros: any, setFiltro: any) => {
 
             const categoria = CATEGORIAS.find(c => c.idCategoria === categoriaId)
             const categoriaNombre = categoria?.categoria?.toLowerCase()
 
-            console.log("categoriaNombre >>> ", categoriaNombre)
+            if(validaLoggerLocalStorage('logger')) console.log("cargarSubcategorias >>> ", categoriaNombre)
 
-            // revisar si hay caso especial
-            const casoEspecialNombre = configFiltro.casosEspeciales?.[categoriaNombre]
-            const casoEspecial = configFiltro.casosEspeciales
-            console.log("casoEspecial >>> ", casoEspecial)
-            console.log("casoEspecialNombre >>> ", casoEspecialNombre)
-
+            // revisar si hay caso especial, aplica para estaciones y puntos de calidad
+            const casoEspecialNombre = filtro.casosEspeciales?.[categoriaNombre]
+            const casoEspecial = filtro.casosEspeciales
+            if(validaLoggerLocalStorage('logger')) console.log("casoEspecial >>> ", casoEspecial)
+            if(validaLoggerLocalStorage('logger')) console.log("casoEspecialNombre >>> ", casoEspecialNombre)
 
             if (casoEspecialNombre) {
 
-                const datos = catalogosEspeciales[casoEspecialNombre]
+                const datos = catalogosEspeciales[casoEspecialNombre as keyof typeof catalogosEspeciales]
 
                 setOpciones(prev => ({
                     ...prev,
@@ -306,45 +206,47 @@ const Widget = (props: any) => {
                 return
             }
 
-            let layerId = -1
-            let outField = ""
-
             switch (categoriaId) {
                 case 3: { // Tramites ambientales"
-                    layerId = urls.AmbientalAlfanumerico.TRAMITESAMBPUNTO // TIPO_TRAMITE
+                    handlers.cargarTramitesAmbientales()
                     break
                 }
                 case 4: { // Tramites ambientales predios
-                    layerId = urls.AmbientalAlfanumerico.TRAMITESCATASTRO // DESCRIPCIONVALOR
+                    handlers.cargarTramitesAmbientalesPredios(categoriaId)
                     break
                 }
                 case 5: { // predios forestales, no tiene subcategorias.
-/*
-                    const where = "1=1"
-                    const urlBase = urls.CARTOGRAFIA.BASE
-                    const layerId = urls.CARTOGRAFIA.MUNICIPIOS
-                    const outFields = "NOMBRE,IDMUNICIPIO"
-
-                    handlers.cargarMunicipios(
-                        where,
-                        urlBase,
-                        layerId,
-                        outFields
-                    )
-*/
                     break
                 }
-
                 default: {
                     break
                 }
             }
 
-            outField = categoria?.campoFiltro1
+        },
 
+        cargarTramitesAmbientales: async () => { // subcategoria
+            //            if(validaLoggerLocalStorage('logger')) console.log("cargarTramitesAmbientales >>> ")
+            const url = urls.DemandaRecursosNaturales._LAYERS
+
+            const subcategorias = await getSubLayersOptions(url)
+
+            if(validaLoggerLocalStorage('logger')) console.log("cargarTramitesAmbientales >>> ", subcategorias)
+
+            setOpciones(prev => ({
+                ...prev,
+                subcategorias
+            }))
+        },
+        cargarTramitesAmbientalesPredios: async (categoriaId: number) => { // subcategoria
+            if(validaLoggerLocalStorage('logger')) console.log("cargarTramitesAmbientalesPredios >>> ", categoriaId)
             const urlBase = urls.AmbientalAlfanumerico.BASE
+            const layerId = urls.AmbientalAlfanumerico.TRAMITESCATASTRO // DESCRIPCIONVALOR
+
+            const categoria = CATEGORIAS.find(c => c.idCategoria === categoriaId)
+            const outField = categoria?.campoFiltro1
+
             const response = await handlers.consultarMapServer(urlBase, layerId, outField)
-            console.log('cargarSubcategorias:response >>>', response)
 
             // Si hubo error HTTP o servidor → ya se mostró alerta
             if (!response.success) return
@@ -359,7 +261,6 @@ const Widget = (props: any) => {
                 .map((tipo, idx) => ({
                     label: tipo,
                     value: tipo
-                    //  value: idx + 1
                 }))
 
             setOpciones(prev => ({
@@ -368,25 +269,21 @@ const Widget = (props: any) => {
             }))
 
         },
-
-        cargarNombresEstaciones: async (idSubcategoria) => {
-            console.log("cargar nombres para subcategoria >>> ", idSubcategoria)
+        cargarNombresEstaciones: async (idSubcategoria: string) => {
+            if(validaLoggerLocalStorage('logger')) console.log("cargarNombresEstaciones >>> ", idSubcategoria)
 
             setLoading(true)
 
-            let urlBase = null
+            const urlBase = urls.Ambiental.BASE
             let layerId = null
-            const outField = "NOMBRE"
+            const outField = "NOMBRE, IDMUNICIPIO"
 
             if (idSubcategoria === "metereologica") { // Metereológica
-                urlBase = urls.Ambiental_T2025.BASE
-                layerId = urls.Ambiental_T2025.Estaciones_climaticas
+                layerId = urls.Ambiental.Estaciones_climaticas
 
             }
             if (idSubcategoria === "limnigrafica") { // Limnigráfica
-                urlBase = urls.Ambiental_T_Ajustado.BASE
-                layerId = urls.Ambiental_T_Ajustado.Estaciones_limnigraficas
-
+                layerId = urls.Ambiental.Estaciones_limnigraficas
             }
 
             // llamar servicio
@@ -395,84 +292,50 @@ const Widget = (props: any) => {
 
             const features = response.data?.features || []
 
-            const nombres = [...new Set(
-                features
-                    .map(f => f.attributes?.[outField])
-                    .filter(Boolean)
-            )]
-                .map((tipo, idx) => ({
-                    label: tipo,
-                    value: tipo
-                    //  value: idx + 1
+            const nombres = features
+                .map(f => ({
+                    nombre: f.attributes?.NOMBRE,
+                    idMunicipio: f.attributes?.IDMUNICIPIO
                 }))
+                .filter(item => item.nombre && item.idMunicipio)
 
-            console.log("nombres >>> ", nombres)
+            // regla no deben existir el mismo nombre de estacion en mas de un municipios
+            // nombre unico, idmunicipio unico
+
+            const nombresUnicos = Array.from(
+                new Map(
+                    nombres.map(item => [item.nombre, item]) // clave: nombre
+                ).values()
+            )
+            const opcionesNombres = nombresUnicos.map(item => ({
+                label: item.nombre,
+                value: item.nombre,
+                idMunicipio: item.idMunicipio
+            }))
+
+            if(validaLoggerLocalStorage('logger')) console.log("nombres >>> ", opcionesNombres)
 
             setOpciones(prev => ({
                 ...prev,
-                nombres
+                nombres: opcionesNombres
             }))
 
             setLoading(false)
-            //            handlers.cargarMunicipios(urlBase, layerId, outFieldsMunipios)
         },
-        cargarNombresPuntosDeCalidad_ant: async (idSubcategoria) => {
-            console.log('cargarNombresPuntosDeCalidad:', idSubcategoria)
+
+        cargarNombresPuntosDeCalidad: async (idSubcategoria: string) => {
+            if(validaLoggerLocalStorage('logger')) console.log('cargarNombresPuntosDeCalidad:', idSubcategoria)
 
             setLoading(true)
 
-            const urlBase = urls.AmbientalAlfanumerico.BASE
+            const urlBase = urls.Ambiental.BASE
             let layerId = null
-            //   const outField = "NOMBREESTACION";
-            const outField = "NOMBRE"
-            if (idSubcategoria === "calidadagua") { // Calidad del agua
-                layerId = urls.AmbientalAlfanumerico.V_CALAAGUAAFLUMUN
-            }
-            if (idSubcategoria === "calidadaire") { // Calidad del aire
-                layerId = urls.AmbientalAlfanumerico.V_CALAIREESTMUN
-            }
-
-            // llamar servicio
-            const response = await handlers.consultarMapServer(urlBase, layerId, outField)
-
-            const features = response.data?.features || []
-
-            const nombres = [...new Set(
-                features
-                    .map(f => f.attributes?.[outField])
-                    .filter(Boolean)
-            )]
-                .map((tipo, idx) => ({
-                    label: tipo,
-                    value: tipo
-                }))
-
-            console.log("nombres >>> ", nombres)
-
-            setOpciones(prev => ({
-                ...prev,
-                nombres
-            }))
-
-            setLoading(false)
-            //            handlers.cargarMunicipios_All()
-
-        },
-        cargarNombresPuntosDeCalidad: async (idSubcategoria) => {
-            console.log('cargarNombresPuntosDeCalidad:', idSubcategoria)
-
-            setLoading(true)
-
-            const urlBase = urls.AmbientalAlfanumerico.BASE
-            let layerId = null
-            //   const outField = "NOMBREESTACION";
-            //const outField = "NOMBRE";
             const outField = "NOMBRE, IDMUNICIPIO"
             if (idSubcategoria === "calidadagua") { // Calidad del agua
-                layerId = urls.AmbientalAlfanumerico.V_CALAAGUAAFLUMUN
+                layerId = urls.Ambiental.Monitoreo_calidad_agua
             }
             if (idSubcategoria === "calidadaire") { // Calidad del aire
-                layerId = urls.AmbientalAlfanumerico.V_CALAIREESTMUN
+                layerId = urls.Ambiental.Monitoreo_calidad_aire
             }
 
             // llamar servicio
@@ -487,7 +350,7 @@ const Widget = (props: any) => {
                 }))
                 .filter(item => item.nombre && item.idMunicipio)
 
-            // regla no deben existir el mismo nombre de estacion en mes de un municipios
+            // regla no deben existir el mismo nombre de estacion en mas de un municipios
             // nombre unico, idmunicipio unico
 
             const nombresUnicos = Array.from(
@@ -501,7 +364,7 @@ const Widget = (props: any) => {
                 idMunicipio: item.idMunicipio
             }))
 
-            console.log("nombres >>> ", opcionesNombres)
+            if(validaLoggerLocalStorage('logger')) console.log("nombres >>> ", opcionesNombres)
 
             setOpciones(prev => ({
                 ...prev,
@@ -512,8 +375,30 @@ const Widget = (props: any) => {
             //            handlers.cargarMunicipios_All()
 
         },
+        cargarNombres: async (subcategoria: string) => {
+            if(validaLoggerLocalStorage('logger')) console.log("cargarNombres >>> ", subcategoria)
+
+            setLoading(true)
+
+            try {
+                const opcionesNombres = await obtenerOpcionesNombres(subcategoria, {
+                    consultarMapServer: handlers.consultarMapServer
+                })
+
+                setOpciones(prev => ({
+                    ...prev,
+                    nombres: opcionesNombres
+                }))
+
+            } catch (error) {
+                console.error("Error cargando nombres:", error)
+            } finally {
+                setLoading(false)
+            }
+        },
+
         cargarMunicipios_All: async () => {
-            console.log('Cargando municipios...')
+            if(validaLoggerLocalStorage('logger')) console.log('Cargando municipios...')
 
             setLoading(true)
 
@@ -551,8 +436,64 @@ const Widget = (props: any) => {
 
             setLoading(false)
         },
+
+        activarCuencaLaVieja: async () => {
+            if(validaLoggerLocalStorage('logger')) console.log('activarCuencaLaVieja:', filters)
+
+
+            if (!jimuMapView?.view) return
+
+            const view = jimuMapView.view
+            const map = view.map
+
+            const layerId = layersById.cuenca_la_vieja_feature
+
+            // Config
+            const urlBase = urls.CuencaLaVieja?.BASE
+            const sublayerId = urls.CuencaLaVieja?.Suelos
+
+            if (!urlBase || sublayerId === undefined) {
+                console.warn("Configuración de CuencaLaVieja incompleta")
+                return
+            }
+
+            const fullUrl = `${urlBase}/${sublayerId}`
+
+            let layer = map.findLayerById(layerId) as __esri.FeatureLayer
+
+            if (!layer) {
+                layer = new FeatureLayer({
+                    url: fullUrl,
+                    id: layerId,
+                    outFields: ["*"],
+                    visible: true
+                })
+
+                map.add(layer)
+            } else {
+                // Si ya existe, solo asegurar que esté visible
+                layer.visible = true
+            }
+
+            try {
+                await layer.when()
+
+                const result = await layer.queryExtent()
+
+                if (result?.extent) {
+                    await view.goTo(result.extent.expand(1.2), {
+                        duration: 1200
+                    })
+                } else {
+                    console.warn("No se pudo obtener extent de la capa")
+                }
+
+            } catch (e) {
+                console.error("Error en activarCuencaLaVieja:", e)
+            }
+        },
         cargarMunicipios: async (where?: string, urlBase?: string, layerId?: number, outFields?: string) => {
-            console.log("cargarMunicipiosSegunNombres:")
+            if(validaLoggerLocalStorage('logger')) console.log("cargarMunicipiosSegunNombres:")
 
             setLoading(true)
 
@@ -563,7 +504,7 @@ const Widget = (props: any) => {
                     {
                         where,
                         outFields,
-                        extraParams: 'returnDistinctValues=true&orderByFields=' + outFields,
+                        // extraParams: 'returnDistinctValues=true&orderByFields=' + outFields,
                         returnGeometry: false
                     },
                     true,
@@ -591,23 +532,22 @@ const Widget = (props: any) => {
 
             setLoading(false)
         },
-        filtrarMunicipios:  () => {
-            console.log('Filtrar Municipios...')
+        filtrarMunicipios: () => {
+            if(validaLoggerLocalStorage('logger')) console.log('Filtrar Municipios...')
         },
-
-
         consultarMapServer: async (
             urlBase: string,
             layerId: number,
             outField: string,
         ): Promise<ApiResponse<ArcGisQueryResponse>> => {
+            if(validaLoggerLocalStorage('logger')) console.log("consultarMapServer >>> ", { urlBase, layerId, outField })
             return await execute((signal) =>
                 arcgisService.queryLayer<ArcGisQueryResponse>(
                     urlBase,
                     layerId,
                     {
                         outFields: outField,
-                        extraParams: 'returnDistinctValues=true&orderByFields=' + outField,
+                        // extraParams: 'returnDistinctValues=true&orderByFields=' + outField,
                         returnGeometry: false
                     },
                     true,
@@ -617,145 +557,32 @@ const Widget = (props: any) => {
         }
     }
 
+    async function getSubLayersOptions(url: string): Promise<Array<{ label: string; value: number }>> {
 
-    const consultarEstaciones = async (filters: any) => {
-        const { subcategoria, nombre, municipio } = filters
+        if(validaLoggerLocalStorage('logger')) console.log('getSubLayersOptions...')
+        const response = await fetch(url)
+        const data = await response.json()
 
-        // 1. Definimos variables con un valor inicial o manejamos el caso por defecto
-        let urlBaser: string = ""
-        let layerId: number = 0
-
-        try {
-            //
-            if (subcategoria === "metereologica") {
-                urlBaser = urls.Ambiental_T2025.BASE
-                layerId = urls.Ambiental_T2025.Estaciones_climaticas
-            } else if (subcategoria === "limnigrafica") {
-                urlBaser = urls.Ambiental_T_Ajustado.BASE
-                layerId = urls.Ambiental_T_Ajustado.Estaciones_limnigraficas
-            } else {
-                // Caso de seguridad por si llega una subcategoría no mapeada
-                console.warn("Subcategoría no reconocida")
-                return
-            }
-
-            const where = `IDMUNICIPIO = '${municipio}' AND NOMBRE = '${nombre.toUpperCase()}'`
-
-            console.log("consultarEstaciones:where >>> ", where)
-
-            const response = await realizarConsulta(urlBaser, layerId, where)
-
-            // Validación de respuesta
-            if (!response || !response.success || !response.data) return
-
-            const resultado = response.data
-
-            // Verificación de registros encontrados
-            if (!resultado.features || resultado.features.length === 0) {
-                alertService.warning(
-                    'Sin resultados',
-                    'No se encontraron resultados para los criterios seleccionados'
-                )
-                return
-            }
-
-            // Extracción limpia de datos
-            const features = resultado.features
-            const spatialReference = resultado.spatialReference
-            const fields = resultado.fields?.map((f: any) => ({
-                name: f.name,
-                alias: f.alias
-            })) || []
-
-            abrirTablaResultados(features, fields, spatialReference)
-
-        } catch (error) {
-            console.error("Error consultando estaciones:", error)
-        }
-    }
-
-    const consultarPuntosDeCalidad = async (filters: any) => {
-//        const { subcategoria, nombre, municipio, fechaInicio, fechaFin } = filters;
-        const { subcategoria, nombre, idMunicipio } = filters
-
-        const urlBase = urls.AmbientalAlfanumerico.BASE
-        let layerId: number = 0
-        try {
-            //
-            if (subcategoria === "calidadagua") {
-                layerId = urls.AmbientalAlfanumerico.V_CALAAGUAAFLUMUN
-            } else if (subcategoria === "calidadaire") {
-                layerId = urls.AmbientalAlfanumerico.V_CALAIREESTMUN
-            } else {
-                console.warn("Subcategoría no reconocida")
-                return
-            }
-
-            const where = `IDMUNICIPIO = '${idMunicipio}' AND NOMBRE = '${nombre.toUpperCase()}'`
-/*
-            let where = `IDMUNICIPIO = '${idMunicipio}' AND NOMBREESTACION = '${nombre.toUpperCase()}'`;
-
-            if (fechaInicio && fechaFin) {
-                const fi = formatDateOnly(fechaInicio, -1) // -1 día, para evitar errores de limite timestamp
-                const ff = formatDateOnly(fechaFin, +1)    // +1 día
-
-                where += ` AND FECHA BETWEEN DATE '${fi}' AND DATE '${ff}'`
-            } else if (fechaInicio) {
-                const fi = formatDateOnly(fechaInicio, -1)
-                where += ` AND FECHA >= DATE '${fi}'`
-            } else if (fechaFin) {
-                const ff = formatDateOnly(fechaFin, +1)
-                where += ` AND FECHA <= DATE '${ff}'`
-            }
-*/
-            console.log("WHERE:", where)
-
-            console.log("consultarEstaciones:where >>> ", where)
-
-            const response = await realizarConsulta(urlBase, layerId, where)
-
-            // Validación de respuesta
-            if (!response || !response.success || !response.data) return
-
-            const resultado = response.data
-
-            // Verificación de registros encontrados
-            if (!resultado.features || resultado.features.length === 0) {
-                alertService.warning(
-                    'Sin resultados',
-                    'No se encontraron resultados para los criterios seleccionados'
-                )
-                return
-            }
-
-            // Extracción limpia de datos
-            const features = resultado.features
-            const spatialReference = resultado.spatialReference
-            const fields = resultado.fields?.map((f: any) => ({
-                name: f.name,
-                alias: f.alias
-            })) || []
-
-            abrirTablaResultados(features, fields, spatialReference)
-
-        } catch (error) {
-            console.error("Error consultando estaciones:", error)
-        }
-
+        return data.layers
+            .filter((layer: any) => layer.parentLayer?.id === 10)
+            .map((layer: any) => ({
+                label: layer.name, // lo que ve el usuario
+                value: layer.id // lo que usas internamente
+            }))
     }
     const consultarPrediosDeReforestacion = async (filters: any) => {
-
-//        const { subcategoria, nombre, municipio } = filters;
+        if(validaLoggerLocalStorage('logger')) console.log("consultarPrediosDeReforestacion >>> ", filters)
+        //        const { subcategoria, nombre, municipio } = filters;
         const { idMunicipio } = filters
 
         const urlBase = urls.AmbientalAlfanumerico.BASE
         const layerId = urls.AmbientalAlfanumerico.V_PREDIOREFORESTACION
 
         try {
-//            const where = `IDMUNICIPIO = '${municipio}'`;
+            //            const where = `IDMUNICIPIO = '${municipio}'`;
             const where = `IDMUNICIPIO = '${idMunicipio}'`
 
-            console.log("consultarPrediosDeReporestacion:where >>> ", where)
+            if(validaLoggerLocalStorage('logger')) console.log("consultarPrediosDeReporestacion:where >>> ", where)
 
             const response = await realizarConsulta(urlBase, layerId, where)
 
@@ -781,7 +608,25 @@ const Widget = (props: any) => {
                 alias: f.alias
             })) || []
 
-            abrirTablaResultados(features, fields, spatialReference)
+            const titleTable = `Predios de Reforestación en ${filters.municipionombre || "el municipio seleccionado"}`
+            const withGraphic = {
+            showGraphic: false,
+            titleCoropletico: "", // título específico para el caso de coroplético, si se quiere mostrar uno diferente al título general
+            graphicData: {},
+            graphicType: "",//"bar" | "pie",
+            graphicTitle: "",
+            selectedIndicador: 999, // para manejar diferentes indicadores que pueden venir con la gráficafeaturesDibujados?: any[] // para manejar casos como el indicador 3 donde se dibujan características en el mapa además de mostrar la gráfica
+            }
+            abrirTablaResultados(
+                false,
+                features,
+                fields,
+                props,
+                widgetResultId,
+                spatialReference,
+                titleTable,
+                withGraphic
+            )
 
         } catch (error) {
             console.error("Error consultando estaciones:", error)
@@ -794,6 +639,9 @@ const Widget = (props: any) => {
         layerId: number,
         where: string,
     ): Promise<ApiResponse<ArcGisQueryResponse>> => {
+
+        if(validaLoggerLocalStorage('logger')) console.log("realizarConsulta >>> ", { urlBase, layerId, where })
+
 
         return await execute((signal) =>
             arcgisService.queryLayer<ArcGisQueryResponse>(
@@ -809,170 +657,184 @@ const Widget = (props: any) => {
         )
     }
 
-    const onBuscar = () => {
-        console.log("onBuscar:Filtros enviados", filters)
+    const onBuscar = async () => {
+if(validaLoggerLocalStorage('logger')) console.log('onBuscar:', filters)
+        const { categoria } = filters
 
-        try {
-            setLoading(true)
-
-            const categoria = filters.categoria
-
-            if (categoria === 1) { // Estaciones: meteorologica y limnigrafica
-                consultarEstaciones(filters)
-                return
-            }
-            if (categoria === 2) { // Puntos de calidad: calidadaire, calidadagua
-                consultarPuntosDeCalidad(filters)
-                return
-            }
-            if (categoria === 5) { // predios de reporestación
-                consultarPrediosDeReforestacion(filters)
-                return
-            }
-
-            consultarDemasCategorias() // 3=tramistes ambientales, 4=tramistes ambientales predios
-
-        } finally {
-            setLoading(false)
+        if (categoria === 3) { // Trámites ambientales
+            await consultarTramitesAmbientales(filters)
+            return
         }
+        if (categoria === 4) { //Trámites ambientales predios
+            consultarPrediosDeReforestacion(filters)
+            return
+        }
+
+        if (categoria === 5) { // predios de reporestación
+            consultarPrediosDeReforestacion(filters)
+            return
+        }
+
+        await consultarCapasAmbientales(filters, {
+            realizarConsulta,
+            alertService,
+            abrirTablaResultados
+        })
+
 
     }
 
-    const consultarDemasCategorias = async () => {
+    const consultarTramitesAmbientales = async (filters: any) => {
+        if(validaLoggerLocalStorage('logger')) console.log('consultarTramitesAmbientales:', filters)
 
-        console.log("consultarDemasCategorias", filters)
+        const { categoria, idMunicipio, fechaInicio, fechaFin } = filters
 
-        const urlBase = urls.AmbientalAlfanumerico.BASE
+        if (!fechaInicio || !fechaFin) {
+            alertService.warning('Fecha inicio y fecha fin son requeridas para la consulta')
+            return
+        }
 
-        const categoria = CATEGORIAS.find(c => c.idCategoria === filters.categoria)
-        const layerId = categoria?.layerId
+        const formatDateOnly = (ts: number, offsetDays = 0) => {
+            const d = new Date(ts)
 
-        const campoFiltro1 = categoria?.campoFiltro1
-        const campoFiltro2 = categoria?.campoFiltro2
+            // mover días (clave de tu solución)
+            d.setDate(d.getDate() + offsetDays)
 
-        const valorFiltro1 = filters.subcategoria
-//        const valorFiltro2 = filters.municipio
-        const valorFiltro2 = filters.idMunicipio //  cef 20260324
+            const yyyy = d.getFullYear()
+            const mm = String(d.getMonth() + 1).padStart(2, '0')
+            const dd = String(d.getDate()).padStart(2, '0')
 
-        const where = `${campoFiltro1}='${valorFiltro1}' AND ${campoFiltro2}='${valorFiltro2}'`
+            return `${yyyy}-${mm}-${dd}`
+        }
 
-        console.log("where??", where)
-        console.log("layerId", layerId)
+        const urlBase = urls.DemandaRecursosNaturales.BASE
+        const layerId = filters.subcategoria
+
+        const categoriaSelct = CATEGORIAS.find(c => c.idCategoria === categoria)
+
+        const campoFiltro2 = categoriaSelct?.campoFiltro2 // IDMUNICIPIO
+        const valorFiltro2 = idMunicipio
+
+        let where = `${campoFiltro2}='${valorFiltro2}'`
+
+        //ej: 24 de abril de 2010 = 1272067200000 (2 en Armenia)
+
+        if (fechaInicio && fechaFin) {
+            const fi = formatDateOnly(fechaInicio, -1) // -1 día, para evitar errores de limite timestamp
+            const ff = formatDateOnly(fechaFin, +1) // +1 día
+            where += ` AND FECHARESOLUCION BETWEEN DATE '${fi}' AND DATE '${ff}'`
+        } else if (fechaInicio) {
+            const fi = formatDateOnly(fechaInicio, -1)
+            where += ` AND FECHARESOLUCION >= DATE '${fi}'`
+        } else if (fechaFin) {
+            const ff = formatDateOnly(fechaFin, +1)
+            where += ` AND FECHARESOLUCION <= DATE '${ff}'`
+        }
 
         try {
             setLoading(true)
 
+            const response = await realizarConsulta(urlBase, layerId, where)
+            // Si hubo error HTTP o servidor → ya se mostró alerta
 
-                const response = await realizarConsulta(urlBase, layerId, where)
-                // Si hubo error HTTP o servidor → ya se mostró alerta
+            if (!response.success) return
 
-                console.log('response >>> ', response)
+            const resultado = response.data
 
-                if (!response.success) return
-
-                const resultado = response.data
-
-                if (!resultado.features || resultado.features.length === 0) {
-                    alertService.warning(
-                        'Sin resultados',
-                        'No se encontraron resultados para los criterios seleccionados'
-                    )
-                    return
-                }
-
-                const features = response.data?.features || []
-
-                const spatialReference = response.data?.spatialReference
-
-                const fields = response.data?.fields.map(f => ({
-                    name: f.name,
-                    alias: f.alias
-                }))
-                const withGraphics = true
-                const graphicTitle = filters.subcategoria
-
-                const dataset = [
-                    { name: "Licencias", value: 65 },
-                    { name: "Incautaciones", value: 80 },
-                    { name: "Trámites", value: features.length }
-                ]
-
-
-                abrirTablaResultados(
-                    features,
-                    fields,
-                    spatialReference,
-                    withGraphics,
-                    dataset,
-                    "bar",
-                    graphicTitle
+            if (!resultado.features || resultado.features.length === 0) {
+                alertService.warning(
+                    'Sin resultados',
+                    'No se encontraron resultados para los criterios seleccionados'
                 )
+                limpiarYCerrarWidgetResultados(widgetResultId)
+                return
+            }
 
-                //verGraficos(features, fields, spatialReference as __esri.SpatialReference) // con amCharts
+            const features = response.data?.features || []
 
+            const spatialReference = response.data?.spatialReference
+
+            const fields = response.data?.fields.map(f => ({
+                name: f.name,
+                alias: f.alias
+            }))
+
+            const graphicTitle = filters.subcategorianombre
+
+            const dataset = [
+                { name: "Trámites", value: features.length }
+            ]
+
+            const withGraphic = {
+                showGraphic: true,
+                graphicData: dataset,
+                graphicType: "bar",
+                graphicTitle: graphicTitle
+            }
+
+            const titleTable = `Trámites Ambientales de ${filters.municipionombre || "el municipio seleccionado"}`
+    
+            abrirTablaResultados(
+                false,
+                features,
+                fields,
+                props,
+                widgetResultId,
+                spatialReference,
+                titleTable,
+                withGraphic
+            )
 
         } finally {
             setLoading(false)
         }
     }
-    const abrirTablaResultados = (
-        features: any[],
-        fields: any[],
-        spatialReference?:
-            __esri.SpatialReference,
-        withGraphic?: boolean,
-        graphicData?: any[],
-        graphicType?: "bar" | "pie",
-        graphicTitle?: string
-    ) => {
-
-        getAppStore().dispatch(appActions.openWidget(widgetResultId))
-
-        getAppStore().dispatch(
-            appActions.widgetStatePropChange(
-                widgetResultId,
-                'results',
-                {
-                    sourceWidgetId: props.id,
-                    features: features,
-                    fields: fields,
-                    spatialReference: spatialReference,
-                    withGraphic: withGraphic,
-                    graphicTitle,
-                    graphicData,
-                    graphicType
-                }
-            )
-        )
-    }
-
 
     const onLimpiar = () => {
-
         clearFilters()
-        abrirTablaResultados([], [], null, false)
-
+        setMensaje("Filtros limpiados")
+        setTimeout(() => limpiarYCerrarWidgetResultados(widgetResultId), 5000)
+        
     }
 
+    React.useEffect(() => {
+      if(validaLoggerLocalStorage('logger')) console.log({filters, opciones})
+    }, [])
+    
     return (
 
-        <div className="consulta-ambiental">
+        <div style={{height: '100%', padding: '5px', boxSizing: 'border-box'}}>
 
-            <FiltrosClasificacion
-                filtros={filters}
-                setFiltro={setFilter}
-                opciones={opciones}
-                handlers={handlers}
+            {/* Componente de acceso al MapView cef 20250327 */}
+            <JimuMapViewComponent
+                useMapWidgetId={props.useMapWidgetIds?.[0]}
+                onActiveViewChange={(view) => {
+                    setJimuMapView(view)
+                }}
             />
 
-            <SearchActionBar
-                onSearch={onBuscar}
-                onClear={onLimpiar}
-                loading={loading}
-                disableSearch={loading}
-                helpText="Esta funcionalidad permite realizar consultas relacionadas de categorias ambientales"
-            />
-
+            <div className="consulta-widget consulta-scroll">
+              <FiltrosClasificacion
+                  filtros={filters}
+                  setFiltro={setFilter}
+                  opciones={opciones}
+                  handlers={handlers}
+              />
+              {/* Mensaje */}
+              {mensaje && (
+                  <div style={{ marginTop: 4, color: 'red', fontSize: 12 }}>
+                      {mensaje}
+                  </div>
+              )}
+              <br />
+              <SearchActionBar
+                  onSearch={onBuscar}
+                  onClear={onLimpiar}
+                  loading={loading}
+                  disableSearch={loading}
+                  helpText="Esta funcionalidad permite realizar consultas relacionadas de categorias ambientales"
+              />
+            </div>
         </div>
 
     )

@@ -10,29 +10,199 @@
  */
 import { JimuMapViewComponent, type JimuMapView } from 'jimu-arcgis'
 import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer"
-import Graphic from "@arcgis/core/Graphic"
 import { React, type AllWidgetProps } from "jimu-core"
 import { Label, Select, Option } from "jimu-ui";
+import esriRequest from "@arcgis/core/request"
 
 import { abrirTablaResultados, limpiarYCerrarWidgetResultados } from "../../../widget-result/src/runtime/widget";
-import {  ejecutarConsulta, goToInitialExtent} from "../../../shared/utils/export.utils";
+
+import {  ejecutarConsulta, restoreInitialExtent, validaLoggerLocalStorage, limpiarFeaturesDibujados} from "../../../shared/utils/export.utils";
 import { LayerInfo } from "widgets/shared/types/types_consultaAvanzadaAlfanumerica"
 import { SearchActionBar } from "../../../shared/components/search-action-bar";
 import { loadLayers } from "../../../shared/services/queryMapServer.service"
 import { WIDGET_IDS } from "../../../shared/constants/widget-ids";
-import { clearPoint } from "../../../../widgets/utils/module"
-import esriRequest from "@arcgis/core/request"
+import { clearPoint, drawPoint } from "../../../../widgets/utils/module"
 import { urls} from "../../../api/serviciosQuindio"
 import OurLoading from '../../../commonWidgets/our_loading/OurLoading'
-import DetalleEstablecimiento from './detalleEstablecimiento'
+import DetalleEstablecimiento from './components/detalleEstablecimiento'
+import FormEducacion from './components/formEducacion'
+import FormIndicadores from './components/formIndicadores'
 import '../styles/styles.css'
 import { MUNICIPIOS_QUINDIO } from '../../../shared/constants/municipiosQuindio';
 
 
 interface interfaceConsultaPor { id: number, name: string, url: string }
 interface interfaceCategories { id: number, name: string }
+interface interfaceIndicadores { id: number, name: string }
 interface interfaceMunicipio { IDMUNICIPIO: string, MUNICIPIO: string }
 interface interfaceEstablecimiento { NOMBREESTABLECIMIENTO: string, CODIGOESTABLECIMIENTO: string,  DIRECCION: string, JORNADA: string, IMAGEN: string, geometry: __esri.Geometry, IDSECTOR: string, IDZONA: string, IDTIPOSEDE: string, IDGRUPO: string }
+interface interfaceLeyenda { label: string, colorFondo: string, colorLine: string }
+
+export const INDICADORES = {
+  "ConsultaEducacion": "Consulta educación",
+  "ConsultaPorIndicadores": "Consulta por indicadores",
+}
+
+export const LEYENDA_COROPLETICO_QUINDIO = {
+  Cobertura: {
+    leyenda: [
+      {
+        colorFondo: "252,3,3,0.4",
+        colorLine: "252,3,3,1",
+        label: "0 a 1000",
+        minimo: 0,
+        maximo: 1000,
+      },
+      {
+        colorFondo: "246,254,6,0.4",
+        colorLine: "246,254,6,1",
+        label: "1001 a 5000",
+        minimo: 1001,
+        maximo: 5000,
+      },
+      {
+        colorFondo: "81,175,51,0.4",
+        colorLine: "81,175,51,1",
+        label: "Mayor a 5000",
+        minimo: 5001,
+        maximo: 50000000,
+      },
+    ],
+    fieldsToFilter: [
+      { field: "TOTALESTUDIANTES", label: "Total Estudiantes" }
+    ],
+  },
+  Cupos_ofertados: {
+    leyenda: [
+      {
+        colorFondo: "77,246,22,0.4",
+        colorLine: "77,246,22,1",
+        label: "0 a 1000",
+        minimo: 0,
+        maximo: 1000,
+      },
+      {
+        colorFondo: "246,162,60,0.4",
+        colorLine: "246,162,60,1",
+        label: "1001 a 5000",
+        minimo: 1001,
+        maximo: 5000,
+      },
+      {
+        colorFondo: "135,240,226,0.4",
+        colorLine: "135,240,226,1",
+        label: "5001 a 10000",
+        minimo: 5001,
+        maximo: 10000,
+      },
+      {
+        colorFondo: "77,133,52,0.4",
+        colorLine: "77,133,52,1",
+        label: "Mayor a 10000",
+        minimo: 10001,
+        maximo: 50000000,
+      },
+    ],
+    fieldsToFilter: [{ field: "CANTIDADMATRICULADOS", label: "Cantidad Matriculados" }],
+  },
+  Eficiencia_interna: {
+    leyenda: [
+      {
+        colorFondo: "252,3,3,0.4",
+        colorLine: "252,3,3,1",
+        label: "0 a 1000",
+        minimo: 0,
+        maximo: 1000,
+      },
+      {
+        colorFondo: "246,254,6,0.4",
+        colorLine: "246,254,6,1",
+        label: "1001 a 10000",
+        minimo: 1001,
+        maximo: 10000,
+      },
+      {
+        colorFondo: "81,175,51,0.4",
+        colorLine: "81,175,51,1",
+        label: "Mayor a 10000",
+        minimo: 10001,
+        maximo: 50000000,
+      },
+    ],
+    fieldsToFilter: [
+      {
+        field:"ESTUDIANTESMATRICULADOS",
+        label: 'Matriculados'
+      },
+      {
+        field:"ESTUDIANTESDESERTORES",
+        label: 'Desertores'
+      },
+      {
+        field:"ESTUDIANTESAPROBADOS",
+        label: 'Aprobados'
+      },
+      {
+        field:"ESTUDIANTESREPROBADOS",
+        label: 'Reprobados'
+      },
+    ],
+  },
+  Tasa_analfabetismo_departamental: {
+    leyenda: [
+      {
+        colorFondo: "252,3,3,0.4",
+        colorLine: "252,3,3,1",
+        label: "0 a 1000",
+        minimo: 0,
+        maximo: 1000,
+      },
+      {
+        colorFondo: "246,254,6,0.4",
+        colorLine: "246,254,6,1",
+        label: "1001 a 5000",
+        minimo: 1001,
+        maximo: 5000,
+      },
+      {
+        colorFondo: "81,175,51,0.4",
+        colorLine: "81,175,51,1",
+        label: "Mayor a 5000",
+        minimo: 5001,
+        maximo: 50000000,
+      },
+    ],
+    fieldsToFilter: [{ field: "TOTALDEPTO", label: "Total Departamento" }],
+  },
+  Tasa_analfabetismo_municipal: {
+    leyenda: [
+      {
+        colorFondo: "252,3,3,0.4",
+        colorLine: "252,3,3,1",
+        label: "0 a 1000",
+        minimo: 0,
+        maximo: 1000,
+      },
+      {
+        colorFondo: "246,254,6,0.4",
+        colorLine: "246,254,6,1",
+        label: "1001 a 5000",
+        minimo: 1001,
+        maximo: 5000,
+      },
+      {
+        colorFondo: "81,175,51,0.4",
+        colorLine: "81,175,51,1",
+        label: "Mayor a 5000",
+        minimo: 5001,
+        maximo: 50000000,
+      },
+    ],
+    fieldsToFilter: [{ field: "TOTALMUNICIPIO", label: "Total Municipio" }],
+  },
+
+
+};
 
 const Widget = (props: AllWidgetProps<any>) => {
   /**
@@ -40,8 +210,7 @@ const Widget = (props: AllWidgetProps<any>) => {
    * @type {[JimuMapView | undefined, Function]}
    */
   const [varJimuMapView, setJimuMapView] = React.useState<JimuMapView>()
-  const [initialExtent, setInitialExtent] = React.useState(null)
-  const [initialZoom, setInitialZoom] = React.useState<number | null>(null)
+  
   const [loading, setLoading] = React.useState(false)
   const [graphicsLayer, setGraphicsLayer] = React.useState<GraphicsLayer | null>(null)
   const [error, setError] = React.useState("")
@@ -49,7 +218,15 @@ const Widget = (props: AllWidgetProps<any>) => {
 
   const [consultaPorSeleccionada, setConsultaPorSeleccionada] = React.useState< interfaceConsultaPor | null>({name: "", id: null, url: ""})
   const [categories, setCategories] = React.useState<interfaceCategories[] | null>(null)
+  const [indicadores, setIndicadores] = React.useState<interfaceIndicadores[] | null>(null)
   const [selectedCategory, setSelectedCategory] = React.useState<number | null>(null)
+  const [selectedIndicador, setSelectedIndicador] = React.useState<number | null>(null)
+  const [niveles, setNiveles] = React.useState<string[] | null>(null)
+  const [selectedNivel, setSelectedNivel] = React.useState<string | null>(null)
+  const [sectores, setSectores] = React.useState<string[] | null>(null)
+  const [selectedSector, setSelectedSector] = React.useState<string | null>(null)
+  const [anios, setAnios] = React.useState<string[] | null>(null)
+  const [selectedAnio, setSelectedAnio] = React.useState<string | null>(null)
   const [municipios, setMunicipios] = React.useState<interfaceMunicipio[] | null>(null)
   const [selectedMunicipio, setSelectedMunicipio] = React.useState<interfaceMunicipio | null>(null)
   const [urlLayerSelected, setUrlLayerSelected] = React.useState<string | null>(null)
@@ -59,44 +236,67 @@ const Widget = (props: AllWidgetProps<any>) => {
   const [cloneFeatures, setCloneFeatures] = React.useState<any[]>([])
   const [featuresDibujados, setFeaturesDibujados] = React.useState<__esri.Graphic[]>([])
   const [domainsMap, setDomainsMap] = React.useState<Record<string, Record<number, string>>>({})
+  const [camposIndicador, setCamposIndicador] = React.useState<string[] | null>(null)
+  const NAMES = ["Infraestructura", "Cobertura" ,   "Cupos ofertados","Eficiencia interna", "Tasa de Analfabetismo Dep", "Tasa de Analfabetismo Mun"];
+
   const consultaPor = [{
     id: 0,
-    name: "Consulta educación",
+    name: INDICADORES.ConsultaEducacion,
     url: urls.SERVICIO_EDUCACION
   }, {
     id: 1,
-    name: "Consulta por indicadores",
+    name: INDICADORES.ConsultaPorIndicadores,
     url: urls.SERVICIO_EDUCACION_ALFANUMERICO
   }];
 
+  /**
+     * Extent inicial del mapa.
+     * Se guarda al cargar el widget para poder restaurar
+     * la vista original posteriormente.
+  */
+  const initialExtentRef = React.useRef<__esri.Extent | null>(null)
+
   const handleConsultaPor = async(e: { target: { value: string; }; }) => {
     if (e.target.value === "") return
-    
+    handleClear()
     const id = Number(e.target.value)
     const selected = consultaPor.find(c => c.id === id)
-    console.log({selected})
+    if(validaLoggerLocalStorage('logger'))  console.log({selected})
     setConsultaPorSeleccionada(selected)
     setLoading(true)
     const response = await realizarQuery(selected.url, selected.name)
     //  poblar el campo categoria con la información presente en response.layers 
     if (response && response.layers) {
-      const categories = response.layers.map((layer: LayerInfo) => ({id: layer.id, name: layer.name}))
-      setCategories(categories.length > 0 ? categories : null)
+      if(selected.name === INDICADORES.ConsultaEducacion){
+        const categories = response.layers.map((layer: LayerInfo) => ({ id: layer.id, name: layer.name }))
+        //categories ordenadas por name alfabeticamente
+        categories.sort((a: interfaceCategories, b: interfaceCategories) => a.name.localeCompare(b.name))
+        if(validaLoggerLocalStorage('logger'))  console.log({categories})
+        setCategories(categories.length > 0 ? categories : null)
+      }else if(selected.name === INDICADORES.ConsultaPorIndicadores){
+        response.layers.forEach((layer: LayerInfo, index: number) => {
+          layer.nameOriginal = layer.name
+          if (index < NAMES.length) {
+            layer.name = NAMES[index]
+          }
+        })
+        // ordena los layer y los filtra para mostrar solo los que están definidos en NAMES, y poblar el campo indicadores con esta información
+        const filteredIndicadoresList = response.layers.reduce<{ id: number, name: string }[]>((acc, layer: LayerInfo) => {
+          const name = layer.name || layer.nameOriginal
+          if (name !== NAMES[0] && name !== NAMES[4] && name !== NAMES[5]) acc.push({ id: layer.id, name })
+          return acc
+        }, [])
+        setIndicadores(filteredIndicadoresList.length > 0 ? filteredIndicadoresList : null)
+        if(validaLoggerLocalStorage('logger'))  console.log({filteredIndicadoresList})
+      }
     }
   }
-
-  const limpiarFeaturesDibujados = (jimuMapView: JimuMapView, features: __esri.Graphic[]) => {
-    if (jimuMapView && features?.length) {
-      jimuMapView.view.graphics.removeMany(features)
-    }
-  }
-
-
+  
   const realizarQuery = async (url: string, name: string) => {
     setError("")
     try {
       const response = await loadLayers(url)
-      console.log({ response, url, name })
+      if(validaLoggerLocalStorage('logger')) console.log({ response, url, name })
       return response
     }
     catch (err) {
@@ -118,9 +318,8 @@ const Widget = (props: AllWidgetProps<any>) => {
   const activeViewChangeHandler = (jmv: JimuMapView) => {
     if (jmv) {
       setJimuMapView(jmv)
-      if (!initialExtent) {
-        setInitialExtent(jmv.view.extent.clone())
-        setInitialZoom(jmv.view.zoom)
+      if (!initialExtentRef.current) {
+        initialExtentRef.current = jmv.view.extent.clone()
       }
     }
   }
@@ -134,10 +333,20 @@ const Widget = (props: AllWidgetProps<any>) => {
       clearPoint(varJimuMapView, graphicsLayer)
     }
 
-    setGraphicsLayer(null)
-    setFeaturesDibujados([])
-    setLoading(false)
-    setError("")
+    limpiarYCerrarWidgetResultados(widgetResultId)
+    limpiarFeaturesDibujados(varJimuMapView, featuresDibujados)
+    setVerAtributos(false)
+    setConsultaPorSeleccionada({name: "", id: null, url: ""})
+    setSelectedCategory(null)
+    setCategories(null)
+    setMunicipios(null)
+    setSelectedMunicipio(null)
+    setSelectedEstablecimiento(null)
+    setEstablecimientos(null)
+    setSelectedIndicador(null)
+    setSelectedAnio(null)
+    setSelectedNivel(null)
+    setSelectedSector(null)
   }
 
   /**
@@ -146,18 +355,8 @@ const Widget = (props: AllWidgetProps<any>) => {
   React.useEffect(() => {
     if (props.state === 'CLOSED') {
       handleClear()
-      goToInitialExtent(varJimuMapView, initialExtent, initialZoom)
-      limpiarYCerrarWidgetResultados(widgetResultId)
-      limpiarFeaturesDibujados(varJimuMapView, featuresDibujados)
-      setVerAtributos(false)
-      setConsultaPorSeleccionada({name: "", id: null, url: ""})
-      setSelectedCategory(null)
-      setCategories(null)
-      setMunicipios(null)
-      setSelectedMunicipio(null)
-      setSelectedEstablecimiento(null)
-      setEstablecimientos(null)
-    }  
+    } 
+    
     
   }, [props])
 
@@ -167,18 +366,19 @@ const Widget = (props: AllWidgetProps<any>) => {
   ==========================
   */
   const handleCategoriesChange = async (e: { target: { value: any; }; }) => {
-    if (!categories) return
+    if (!categories || e.target.value === "") return
     const id = Number(e.target.value)
     const selected = categories?.find(c => c.id === id)
-    console.log({ selected })
+    if(validaLoggerLocalStorage('logger'))  console.log({ selected })
     setSelectedCategory(id)
     setMunicipios(null)
     setSelectedMunicipio(null)
+    setSelectedEstablecimiento(null)
     // obtener los municipios asociados a la categoria seleccionada y poblar el select de municipios
     const { url } = consultaPorSeleccionada
     const URL_LAYER_SELECTED = `${url}/${id}`
     setUrlLayerSelected(URL_LAYER_SELECTED) // almacenar la url de la capa seleccionada para usarla luego en la consulta de los municipios    
-    console.log({ URL_LAYER_SELECTED })
+    if(validaLoggerLocalStorage('logger'))  console.log({ URL_LAYER_SELECTED })
     setLoading(true)
     try {
       // Cargar los domains de la capa seleccionada para resolver códigos a nombres
@@ -193,10 +393,14 @@ const Widget = (props: AllWidgetProps<any>) => {
           })
         }
       })
-      console.log({layerMeta,fields, domains})
+      if(validaLoggerLocalStorage('logger'))  console.log({layerMeta,fields, domains})
       setDomainsMap(domains)
-      const features = await ejecutarConsulta({ returnGeometry: false, campos: ["IDMUNICIPIO", "NOMBREESTABLECIMIENTO ","CODIGOESTABLECIMIENTO", "DIRECCION", "IDNIVELEDUCACION","IDSECTOR", "IDZONA", "IDJORNADA", "IDTIPOSEDE", "IMAGEN", "IDGRUPO"], url: URL_LAYER_SELECTED, where: "1=1" })
-      console.log({ features })
+      let campos = ["IDMUNICIPIO", "NOMBREESTABLECIMIENTO ","CODIGOESTABLECIMIENTO", "DIRECCION", "IDNIVELEDUCACION","IDSECTOR", "IDZONA", "IDJORNADA", "IDTIPOSEDE", "IMAGEN", "IDGRUPO"]
+      if(URL_LAYER_SELECTED === 'https://sigquindio.gov.co/arcgis/rest/services/QUINDIO_III/EducacionAlfanumerico/MapServer/1'){
+        campos = fields.map(f => f.name)
+      }
+      const features = await ejecutarConsulta({ returnGeometry: false, campos, url: URL_LAYER_SELECTED, where: "1=1" })
+      if(validaLoggerLocalStorage('logger'))  console.log({ features })
       // eliminar duplicados por IDMUNICIPIO y ordenar alfabeticamente por MUNICIPIO
       const uniqueMap = new Map<string, string>()
       features.forEach(f => {
@@ -217,12 +421,58 @@ const Widget = (props: AllWidgetProps<any>) => {
     }
   }
 
+  const handleIndicadorChange = async (e: { target: { value: any; }; }) => {
+    const id = e.target.value
+    if (id === "") {
+      setSelectedIndicador(null)
+      setNiveles(null)
+      setSectores(null)
+      setAnios(null)
+      setSelectedNivel(null)
+      setSelectedSector(null)
+      setSelectedAnio(null)
+      limpiarYCerrarWidgetResultados(widgetResultId)
+      return
+     }
+    setLoading(true)
+    try {
+      const features = await ejecutarConsulta({ returnGeometry: false, campos: ["*"], url: `${consultaPorSeleccionada.url}/${id}`, where: "1=1" })
+      if(validaLoggerLocalStorage('logger'))  console.log({features})
+      if (features.length > 0) {
+        const attrs = Object.keys(features[0].attributes)
+        if(validaLoggerLocalStorage('logger'))  console.log({camposIndicador:attrs})
+        setCamposIndicador(attrs)
+      }
+      if (id === 1) { // si el indicador seleccionado es "cobertura", poblar los selects de niveles, sectores y años con la información presente en los features obtenidos
+        const uniqueNiveles = [...new Set(features.map(f => f.attributes.NIVEL as string).filter(Boolean))].sort()
+        const uniqueSectores = [...new Set(features.map(f => f.attributes.SECTOR as string).filter(Boolean))].sort()
+        setNiveles(uniqueNiveles.length > 0 ? uniqueNiveles : null)
+        setSectores(uniqueSectores.length > 0 ? uniqueSectores : null)
+        setSelectedNivel(null)
+        setSelectedSector(null)
+      }else if(id === 2){ // si el indicador seleccionado es "cupos ofertados", poblar los selects de niveles y sectores con la información presente en los features obtenidos
+
+      }
+      const uniqueAnios = [...new Set(features.map(f => f.attributes.ANIO as string).filter(Boolean))].sort()
+      setAnios(uniqueAnios.length > 0 ? uniqueAnios : null)
+      setSelectedAnio(null)
+      setSelectedIndicador(id ? Number(id) : null)
+    } catch (err) {
+      console.error("Error obteniendo datos del indicador:", err)
+      setError("Ocurrió un error al obtener los datos del indicador.")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+
   const handleMunicipioChange = async(e: { target: { value: any; }; }) => {
     if (!municipios) return
+    restoreInitialExtent(varJimuMapView, initialExtentRef)
     const id = e.target.value
     const selected = municipios?.find(m => m.IDMUNICIPIO === id)
     
-    console.log({ selected })
+    if(validaLoggerLocalStorage('logger'))  console.log({ selected })
     setSelectedMunicipio(selected)
     setEstablecimientos(null)
     setSelectedEstablecimiento(null)
@@ -242,7 +492,7 @@ const Widget = (props: AllWidgetProps<any>) => {
         
         geometry: f.geometry.clone() as __esri.Geometry
       })).sort((a, b) => a.NOMBREESTABLECIMIENTO.localeCompare(b.NOMBREESTABLECIMIENTO))
-      console.log({ features, lista })
+      if(validaLoggerLocalStorage('logger'))  console.log({ features, lista })
       setEstablecimientos(lista.length > 0 ? lista : null)
     } catch (err) {
       console.error("Error obteniendo datos del municipio seleccionado:", err)
@@ -256,83 +506,172 @@ const Widget = (props: AllWidgetProps<any>) => {
     if (!establecimientos) return
     const nombre = e.target.value
     const selected = establecimientos?.find(est => est.NOMBREESTABLECIMIENTO === nombre)
-    console.log({selected})
+    if(validaLoggerLocalStorage('logger'))  console.log({selected})
     setSelectedEstablecimiento(selected || null)
     setVerAtributos(false)
 
   }
 
   const buscar = async () => {
-    if (!selectedEstablecimiento) {
-      setError("Por favor seleccione un establecimiento para realizar la búsqueda.")
+    if (!selectedEstablecimiento && !selectedIndicador) {
+      setError("Por favor seleccione un establecimiento o un indicador para realizar la búsqueda.")
       return
     }
+    setLoading(true)
     // limpiar geometrías previamente dibujadas
-    if(featuresDibujados?.length){
-      limpiarFeaturesDibujados(varJimuMapView, featuresDibujados)
-      setFeaturesDibujados([])
+    varJimuMapView?.view?.graphics?.removeAll()
+    let urlCapa, campos, where
+    if(consultaPorSeleccionada?.name === INDICADORES.ConsultaEducacion){
+      urlCapa = urls.SERVICIO_EDUCACION_ALFANUMERICO + `/0`
+      campos = ["NOMBREESTABLECIMIENTO", "NIT", "LABORATORIOS", "SALONESCONFERENCIAS", "NUMEROCOMPUTADORES", "ACCESOINTERNET", "WEBSITE", "PROGRAMASESPECIALES", "NUMEROESTUDIANTES", "NUMERODOCENTES", "ZONASRECREATIVAS", "ICFECS", "PRIMERAPELLIDO", "SEGUNDOAPELLIDO", "NOMBRE", "OBJECTID", "CODIGOESTABLECIMIENTO"
+      ]
+      where = `CODIGOESTABLECIMIENTO='${selectedEstablecimiento.CODIGOESTABLECIMIENTO}' and NOMBREESTABLECIMIENTO='${selectedEstablecimiento.NOMBREESTABLECIMIENTO}'`
+    }else if(consultaPorSeleccionada?.name === INDICADORES.ConsultaPorIndicadores){
+       urlCapa = urls.SERVICIO_EDUCACION_ALFANUMERICO + `/${selectedIndicador}`
+       campos = camposIndicador ? camposIndicador.filter(c => c !== "geometry") : ["*"]
+       if(validaLoggerLocalStorage('logger'))  console.log({indicadores, selectedIndicador})
+       if (selectedIndicador === 1) { // para la consulta por indicador "cobertura"
+        where = `NIVEL='${selectedNivel ?? ""}' and SECTOR='${selectedSector ?? ""}' and ANIO='${selectedAnio ?? ""}'`        
+       }else if (selectedIndicador === 2 || selectedIndicador === 3 || selectedIndicador === 4 || selectedIndicador === 5) { // para la consulta por indicador "cupos ofertados", "eficiencia interna", "tasa de analfabetismo departamental" y "tasa de analfabetismo municipal", el filtro se realiza solo por año, ya que los niveles y sectores no aplican para estos indicadores
+        where = `ANIO='${selectedAnio ?? ""}'`       
+       }
     }
-    const urlCapa = urls.SERVICIO_EDUCACION_ALFANUMERICO + "/0";
-    const campos = ["NOMBREESTABLECIMIENTO", "NIT", "LABORATORIOS", "SALONESCONFERENCIAS", "NUMEROCOMPUTADORES", "ACCESOINTERNET", "WEBSITE", "PROGRAMASESPECIALES", "NUMEROESTUDIANTES", "NUMERODOCENTES", "ZONASRECREATIVAS", "ICFECS", "PRIMERAPELLIDO", "SEGUNDOAPELLIDO", "NOMBRE", "OBJECTID", "CODIGOESTABLECIMIENTO"
-    ];
-    const features = await ejecutarConsulta({ returnGeometry: true, campos, url: urlCapa, where: `CODIGOESTABLECIMIENTO='${selectedEstablecimiento.CODIGOESTABLECIMIENTO}' and NOMBREESTABLECIMIENTO='${selectedEstablecimiento.NOMBREESTABLECIMIENTO}'` })
-    console.log({ features, selectedMunicipio, selectedEstablecimiento })
-    // dibujar los features obtenidos en el mapa
-    if (features?.length) {
-      const graphics = features
-        .filter(f => f?.geometry)
-        .map(f => new Graphic({
-          geometry: f.geometry,
-          symbol: {
-            type: "simple-marker",
-            style: "circle",
-            color: "red",
-            size: "12px"
-          } as any
-        }))
-      varJimuMapView.view.graphics.addMany(graphics)
-      setFeaturesDibujados(graphics)
-      // centrar el mapa en el primer feature obtenido
-      varJimuMapView.view.goTo({ target: features[0].geometry, zoom: 15 })
-    }
-    const URL_ARCHIVOS_QUINDIO = urls.URL_ARCHIVOS_QUINDIO
-    // construir la url de la imagen del establecimiento utilizando la propiedad IMAGEN y la constante URL_ARCHIVOS_QUINDIO
-    const imagenUrl = selectedEstablecimiento.IMAGEN !== " " ? `${URL_ARCHIVOS_QUINDIO}${selectedEstablecimiento.IMAGEN}` : null
 
-    // ajusta los campos para que cumplan la estructura esperada por el vidget resultados
-    const camposResultados = [
-      { name: "NOMBREESTABLECIMIENTO", alias: "Nombre establecimiento" },
-      { name: "CODIGOESTABLECIMIENTO", alias: "Código" },
-      { name: "NIT", alias: "NIT" },
-      { name: "DIRECCION", alias: "Dirección" },
-      { name: "JORNADA", alias: "Jornada" },
-      { name: "LABORATORIOS", alias: "Laboratorios" },
-      { name: "SALONESCONFERENCIAS", alias: "Salones conferencias" },
-      { name: "NUMEROCOMPUTADORES", alias: "Computadores" },
-      { name: "ACCESOINTERNET", alias: "Acceso internet" },
-      { name: "WEBSITE", alias: "Sitio web" },
-      { name: "PROGRAMASESPECIALES", alias: "Programas especiales" },
-      { name: "NUMEROESTUDIANTES", alias: "Número estudiantes" },
-      { name: "NUMERODOCENTES", alias: "Número docentes" },
-      { name: "ZONASRECREATIVAS", alias: "Zonas recreativas" },
-      { name: "ICFECS", alias: "ICFES" },
-      { name: "NOMBRE", alias: "Nombre contacto" },
-      { name: "PRIMERAPELLIDO", alias: "Primer apellido" },
-      { name: "SEGUNDOAPELLIDO", alias: "Segundo apellido" },
-      // { name: "IMAGEN", alias: "Imagen" },
-    ]
-    const cloneFeatures = features
-      .filter(f => f?.geometry)
-      .map(f => ({
-        attributes: { ...f.attributes, IMAGEN: imagenUrl },
-        geometry: f.geometry.toJSON()
-      }))
-    setCloneFeatures(cloneFeatures)
-    console.log({cloneFeatures})
+    const features = await ejecutarConsulta({ returnGeometry: true, campos, url: urlCapa, where })
+    
+    // si la longitud de los features obtenidos es menor a 1, mostrar mensaje de error indicando que no se encontraron resultados para la consulta realizada
+    if (features.length < 1) {
+      setError("No se encontraron resultados para la consulta realizada.")
+      setLoading(false)
+      return
+    }
+    // ir al extend inicial del mapa para mostrar todos los resultados obtenidos
+    // restoreInitialExtent(varJimuMapView, initialExtentRef)
+    // dibujar los features obtenidos en el mapa
+    const esCoropletico = consultaPorSeleccionada?.name === INDICADORES.ConsultaPorIndicadores && (selectedIndicador === 1 || selectedIndicador === 2 || selectedIndicador === 3 || selectedIndicador === 4 || selectedIndicador === 5) // el indicador "cobertura", "cupos ofertados", "eficiencia interna", "tasa de analfabetismo departamental" y "tasa de analfabetismo municipal" se representan con coropletico    
+
+    let camposResultados,_cloneFeatures, withGraphic={
+        showGraphic: false,
+        graphicData: [
+            { name: "ejemplo_1", value: 65 },
+            { name: "ejemplo_2", value: 80 },
+            { name: "ejemplo_3", value: features.length }
+        ],
+        graphicType: "bar",
+        graphicTitle: 'Gráfico de ejemplo',
+        selectedIndicador,
+        dataCoropletico: {},
+        fieldToFilter:''
+    }, titleTable = ""
+    if(consultaPorSeleccionada?.name === INDICADORES.ConsultaEducacion){
+      const URL_ARCHIVOS_QUINDIO = urls.URL_ARCHIVOS_QUINDIO
+      // construir la url de la imagen del establecimiento utilizando la propiedad IMAGEN y la constante URL_ARCHIVOS_QUINDIO
+      const imagenUrl = selectedEstablecimiento.IMAGEN !== " " ? `${URL_ARCHIVOS_QUINDIO}${selectedEstablecimiento.IMAGEN}` : null
+      // ajusta los campos para que cumplan la estructura esperada por el vidget resultados
+      camposResultados = [
+        { name: "NOMBREESTABLECIMIENTO", alias: "Nombre establecimiento" },
+        { name: "CODIGOESTABLECIMIENTO", alias: "Código" },
+        { name: "NIT", alias: "NIT" },
+        { name: "DIRECCION", alias: "Dirección" },
+        { name: "JORNADA", alias: "Jornada" },
+        { name: "LABORATORIOS", alias: "Laboratorios" },
+        { name: "SALONESCONFERENCIAS", alias: "Salones conferencias" },
+        { name: "NUMEROCOMPUTADORES", alias: "Computadores" },
+        { name: "ACCESOINTERNET", alias: "Acceso internet" },
+        { name: "WEBSITE", alias: "Sitio web" },
+        { name: "PROGRAMASESPECIALES", alias: "Programas especiales" },
+        { name: "NUMEROESTUDIANTES", alias: "Número estudiantes" },
+        { name: "NUMERODOCENTES", alias: "Número docentes" },
+        { name: "ZONASRECREATIVAS", alias: "Zonas recreativas" },
+        { name: "ICFECS", alias: "ICFES" },
+        { name: "NOMBRE", alias: "Nombre contacto" },
+        { name: "PRIMERAPELLIDO", alias: "Primer apellido" },
+        { name: "SEGUNDOAPELLIDO", alias: "Segundo apellido" },
+        // { name: "IMAGEN", alias: "Imagen" },
+      ]
+      _cloneFeatures = features
+        .filter(f => f?.geometry)
+        .map(f => ({
+          attributes: { ...f.attributes, IMAGEN: imagenUrl },
+          geometry: f.geometry.toJSON()
+        }))
+      setCloneFeatures(_cloneFeatures)
+      if(validaLoggerLocalStorage('logger')) console.log({_cloneFeatures})
+      // dibujar el punto del establecimiento en el mapa y centrar la vista con zoom cercano
+      if (selectedEstablecimiento.geometry) {
+        drawPoint(varJimuMapView, selectedEstablecimiento.geometry, "PLANAR", "", 6000, "consulta-educacion-establecimiento")
+      }
+      // cambiar a la pestaña de vista atributos en donde se debe mostrar la información del establecimiento seleccionado
+      setVerAtributos(true)
+      titleTable = `Información del establecimiento ${selectedEstablecimiento.NOMBREESTABLECIMIENTO}`
+
+    }else if(esCoropletico){
+      camposResultados = camposIndicador ? camposIndicador.map(c => ({ name: c, alias: c })) : [{ name: "OBJECTID", alias: "OBJECTID" }]
+      _cloneFeatures = features.map(f => ({ attributes: f.attributes, geometry: f.geometry.toJSON() }))
+      let fixDataToRenderGrafic = [], fieldToFilter =  "", titleGrahic = "", dataLeyenda: interfaceLeyenda[] = [], dataCoropletico
+      if (selectedIndicador === 1) { // para el indicador "cobertura", el gráfico mostrará la cobertura de estudiantes por municipio
+        dataCoropletico = LEYENDA_COROPLETICO_QUINDIO.Cobertura
+        fieldToFilter = dataCoropletico.fieldsToFilter[0].field // siempre toma el primer campo definido en fieldsToFilter para mostrarlo en el gráfico, en este caso "ESTUDIANTESMATRICULADOS"
+        titleGrahic = `Cobertura de educación en el año ${selectedAnio ?? ""} por ${selectedNivel ? "nivel educativo" : "sector"}`
+        dataLeyenda = dataCoropletico.leyenda.map(l => ({ label: l.label, colorFondo: l.colorFondo, colorLine: l.colorLine }))
+      }else if(selectedIndicador === 2){ // para el indicador "cupos ofertados", el gráfico mostrará la cantidad de cupos ofertados por municipio
+        dataCoropletico = LEYENDA_COROPLETICO_QUINDIO.Cupos_ofertados
+        fieldToFilter = dataCoropletico.fieldsToFilter[0].field
+        titleGrahic = `Cupos ofertados y matriculados en el año ${selectedAnio ?? ""} `
+        dataLeyenda = dataCoropletico.leyenda.map(l => ({ label: l.label, colorFondo: l.colorFondo, colorLine: l.colorLine }))
+      }else if(selectedIndicador === 3){ // para el indicador "eficiencia interna", el gráfico mostrará la eficiencia interna por municipio
+        dataCoropletico = LEYENDA_COROPLETICO_QUINDIO.Eficiencia_interna
+        fieldToFilter = dataCoropletico.fieldsToFilter[0].field
+        titleGrahic = `Total estudiantes matriculados en el año ${selectedAnio ?? ""} `
+        dataLeyenda = dataCoropletico.leyenda.map(l => ({ label: l.label, colorFondo: l.colorFondo, colorLine: l.colorLine }))
+        if(validaLoggerLocalStorage('logger')) console.log({fieldToFilter, titleGrahic, dataLeyenda})
+      }else if(selectedIndicador === 4){ // para el indicador "tasa de analfabetismo departamental", el gráfico mostrará la tasa de analfabetismo departamental por municipio
+        dataCoropletico = LEYENDA_COROPLETICO_QUINDIO.Tasa_analfabetismo_departamental
+        fieldToFilter = dataCoropletico.fieldsToFilter[0].field
+        titleGrahic = `Tasa de analfabetismo departamental en el año ${selectedAnio ?? ""}`
+        dataLeyenda = dataCoropletico.leyenda.map(l => ({ label: l.label, colorFondo: l.colorFondo, colorLine: l.colorLine }))
+      }else if(selectedIndicador === 5){ // para el indicador "tasa de analfabetismo municipal", el gráfico mostrará la tasa de analfabetismo municipal
+        dataCoropletico = LEYENDA_COROPLETICO_QUINDIO.Tasa_analfabetismo_municipal
+        fieldToFilter = dataCoropletico.fieldsToFilter[0].field
+        titleGrahic = `Tasa de analfabetismo municipal en el año ${selectedAnio ?? ""}`
+        dataLeyenda = dataCoropletico.leyenda.map(l => ({ label: l.label, colorFondo: l.colorFondo, colorLine: l.colorLine }))
+      }
+      fixDataToRenderGrafic = features.map(f => ({ name: MUNICIPIOS_QUINDIO.find(m => m.IDMUNICIPI === f.attributes.IDMUNICIPIO)?.NOMBRE, value: Number(f.attributes[fieldToFilter]) || 0 }))
+      withGraphic = {
+        showGraphic: true,
+        graphicData: fixDataToRenderGrafic,
+        graphicType: "bar",
+        graphicTitle: titleGrahic,
+        selectedIndicador,
+        dataCoropletico,
+        fieldToFilter // primer campo que se emplea para renderizar el grafico, se asume que es el campo principal para mostrar en el gráfico
+      }
+    if(validaLoggerLocalStorage('logger')) console.log({fixDataToRenderGrafic, withGraphic})
+      
+      /* abrirWidgetLeyenda({
+        widgetleyendaId: WIDGET_IDS.LEYENDA,
+        props,
+        title: selectedIndicador === 1 ? "Cobertura de estudiantes" : selectedIndicador === 2 ? "Cupos ofertados" : "Eficiencia interna", // título que se mostrará en el widget de resultados
+        data: dataLeyenda
+      }) */
+    }
     // abrir el widget de resultados y mostrar la información del establecimiento seleccionado
-    abrirTablaResultados(cloneFeatures, camposResultados, props, widgetResultId, varJimuMapView.view.spatialReference)
-    // cambiar a la pestaña de vista atributos en donde se debe mostrar la información del establecimiento seleccionado
-    setVerAtributos(true)
+    abrirTablaResultados(
+      esCoropletico,
+      _cloneFeatures,
+      camposResultados,
+      props,
+      widgetResultId,
+      varJimuMapView.view.spatialReference,
+      titleTable,
+      withGraphic,
+      false,
+      selectedAnio
+    )
+    // ir al extend inicial del mapa para mostrar todos los resultados obtenidos
+    restoreInitialExtent(varJimuMapView, initialExtentRef)
+    setLoading(false)
+
   }  
   
 
@@ -371,63 +710,43 @@ const Widget = (props: AllWidgetProps<any>) => {
                   ))}
               </Select>
 
-              {/* Categoria */}
+              {/* Indicador */}
+              {
+                consultaPorSeleccionada?.name === INDICADORES.ConsultaEducacion && (
+                  <FormEducacion
+                    loading={loading}
+                    categories={categories}
+                    selectedCategory={selectedCategory}
+                    onCategoriesChange={handleCategoriesChange}
+                    municipios={municipios}
+                    selectedMunicipio={selectedMunicipio}
+                    onMunicipioChange={handleMunicipioChange}
+                    establecimientos={establecimientos}
+                    selectedEstablecimiento={selectedEstablecimiento}
+                    onEstablecimientoChange={handleEstablecimientoChange}
+                  />
+                )
+              }
 
-              <Label>Categoria</Label>
-
-              <Select
-                  value={selectedCategory ?? ""}
-                  disabled={loading}
-                  onChange={handleCategoriesChange}
-              >
-                  <Option value="">
-                      {loading ? 'Cargando ...' : 'Seleccione...'}
-                  </Option>
-
-                  {categories?.map(field => (
-                      <Option key={field.id} value={field.id}>
-                          {field.name}
-                      </Option>
-                  ))}
-              </Select>
-
-              {/* Municipio */}
-
-              <Label>Municipio</Label>
-              <Select
-                  value={selectedMunicipio?.IDMUNICIPIO ?? ""}
-                  disabled={loading}
-                  onChange={handleMunicipioChange}
-              >
-                  <Option value="">
-                      {loading ? 'Cargando ...' : 'Seleccione...'}
-                  </Option>
-
-                  {municipios?.map(mun => (
-                      <Option key={mun.IDMUNICIPIO} value={mun.IDMUNICIPIO}>
-                          {mun.MUNICIPIO}
-                      </Option>
-                  ))}
-              </Select>
-
-              {/* Atributo */}
-
-              <Label>Atributo</Label>
-              <Select
-                  value={selectedEstablecimiento?.NOMBREESTABLECIMIENTO ?? ""}
-                  disabled={loading}
-                  onChange={handleEstablecimientoChange}
-              >
-                  <Option value="">
-                      {loading ? 'Cargando ...' : 'Seleccione...'}
-                  </Option>
-
-                  {establecimientos?.map((est, idx) => (
-                      <Option key={idx} value={est.NOMBREESTABLECIMIENTO}>
-                          {est.NOMBREESTABLECIMIENTO}
-                      </Option>
-                  ))}
-              </Select>
+              {
+                consultaPorSeleccionada?.name === INDICADORES.ConsultaPorIndicadores && (
+                  <FormIndicadores
+                    loading={loading}
+                    indicadores={indicadores}
+                    selectedIndicador={selectedIndicador}
+                    onIndicadorChange={handleIndicadorChange}
+                    niveles={niveles}
+                    selectedNivel={selectedNivel}
+                    onNivelChange={(e) => setSelectedNivel(e.target.value || null)}
+                    sectores={sectores}
+                    selectedSector={selectedSector}
+                    onSectorChange={(e) => setSelectedSector(e.target.value || null)}
+                    anios={anios}
+                    selectedAnio={selectedAnio}
+                    onAnioChange={(e) => setSelectedAnio(e.target.value || null)}
+                  />
+                )
+              }
               
 
               {/* BOTONES */}
@@ -436,7 +755,7 @@ const Widget = (props: AllWidgetProps<any>) => {
                   onClear={handleClear}
                   loading={loading}
                   // disableSearch={!isValid || disabled}
-                  helpText="Ingrese una condición de búsqueda válida para habilitar el botón de busqueda. Utilice los campos, valores y operadores para construir su consulta. Por ejemplo: CAMPO1 = 'Valor' AND CAMPO2 > 100."
+                  helpText="Seleccione un establecimiento desde consulta educación o un indicador para habilitar la búsqueda"
                   searchLabel="Buscar"
                   error={error}
               />

@@ -31,7 +31,6 @@
  * @date 2026-03-05
  */
 import { React, type AllWidgetProps } from 'jimu-core'
-import { appActions, getAppStore } from 'jimu-core'
 import { WIDGET_IDS } from '../../../shared/constants/widget-ids'
 import { JimuMapViewComponent, type JimuMapView } from 'jimu-arcgis'
 
@@ -50,7 +49,8 @@ import '../styles/style.css'
 
 //Importación interfaces
 import { type InterfaceResponseConsultaSimple, type InterfaceMensajeModal, typeMSM } from '../types/interfaceResponseConsultaSimple' // The map object can be accessed using the JimuMapViewComponent
-import { abrirTablaResultados } from "../../../widget-result/src/runtime/widget";
+import { abrirTablaResultados, limpiarYCerrarWidgetResultados } from "../../../widget-result/src/runtime/widget";
+import { clearMapAndResetExtent } from '../../../shared/utils/export.utils'
 
 const { useEffect, useState } = React
 
@@ -92,6 +92,9 @@ const Widget = (props: AllWidgetProps<any>) => {
   const [jimuMapView, setJimuMapView] = useState<JimuMapView>() // Referencia al mapa activo
   const [renderMap, setRenderMap] = useState<boolean>(false) // Controla la visualización de herramientas de dibujo
   const [view, setView] = useState(null) // Vista del mapa
+  const initialExtentRef = React.useRef<__esri.Extent | null>(null)
+  const initialZoomRef = React.useRef<number | null>(null)
+  const initialScaleRef = React.useRef<number | null>(null)
 
   // Geometría y referencia espacial
   const [spatialRefer, setSpatialRefer] = useState<any>() // Referencia espacial
@@ -149,8 +152,25 @@ const Widget = (props: AllWidgetProps<any>) => {
     ] */
 
     const fields = ResponseConsultaSimple.fields
-
-    abrirTablaResultados(firstFeatureArray, fields, props, widgetResultId, spatialReference )
+    const titleTable = "Resultados de la Consulta"
+    const withGraphic = {
+      showGraphic: false,
+      titleCoropletico: "", // título específico para el caso de coroplético, si se quiere mostrar uno diferente al título general
+      graphicData: {},
+      graphicType: "",//"bar" | "pie",
+      graphicTitle: "",
+      selectedIndicador: 999, // para manejar diferentes indicadores que pueden venir con la gráficafeaturesDibujados?: any[] // para manejar casos como el indicador 3 donde se dibujan características en el mapa además de mostrar la gráfica
+    }
+    abrirTablaResultados(
+      false,
+      firstFeatureArray,
+      fields,
+      props,
+      widgetResultId,
+      spatialReference,
+      titleTable,
+      withGraphic
+    )
     // setColumns(DgridCol)
     setControlForms(true)
     // setRows(DgridRows)
@@ -184,37 +204,34 @@ const Widget = (props: AllWidgetProps<any>) => {
     if (jmv) {
       setJimuMapView(jmv)
     }
+    if (!initialExtentRef.current) {
+        initialExtentRef.current = jmv.view.extent.clone()
+        initialZoomRef.current = jmv.view.zoom
+        initialScaleRef.current = jmv.view.scale
+      }
   }
 
-
-  // Limpia la data del widget de resultados y lo cierra
-  const limpiarYCerrarWidgetResultados = () => {
-    // Limpia la data enviada al widget de resultados
-    getAppStore().dispatch(
-      appActions.widgetStatePropChange(
-        widgetResultId,
-        'results',
-        null
-      )
-    )
-    // Cierra el widget de resultados
-    getAppStore().dispatch(appActions.closeWidget(widgetResultId))
-  }
 
   // Detecta el cierre del widget y limpia el widget de resultados
   // Requiere: widgetState y limpiarYCerrarWidgetResultados definidos
   // Usa el estado global de Experience Builder para saber si el widget está cerrado
   // const widgetState = window.jimuConfig?.store?.getState()?.widgetsRuntimeInfo?.[props.id]?.state
-  React.useEffect(() => {   
+  React.useEffect(() => {
    //console.log({props})
    if (props.state === 'CLOSED') {
-    limpiarYCerrarWidgetResultados()
+    limpiarYCerrarWidgetResultados(widgetResultId) // Limpia y cierra el widget de resultados asociado
+    clearMapAndResetExtent(
+      jimuMapView,
+      initialExtentRef.current,
+      initialZoomRef.current ?? undefined,
+      initialScaleRef.current ?? undefined
+    ) // Limpia el mapa y restaura extent/zoom/scale iniciales al cerrar el widget
    }
-  }, [props])
+  }, [props.state, jimuMapView])
 
   // Carga módulos utilitarios al montar el componente
   useEffect(() => {
-    console.log("consulta Simple")
+    if (utilsModule?.logger()) console.log("consulta Simple")
     import('../../../commonWidgets/widgetsModule').then(modulo => { setWidgetModules(modulo) })
     import('../../../utils/module').then(modulo => { setUtilsModule(modulo) })
   }, [])

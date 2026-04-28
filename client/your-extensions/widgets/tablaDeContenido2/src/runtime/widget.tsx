@@ -5,6 +5,7 @@ import '../styles/style.css'
 import type { CapasTematicas, ItemResponseTablaContenido, TablaDeContenidoInterface, datosBasicosInterface, interfaceCapasNietos } from '../types/interfaces'
 import WidgetTree from './components/widgetTree'
 import * as projection from "@arcgis/core/geometry/projection"
+import { validaLoggerLocalStorage } from '../../../shared/utils/export.utils'
 
 interface ServiciosModule {
   //  urls: { tablaContenido: string }
@@ -69,7 +70,7 @@ const Widget = (props: AllWidgetProps<any>) => {
   }, [])
 
   React.useEffect(() => { // cef 20260307
-    console.log("TOC layers:", groupedLayers)
+    if (utilsModule?.logger()) console.log("TOC layers:", groupedLayers)
   }, [groupedLayers])
 
 
@@ -81,17 +82,17 @@ const Widget = (props: AllWidgetProps<any>) => {
 
     const map = view.map
 
-    const escucharGrupo = (group) => {
+    const escucharGrupo = (group: __esri.Layer) => {
 
       if (!group || group.type !== "group") return
 
-      const handle = group.layers.on("after-add", (event) => {
+      const handle = group.layers.on("after-add", (event: { item: any }) => {
 
         const layer = event.item
 
         if (!layer) return
 
-        console.log("Capa temporal detectada:", layer.id)
+        if (utilsModule?.logger()) console.log("Capa temporal detectada:", layer.id)
 
         agregarCapaTemporal(layer)
 
@@ -114,7 +115,7 @@ const Widget = (props: AllWidgetProps<any>) => {
     // si el grupo ya existe
     const grupoExistente = map.findLayerById("capas-temporales")
 
-    let grupoHandle
+    let grupoHandle: { remove: () => void }
     if (grupoExistente) {
       grupoHandle = escucharGrupo(grupoExistente)
     }
@@ -143,9 +144,9 @@ const Widget = (props: AllWidgetProps<any>) => {
 
   // insertar capa en "Capas Temporales"
 
-  const agregarCapaTemporal = (layer) => {
+  const agregarCapaTemporal = (layer: { title: any; id: any }) => {
 
-    console.log("Insertando en TOC:", layer.title)
+    if (utilsModule?.logger()) console.log("Insertando en TOC:", layer.title)
 
     setGroupedLayers(prev => {
 
@@ -219,14 +220,14 @@ const Widget = (props: AllWidgetProps<any>) => {
       const layer = grupo.layers.find(l => l.id === layerId)
 
       if (layer) {
-        console.log("Eliminando capa del mapa:", layer.id)
+        if (utilsModule?.logger()) console.log("Eliminando capa del mapa:", layer.id)
 
         grupo.remove(layer)
       }
 
       // si el grupo queda vacío lo eliminamos del mapa
       if (grupo.layers.length === 0) {
-        console.log("Eliminando grupo capas-temporales")
+        if (utilsModule?.logger()) console.log("Eliminando grupo capas-temporales")
         map.remove(grupo)
 
         // cef 20260310 restaurar extent inicial
@@ -316,7 +317,7 @@ export const getDataTablaContenido = async (servicios: { urls: { SERVICIO_TABLA_
   // let responseTablaDeContenido: any[] = [];
   try {
     // const response = await fetch(url);
-    console.log('url tabla de contenido', url)
+    if(validaLoggerLocalStorage('logger')) console.log('url tabla de contenido', url)
     const response = await fetch(url)
     if (!response.ok) {
       throw new Error(`HTTP error! Status: ${response.status}`)
@@ -325,7 +326,7 @@ export const getDataTablaContenido = async (servicios: { urls: { SERVICIO_TABLA_
     const tematicas = ordenarDataTablaContenido(responseTablaDeContenido)
     return tematicas
   } catch (error) {
-    console.error('Error fetching layers:', error)
+    if(validaLoggerLocalStorage('logger')) console.error('Error fetching layers:', error)
   }
 }
 

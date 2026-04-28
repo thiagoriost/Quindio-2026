@@ -11,13 +11,13 @@
  */
 import { JimuMapViewComponent, type JimuMapView } from 'jimu-arcgis'
 import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer"
-import { executeQueryJSON } from "@arcgis/core/rest/query";
+
 import { React, type AllWidgetProps } from "jimu-core"
-import Query from "@arcgis/core/rest/support/Query";
-import { Label, Select, Option } from "jimu-ui";
+
+import { Label, Select, Option, TextArea } from "jimu-ui";
 
 import { abrirTablaResultados, limpiarYCerrarWidgetResultados } from "../../../widget-result/src/runtime/widget";
-import { drawFeaturesOnMap, ejecutarConsulta, goToInitialExtent} from "../../../shared/utils/export.utils";
+import { clearMapAndResetExtent, drawFeaturesOnMap, ejecutarConsulta, goToInitialExtent, validaLoggerLocalStorage} from "../../../shared/utils/export.utils";
 import { LayerInfo } from "widgets/shared/types/types_consultaAvanzadaAlfanumerica"
 import { SearchActionBar } from "../../../shared/components/search-action-bar";
 import { loadLayers } from "../../../shared/services/queryMapServer.service"
@@ -115,7 +115,7 @@ const Widget = (props: AllWidgetProps<any>) => {
   React.useEffect(() => {
     if (props.state === 'CLOSED') {
       handleClear()
-      goToInitialExtent(varJimuMapView, initialExtent, initialZoom)
+      clearMapAndResetExtent(varJimuMapView, initialExtent, initialZoom)
       limpiarYCerrarWidgetResultados(widgetResultId)
     }  
     
@@ -138,7 +138,7 @@ const Widget = (props: AllWidgetProps<any>) => {
       try {
 
         const response = await loadLayers(urls.SERVICIO_CONSULTA_AVANZADA_ALFANUMERICA)
-        console.log({response})
+        if(validaLoggerLocalStorage('logger')) console.log({response})
 
         const nameTemas = ["Trámites", "Predios reserva", "Infraestructura educativa", "Clasificación del suelo",
           "Servicios Salud", "Capacidad instalada", "Servicios hospedajes"]
@@ -183,8 +183,8 @@ const Widget = (props: AllWidgetProps<any>) => {
       const data = await response.json()
 
       const validFields = data.fields
-        .filter((f) => f.name !== "ESRI_OID" && f.name !== "SHAPE")
-        .map((f) => f.name)
+        .filter((f: { name: string; }) => f.name !== "ESRI_OID" && f.name !== "SHAPE")
+        .map((f: { name: string; }) => f.name)
 
       setFields(validFields)
       setUrlLayer(url)
@@ -200,7 +200,7 @@ const Widget = (props: AllWidgetProps<any>) => {
   ==========================
   */
 
-  const handleLayerChange = async (e) => {
+  const handleLayerChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     handleClear()
     const id = Number(e.target.value)
 
@@ -222,10 +222,10 @@ const Widget = (props: AllWidgetProps<any>) => {
     try {
       var where = "1=1", returnGeometry = true;
       const features = await ejecutarConsulta({returnGeometry, campos: fields, url: urlLayer, where})
-      console.log({features, fields})
+      if(validaLoggerLocalStorage('logger')) console.log({features, fields})
       const uniqueValues = Array.from(new Set(features.map(f => f.attributes[fieldSelected])))
       setValues(uniqueValues)
-      console.log({features,uniqueValues})
+      if(validaLoggerLocalStorage('logger')) console.log({features,uniqueValues})
       mostrarConsultaCAA({ features })
     } catch (err) {
       console.error("Error obteniendo valores:", err)
@@ -241,20 +241,42 @@ const Widget = (props: AllWidgetProps<any>) => {
     setError("")
     try {
       const features = await ejecutarConsulta({ returnGeometry: true, campos: fields, url: urlLayer, where: condition.trim() })
-      console.log("Resultados búsqueda:", features)
-      const graphicsLayer = await drawFeaturesOnMap({ features, spatialReference: varJimuMapView.view.spatialReference }, varJimuMapView, 16)
-      setGraphicsLayer(graphicsLayer)
-      const fieldsToShow = fields.map(f => ({ name: f, alias: f }))
-      const featuresFixed = features
-        .filter(e => e?.geometry)
-        .map(e => ({
-          attributes: e.attributes,
-          geometry: e.geometry.toJSON()
-        }))
-
-      const resultSpatialReference = features[0]?.geometry?.spatialReference || varJimuMapView.view.spatialReference
-      console.log({fieldsToShow, featuresFixed})
-      abrirTablaResultados(featuresFixed, fieldsToShow, props, widgetResultId, resultSpatialReference)
+      if(validaLoggerLocalStorage('logger')) console.log("Resultados búsqueda:", features)
+      if (features.length > 0) {
+        const graphicsLayer = await drawFeaturesOnMap({ features, spatialReference: features[0].geometry.spatialReference }, varJimuMapView, 12)
+        setGraphicsLayer(graphicsLayer)
+        const fieldsToShow = fields.map(f => ({ name: f, alias: f }))
+        const featuresFixed = features
+          .filter(e => e?.geometry)
+          .map(e => ({
+            attributes: e.attributes,
+            geometry: e.geometry.toJSON()
+          }))
+  
+        const resultSpatialReference = features[0]?.geometry?.spatialReference || varJimuMapView.view.spatialReference
+        if(validaLoggerLocalStorage('logger')) console.log({fieldsToShow, featuresFixed})
+        const titleTable = `Resultados para ${layers.find(l => l.id === selectedLayer)?.nameServicio || "capa seleccionada"}`
+        const withGraphic = {
+          showGraphic: false,
+          titleCoropletico: "", // título específico para el caso de coroplético, si se quiere mostrar uno diferente al título general
+          graphicData: {},
+          graphicType: "",//"bar" | "pie",
+          graphicTitle: "",
+          selectedIndicador: 999, // para manejar diferentes indicadores que pueden venir con la gráficafeaturesDibujados?: any[] // para manejar casos como el indicador 3 donde se dibujan características en el mapa además de mostrar la gráfica
+        }
+        abrirTablaResultados(
+          false,
+          featuresFixed,
+          fieldsToShow,
+          props,
+          widgetResultId,
+          resultSpatialReference,
+          titleTable,
+          withGraphic
+        )
+      }else{
+        return setError("No se encontraron resultados para la condición de búsqueda ingresada.")
+      }
     } catch (err) {
       console.error("Error en búsqueda:", err)
       setError("Ocurrió un error al ejecutar la búsqueda. Verifique la condición ingresada.")
@@ -268,7 +290,7 @@ const Widget = (props: AllWidgetProps<any>) => {
     const { features } = featureSet;
 
     if (!features?.length) {
-      console.log(
+      if(validaLoggerLocalStorage('logger')) console.log(
         "<B> Info </B>",
         "El campo seleccionado no contiene datos"
       );
@@ -285,7 +307,7 @@ const Widget = (props: AllWidgetProps<any>) => {
       )}      {
       varJimuMapView && (
           
-          <div className="consulta-widget consultaAA-scroll loading-host">            
+          <div className="consulta-widget consulta-scroll loading-host">            
 
             {/* TEMA */}
 
@@ -375,9 +397,9 @@ const Widget = (props: AllWidgetProps<any>) => {
 
             {/* CONDICION */}
 
-            <label>Condición de Búsqueda</label>
+            <Label>Condición de Búsqueda</Label>
 
-            <textarea
+            <TextArea
               value={condition}
               onChange={(e) => setCondition(e.target.value)}
             />

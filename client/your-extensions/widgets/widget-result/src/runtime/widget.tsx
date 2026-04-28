@@ -20,7 +20,7 @@
  */
 
 import { Button } from 'jimu-ui'
-import { React, jsx, AllWidgetProps, IMState, IMConfig } from 'jimu-core'
+import { React, AllWidgetProps, IMState, IMConfig } from 'jimu-core'
 import { useSelector } from 'react-redux'
 import { ResultPayload } from '../../models/result-payload.model'
 import { ResultTable } from '../../components/ResultTable'
@@ -38,12 +38,11 @@ import { WidgetState } from 'jimu-core'
 import FeatureLayer from '@arcgis/core/layers/FeatureLayer'
 import GroupLayer from '@arcgis/core/layers/GroupLayer'
 import '../styles/widgetResultFloating.css'
-import { i } from "motion/dist/react-m";
 
 // cef 20260313
-import * as geometryJsonUtils from '@arcgis/core/geometry/support/jsonUtils'
-// cef 20260313
 import ResultGraphic from "../../components/ResultGraphic_Richarts";
+import { validaLoggerLocalStorage } from '../../../shared/utils/export.utils'
+import { useDibujarCoropletico } from '../../../shared/hooks/useDibujarCoropletico'
 
 /**
  * WidgetResult
@@ -59,11 +58,32 @@ import ResultGraphic from "../../components/ResultGraphic_Richarts";
  * @returns {JSX.Element | null}
  */
 export default function Widget(props: AllWidgetProps<IMConfig>) {
-    // Estado para mostrar/ocultar el panel flotante
-    const [open, setOpen] = React.useState(true)
 
-    console.log('WidgetResult ID:', props.id)
-    console.log('MapWidgetIds:', props.useMapWidgetIds)
+    
+
+    /**
+     * Resultados obtenidos desde Redux.
+     *
+     * Contiene:
+     * - features
+     * - fields
+     * - title
+     * - spatialReference
+     *
+     * @type {ResultPayload | null}
+     */
+    const data: ResultPayload | null = useSelector(
+        (state: IMState) =>
+            state.widgetsState?.[props.id]?.results ?? null
+    )
+
+    // Estado para mostrar/ocultar el panel flotante
+    const [open, setOpen] = React.useState(true)    
+
+    // Estado para la posición del panel (drag)
+    const [panelPos, setPanelPos] = React.useState<{ x: number; y: number } | null>(null)
+    const draggingRef = React.useRef(false)
+    const dragOffsetRef = React.useRef({ x: 0, y: 0 })
 
     /**
      * Vista activa del mapa proporcionada por JimuMapViewComponent.
@@ -71,6 +91,54 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
      * @type {JimuMapView | null}
      */
     const [jimuMapView, setJimuMapView] = React.useState<JimuMapView | null>(null)
+
+    const [isMultiBar, setIsMultiBar] = React.useState(false) // bandera para saber si la gráfica de barras es múltiple por indicador, se setea al recibir los datos
+
+    const [currentIndex, setCurrentIndex] = React.useState(0) // índice para manejar navegación entre gráficos en caso de ser múltiples por indicador
+
+    const [itemGraphicDataSelected, setItemGraphicDataSelected] = React.useState(0) // para manejar el item seleccionado en la gráfica y pasarlo al componente de gráfica para que lo resalte, se asume que el item seleccionado es un objeto con la información del gráfico, por ejemplo {name: "ESTUDIANTESMATRICULADOS", value: 100} para el caso de cobertura educativa, y que el campo "name" corresponde al fieldToFilter que se usa para dibujar el coroplético en el mapa
+
+
+    /**
+         * Inicia el arrastre del panel al hacer mousedown sobre el header.
+         */
+    const onDragStart = (e: React.MouseEvent) => {
+        if ((e.target as HTMLElement).closest('.widget-result-close-btn')) return
+        e.preventDefault()
+        draggingRef.current = true
+        const panel = (e.currentTarget as HTMLElement).parentElement
+        const rect = panel.getBoundingClientRect()
+        dragOffsetRef.current = { x: e.clientX - rect.left, y: e.clientY - rect.top }
+
+        const onMouseMove = (ev: MouseEvent) => {
+            if (!draggingRef.current) return
+            const newX = Math.max(0, Math.min(ev.clientX - dragOffsetRef.current.x, window.innerWidth - rect.width))
+            const newY = Math.max(0, Math.min(ev.clientY - dragOffsetRef.current.y, window.innerHeight - rect.height))
+            setPanelPos({ x: newX, y: newY })
+        }
+
+        const onMouseUp = () => {
+            draggingRef.current = false
+            document.removeEventListener('mousemove', onMouseMove)
+            document.removeEventListener('mouseup', onMouseUp)
+        }
+
+        document.addEventListener('mousemove', onMouseMove)
+        document.addEventListener('mouseup', onMouseUp)
+    }
+
+    
+    
+    // estado de la vista para grafico y/o tabla 
+    const [viewMode, setViewMode] = React.useState<'tabla' | 'grafico'>(
+        data?.withGraphic?.showGraphic ? 'grafico' : 'tabla'
+    )
+
+    const [fieldToFilter, setFieldToFilter] = React.useState<string>("") // para manejar el campo que se va a mostrar en el gráfico cuando hay gráfica
+    const [overrideGraphicData, setOverrideGraphicData] = React.useState<any[] | null>(null) // datos de gráfica recalculados al cambiar indicador
+    const [overrideGraphicTitle, setOverrideGraphicTitle] = React.useState<string | null>(null) // título de gráfica recalculado al cambiar indicador
+    const [overrideBarKeys, setOverrideBarKeys] = React.useState<any[] | null>(null) // barKeys de la slide activa cuando se navega entre gráficos múltiples
+
 
     /**
      * Referencia a la capa gráfica utilizada para resaltar
@@ -91,6 +159,9 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
     const widgetState = useSelector(
         (state: IMState) => state.widgetsRuntimeInfo?.[props.id]?.state
     )
+    if(validaLoggerLocalStorage('logger')) console.log('WidgetResult ID:', {id:props.id, props})
+    if(validaLoggerLocalStorage('logger')) console.log('MapWidgetIds:', props.useMapWidgetIds)
+    if(validaLoggerLocalStorage('logger')) console.log({widgetState})        
 
     /**
      * Página actual de la tabla de resultados.
@@ -102,27 +173,12 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
      */
     const pageSize = 5
 
+   
     /**
      * estado para el gráfico //cef 20260313
      */
-    const [chartData, setChartData] = React.useState<any[]>([])
+    // const [chartData, setChartData] = React.useState<any[]>([])
 
-
-    /**
-     * Resultados obtenidos desde Redux.
-     *
-     * Contiene:
-     * - features
-     * - fields
-     * - title
-     * - spatialReference
-     *
-     * @type {ResultPayload | null}
-     */
-    const data: ResultPayload | null = useSelector(
-        (state: IMState) =>
-            state.widgetsState?.[props.id]?.results ?? null
-    )
 
     /**
      * Bandera para recordar si la última consulta fue temporal antes de que data pase a null.
@@ -130,13 +186,21 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
      */
     const temporalLayerRef = React.useRef<boolean>(false)
 
-    // cef 20260324 para tabs
-    const [activeTab, setActiveTab] = React.useState<string>('tabla')
 
-    // estado de la vista para grafico y/o tabla cef 20260324
-    const [viewMode, setViewMode] = React.useState<'tabla' | 'grafico'>(
-        data?.withGraphic ? 'grafico' : 'tabla'
-    )
+    /**
+     * Hook que dibuja/limpia automáticamente el coroplético en el mapa
+     * cuando cambian features, jimuMapView, fieldToFilter o la leyenda.
+     */
+    const activeField = fieldToFilter || data?.withGraphic?.fieldToFilter
+    useDibujarCoropletico({
+        props: data?.withGraphic ? props : undefined, // solo pasar props al hook si se va a mostrar gráfico, para evitar cálculos innecesarios
+        features: data?.features,
+        jimuMapView,
+        coroplethConfig: activeField && data?.withGraphic?.dataCoropletico?.leyenda
+            ? { field: activeField, leyenda: data.withGraphic.dataCoropletico.leyenda, titleCoropletico: data.withGraphic.titleCoropletico }
+            : undefined,
+        enabled: !!data?.isCoropletico
+    })
 
     /**
      * Guarda el extent inicial del mapa cuando la vista
@@ -147,96 +211,54 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
         const view = jimuMapView?.view
         if (!view) return
 
-    if (!initialExtentRef.current) {
-      initialExtentRef.current = view.extent.clone();
-    }
+        if (!initialExtentRef.current) {
+            initialExtentRef.current = view.extent.clone();
+        }
 
-    const layer = new GraphicsLayer({
-      id: "result-selection-layer",
-    });
-    view.map.add(layer);
-    graphicsLayerRef.current = layer;
-
-    return () => {
-      view.map.remove(layer);
-      layer.destroy();
-      graphicsLayerRef.current = null;
-    };
-    }, [jimuMapView]);
-
-    /**
-     * Crea una capa gráfica utilizada para mostrar
-     * la geometría de la entidad seleccionada.
-     *
-     * La capa se agrega al mapa al inicializarse y
-     * se elimina automáticamente cuando el widget se desmonta.
-     */
-    React.useEffect(() => {
-        const view = jimuMapView?.view
-        if (!view) return
         const layer = new GraphicsLayer({
-            id: 'result-selection-layer'
-        })
-        view.map.add(layer)
-        graphicsLayerRef.current = layer
+            id: "result-selection-layer",
+        });
+        view.map.add(layer);
+        graphicsLayerRef.current = layer;
 
         return () => {
-            view.map.remove(layer)
-            layer.destroy()
-            graphicsLayerRef.current = null
-        }
-    }, [jimuMapView])
-
-    /**
-     * Restaura el extent inicial del mapa.
-     */
-    const restoreInitialExtent = () => {
-        const view = jimuMapView?.view
-        const extent = initialExtentRef.current
-        if (view && extent) {
-            view.goTo(extent)
-        }
-    }
-
-    /**
-     * Cuando los resultados desaparecen (data = null),
-     * se limpian los gráficos y se restaura el extent inicial.
-     */
-    React.useEffect(() => {
-        if (!data) {
-            graphicsLayerRef.current?.removeAll()
-            if (!temporalLayerRef.current) {
-                restoreInitialExtent()
-            }
-        }
-    }, [data])
+            console.log("closed widget result")
+            view.map.remove(layer);
+            layer.destroy();
+            graphicsLayerRef.current = null;
+        };
+    }, [jimuMapView]);
 
     /**
      * Reinicia la paginación cuando llegan nuevos resultados.
      */
     React.useEffect(() => {
-        if (data) setPage(1)
-    }, [data])
+         if (!data) return
+        if (data){
+            temporalLayerRef.current = data.temporalLayer === true //Guarda el valor de temporalLayer cuando llegan los datos
 
+            // Limpiar gráficos del mapa al recibir nuevos resultados
+            graphicsLayerRef.current?.removeAll()
 
-    /**
-     * Guarda el valor de temporalLayer cuando llegan los datos
-    */
-    React.useEffect(() => {
-        if (data) {
-            temporalLayerRef.current = data.temporalLayer === true
-        }
-    }, [data])
+            const { features } = data
+            if (!features?.length) return
+            if(validaLoggerLocalStorage('logger')) console.log("Resultados recibidos en WidgetResult:", {features, data})
+                
+            /* 
+            bandera para saber si la grafica de barra es multiple por indicador
+            */
+            if(!isMultiBar && data.withGraphic.showGraphic){
+                setIsMultiBar(data.withGraphic?.barKeys && data.withGraphic.barKeys.length > 1)
+            }
 
-    /*
-    *   cef 20260324
-    *   Sincronizar data para la gráfica usando swith toogle
-    */
-    React.useEffect(() => {
-        if (data?.withGraphic) {
-            setViewMode('grafico')
-        } else if (data) {
-            setViewMode('tabla')
+            setOpen(true)
+            setPage(1)
+            setFieldToFilter(data.withGraphic ? data.withGraphic.fieldToFilter : "")
+            setOverrideGraphicData(null)
+            setOverrideGraphicTitle(null)
+            setOverrideBarKeys(null)
+            // El hook useDibujarCoropletico se encarga de dibujar automáticamente
+            setViewMode(data.withGraphic?.showGraphic ? 'grafico' : 'tabla')
         }
     }, [data])
 
@@ -400,7 +422,7 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
      * await crearCapaTemporal(featureSeleccionado)
      * ```
    */
-  const crearCapaTemporal = async (featureData: any) => {
+    const crearCapaTemporal = async (featureData: any) => {
     const view = jimuMapView?.view;
     if (!view) return;
 
@@ -489,22 +511,6 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
         })
     }
 
-    /**
-    * Efecto que se ejecuta cuando cambian los datos de resultados (`data`).
-    */
-    React.useEffect(() => { // cef 20260307
-
-        if (!data) return
-
-        const { features } = data
-
-        if (!features?.length) return
-
-        console.log("Resultados recibidos en WidgetResult:", features)
-        setOpen(true)
-
-    }, [data])
-
 
     /**
      * Evita que el widget permanezca abierto si no hay resultados.
@@ -530,6 +536,7 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
     const onClose = () => {
 
         graphicsLayerRef.current?.removeAll()
+        // Los gráficos coroplético se limpian automáticamente por el hook useDibujarCoropletico
         getAppStore().dispatch(
             appActions.widgetStatePropChange(
                 props.id,
@@ -537,26 +544,27 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
                 null
             )
         )
-        if (initialExtentRef.current && jimuMapView) {
-            jimuMapView.view.goTo(
-                initialExtentRef.current
-            )
-        }
         setPage(1)
+        setFieldToFilter("")
+        setOverrideGraphicData(null)
+        setOverrideGraphicTitle(null)
+        setViewMode('tabla')
+        setOpen(false)
+        // restoreInitialExtent(jimuMapView, initialExtentRef)
     }
 
     /**
      * Hook que detecta el cierre del widget
      * y ejecuta la función de limpieza.
      */
-    useOnWidgetClose(props.id, onClose)
+    useOnWidgetClose(props.id, jimuMapView, initialExtentRef, onClose)
 
 
 
     if (!data) return null
 
-    console.log('Resultados recibidos en WidgetResult:', data)
-    console.log(data.features)
+    if(validaLoggerLocalStorage('logger')) console.log('Resultados recibidos en WidgetResult:', data)
+    if(validaLoggerLocalStorage('logger')) console.log(data.features)
 
     const total = data.features.length
     const totalPages = Math.max(1, Math.ceil(total / pageSize))
@@ -585,8 +593,8 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
      * @param feature Entidad seleccionada.
      */
     //  const handleSelectFeature = (feature: __esri.Graphic) => {
-    const handleSelectFeature = async (feature: any) => {
-        console.log('feature seleccionada:', feature)
+    const handleSelectFeature = async (feature: any, zoomLevel = 20) => {
+        if(validaLoggerLocalStorage('logger')) console.log('feature seleccionada:', feature)
 
         if (data?.temporalLayer) {
             await crearCapaTemporal(feature)
@@ -622,10 +630,9 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
         graphicsLayerRef.current.add(graphic)
 
         if (geometry.type === "point") {  // cef 20260313
-
             await view.goTo({
                 target: geometry,
-                zoom: 16
+                zoom: zoomLevel
             })
 
         } else {
@@ -635,13 +642,26 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
             })
 
         }
+
+        if (isMultiBar && data.withGraphic.showGraphic) {
+            const selectedName = feature?.attributes?.NOMBRE
+            const selectedIndex = data?.withGraphic?.graphicData?.findIndex((item: any) => item?.name === selectedName)
+
+            if (selectedIndex != null && selectedIndex >= 0) {
+                setItemGraphicDataSelected(selectedIndex)
+                updateDataMultiBar(selectedIndex)
+            } else {
+                updateDataMultiBar()
+            }
+            setViewMode('grafico') // asegurar que al seleccionar una entidad se muestre la gráfica, en caso de que haya gráfica disponible
+        }
     }
 
     const getSymbolByGeometry = ( // 20260313
         geometry: __esri.Geometry
     ): __esri.GraphicProperties["symbol"] => {
 
-        console.log('getSymbolByGeometry:', geometry.type);
+        if(validaLoggerLocalStorage('logger')) console.log('getSymbolByGeometry:', geometry.type)
         if (geometry.type === "polygon") {
             return {
                 type: "simple-fill",
@@ -695,47 +715,80 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
 
     const hasFeatures = data?.features && data.features.length > 0
 
-  if (!props.useMapWidgetIds?.length) {
-    return (
-      <div>
-        {!open && hasFeatures && (
-          <button className="widget-result-floating-btn" onClick={() => setOpen(true)} title="Mostrar resultados">
-            <span className="widget-result-floating-icon">
-                {/* SVG tabla */}
-                <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <rect x="4" y="6" width="20" height="16" rx="3" fill="var(--color-primary-light)" stroke="var(--color-primary-light)" strokeWidth="2" />
-                    <rect x="4" y="11" width="20" height="1.5" fill="var(--color-primary-light)" />
-                    <rect x="10" y="6" width="1.5" height="16" fill="var(--color-primary-light)" />
-                    <rect x="16.5" y="6" width="1.5" height="16" fill="var(--color-primary-light)" />
-                </svg>
-            </span>
-        </button>
-        )}
-        {open && hasFeatures && (
-            <div className="widget-result-floating-panel">
-                <div className="widget-result-header">
-                    Resultados
-                    <button className="widget-result-close-btn" onClick={() => setOpen(false)} title="Cerrar">×</button>
-                </div>
-                <div className="widget-result-content">
-                    Debe seleccionar un Map Widget en la configuración.
-                </div>
-            </div>
-        )}
-        </div>
-        )
+    // RRH 20260331 ancho dinámico del panel según cantidad de barras en gráfico
+    const getPanelWidth = (): string | undefined => {
+        if (viewMode === 'grafico' && data?.withGraphic?.graphicData) {
+            const barCount = data.withGraphic.graphicData.length
+            const barWidth = 50 // px por barra
+            const axisAndPadding = 100 // eje Y + márgenes
+            const calculated = barCount * barWidth + axisAndPadding
+            if(validaLoggerLocalStorage('logger')) console.log({barCount, barWidth, axisAndPadding, calculated})
+            return `${Math.max(320, Math.min(calculated, window.innerWidth * 0.9)) >= 300 ? 300 : Math.max(320, Math.min(calculated, window.innerWidth * 0.9))}px`
+        }
+        return undefined // usa el ancho por defecto del CSS para modo tabla
     }
 
+    const updateDataMultiBar = (selectedGraphicIndex?: number) => {
+        if (!data?.withGraphic?.graphicData?.length) return
+
+        const currentGraphicIndex = selectedGraphicIndex ?? itemGraphicDataSelected
+        const currentDataGraphic = data.withGraphic.graphicData[currentGraphicIndex]
+        if (!currentDataGraphic?.dataToRenderGraphics?.length) return
+
+        const nextIndex = currentIndex === 0 ? 1 : 0 // solo hay dos gráficos por indicador, entonces se alterna entre 0 y 1
+        setCurrentIndex(nextIndex)
+
+        const nextDataGraphic = [
+            {
+                name: currentDataGraphic.name,
+                dato_2: currentDataGraphic.dataToRenderGraphics[nextIndex].dato_2,
+                dato_1: currentDataGraphic.dataToRenderGraphics[nextIndex].dato_1
+            }
+        ]
+
+        setOverrideGraphicData(nextDataGraphic)
+        setOverrideGraphicTitle(currentDataGraphic.dataToRenderGraphics[nextIndex].titleLeyendX)
+        setOverrideBarKeys(currentDataGraphic.dataToRenderGraphics[nextIndex].barKeys ?? null)
+
+        if (validaLoggerLocalStorage('logger')) {
+            console.log("Gráfica de barras múltiples, cambiando a siguiente indicador", {
+                currentDataGraphic,
+                itemGraphicDataSelected: currentGraphicIndex,
+                nextIndex,
+                nextDataGraphic
+            })
+        }
+    }
+
+    const renderizarSiguienteCropleticoYgrafica = () => {
+        // lógica para cambiar el indicador seleccionado y actualizar la gráfica en consecuencia
+        if (!data?.withGraphic) return
+        if (isMultiBar) {
+            updateDataMultiBar()
+        }else{
+            const currentIndicador = fieldToFilter !== "" ? fieldToFilter : data.withGraphic.fieldToFilter
+            const fieldsToFilter = data.withGraphic.dataCoropletico.fieldsToFilter
+            const currentIndex = fieldsToFilter.findIndex(e=>e.field === currentIndicador)
+            const nextIndex = (currentIndex + 1) % fieldsToFilter.length
+            const nextField = fieldsToFilter[nextIndex].field
+            // Al actualizar fieldToFilter, el hook useDibujarCoropletico redibuja automáticamente
+            setFieldToFilter(nextField)
+            if(validaLoggerLocalStorage('logger')) console.log({data, currentIndicador, currentIndex, nextIndex, nextField})
     
-
-    /* if (!props.useMapWidgetIds?.length) {
-        return (
-            <div style={{ padding: 16 }}>
-                Debe seleccionar un Map Widget en la configuración.
-            </div>
-        )
-    } */
-
+            // Recalcular graphicData con el nuevo campo, reutilizando los nombres originales
+            const originalGraphicData = data.withGraphic.graphicData
+            const newGraphicData = originalGraphicData.map((item, i) => ({
+                name: item.name,
+                value: Number(data.features[i]?.attributes?.[nextField]) || 0
+            }))
+            setOverrideGraphicData(newGraphicData)
+    
+            // Actualizar título con la etiqueta del campo seleccionado
+            const nextFieldInfo = `Total de estudiantes ${fieldsToFilter[nextIndex].label || nextField} en el año ${data.valorBusqueda || ''}`
+            setOverrideGraphicTitle(nextFieldInfo)
+        }
+    }
+    
     return (
         <div>
 
@@ -752,18 +805,22 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
                     <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         {/* SVG tabla */}
                         <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <rect x="4" y="6" width="20" height="16" rx="3" fill="var(--color-primary-light)" stroke="var(--color-primary-light)" strokeWidth="2" />
-                            <rect x="4" y="11" width="20" height="1.5" fill="var(--color-primary-light)" />
-                            <rect x="10" y="6" width="1.5" height="16" fill="var(--color-primary-light)" />
-                            <rect x="16.5" y="6" width="1.5" height="16" fill="var(--color-primary-light)" />
+                            <rect x="4" y="6" width="20" height="16" rx="2" fill="var(--color-primary-light)" stroke="var(--color-primary-light)" strokeWidth="2" />
+                            <line x1="4" y1="11" x2="24" y2="11" stroke="var(--color-primary)" strokeWidth="1.5" />
+                            <line x1="4" y1="16" x2="24" y2="16" stroke="var(--color-primary)" strokeWidth="1.5" />
+                            <line x1="11" y1="6" x2="11" y2="22" stroke="var(--color-primary)" strokeWidth="1.5" />
+                            <line x1="18" y1="6" x2="18" y2="22" stroke="var(--color-primary)" strokeWidth="1.5" />
                         </svg>
                     </span>
                 </button>
             )}
             {open && (
-                <div className="widget-result-floating-panel">
-                    <div className="widget-result-header">
-                        Resultados
+                <div
+                    className={`widget-result-floating-panel${viewMode === 'grafico' && data?.withGraphic?.showGraphic ? ' widget-result-panel--graphic' : ''}`}
+                    style={panelPos ? { left: panelPos.x, top: panelPos.y, right: 'auto', bottom: 'auto' } : undefined}
+                >
+                    <div className="widget-result-header" onMouseDown={onDragStart}>
+                        {data.title}
                         <button className="widget-result-close-btn" onClick={() => setOpen(false)} title="Cerrar">-</button>
                     </div>
                     <div className="widget-result-content">
@@ -771,60 +828,65 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
                         {/* BOTONES */}
                         {/* Barra superior */}
                         <div className="widget-result-toolbar-bar">
-                        {data?.withGraphic && (
-                            <Button
-                            size="sm"
-                            type="primary"
-                            onClick={() => {
-                                setViewMode?.(viewMode === "tabla" ? "grafico" : "tabla")
-                            }}
-                            >
-                            {viewMode === "tabla" ? "Ver Gráfico" : "Ver Tabla"}
-                            </Button>
-                        )}
-                        { viewMode === 'tabla' &&
-                        (<Button size="sm" type="primary" className="widget-result-export-btn" onClick={handleExport}>
-                            Exportar tabla
-                        </Button>)}
+                            {data?.withGraphic?.showGraphic && (
+                                <Button
+                                    size="sm"
+                                    type="primary"
+                                    onClick={() => {
+                                        setViewMode?.(viewMode === "tabla" ? "grafico" : "tabla")
+                                    }}
+                                    >
+                                    {viewMode === "tabla" ? "Ver Gráfico" : "Ver Tabla"}
+                                </Button>
+                            )}
+                            {/* Botones de siguiente y atras para visualización de diferentes graficas para la misma consulta */}
+                            {
+                                (data.withGraphic && (data.withGraphic?.selectedIndicador === 3 || isMultiBar) && viewMode === 'grafico') && (
+                                    <Button size="sm" type="primary" className="widget-result-export-btn" onClick={renderizarSiguienteCropleticoYgrafica}> Siguiente </Button>
+                                )
+                            }
+                            { viewMode === 'tabla' &&
+                            (<Button size="sm" type="primary" className="widget-result-export-btn" onClick={handleExport}>
+                                Exportar tabla
+                            </Button>)}
                         </div>
                         {/*  ÁREA ÚNICA COMPARTIDA */}
                         <div className="widget-result-view">
-
-                            {viewMode === 'grafico' && data?.withGraphic ? (
+                            {viewMode === 'grafico' && data?.withGraphic?.showGraphic ? (
                                 <ResultGraphic
-                                    data={data.graphicData}
-                                    type={data.graphicType}
-                                    title={data.graphicTitle || 'Sin título'}
+                                    data={overrideGraphicData ?? data.withGraphic.graphicData}
+                                    type={data.withGraphic.graphicType}
+                                    barKeys={overrideBarKeys ?? data.withGraphic.barKeys}
+                                    title={overrideGraphicTitle ?? data.withGraphic.graphicTitle ?? 'Sin título'}
                                 />
                             ) : (
-            <ResultTable
-              features={pagedFeatures}
-              fields={data.fields}
-              onExport={handleExport}
-              onSelectFeature={handleSelectFeature}
-              total={total}
-              page={page}
-              totalPages={totalPages}
-              setPage={setPage}
-              data={data} // cef 20260324 para mostrar botón de toggle si viene withGraphic
-              setViewMode={setViewMode} // cef 20260324 para toggle tabla/gráfico
-            />
-        )}
+                            <ResultTable
+                                features={pagedFeatures}
+                                fields={data.fields}
+                                onExport={handleExport}
+                                onSelectFeature={handleSelectFeature}
+                                total={total}
+                                page={page}
+                                totalPages={totalPages}
+                                setPage={setPage}
+                                data={data} //  para mostrar botón de toggle si viene withGraphic
+                                setViewMode={setViewMode} //  para toggle tabla/gráfico
+                                />
+                            )}
 
-    </div>
-
-            {/* FOOTER */}
-            {(total > 4 && viewMode === 'tabla') && (                            
-              <ResultFooter
-                total={total}
-                page={page}
-                totalPages={totalPages}
-                onPrev={() => setPage((prev) => Math.max(1, prev - 1))}
-                onNext={() => setPage((prev) => Math.min(totalPages, prev + 1))}
-              />
-            )}
-          </div>
-        </div>
+                        </div>
+                        {/* FOOTER */}
+                        {(total > 4 && viewMode === 'tabla') && (                            
+                        <ResultFooter
+                            total={total}
+                            page={page}
+                            totalPages={totalPages}
+                            onPrev={() => setPage((prev) => Math.max(1, prev - 1))}
+                            onNext={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+                        />
+                        )}
+                    </div>
+                </div>
       )}
     </div>
   );
@@ -840,22 +902,38 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
  * @param widgetResultId Id del widget-result en el layout.
  */
 export const abrirTablaResultados = (
+  isCoropletico: boolean,
   features: any[],
   fields: any[],
   props: any,
   widgetResultId: string,
   spatialReference?: any,
+  titleTable?: string,
+  withGraphic?:{
+    showGraphic: boolean,
+    titleCoropletico?: string, // título específico para el caso de coroplético, si se quiere mostrar uno diferente al título general
+    graphicData?: any,
+    graphicType?: string//"bar" | "pie",
+    graphicTitle?: string,
+    selectedIndicador?: number, // para manejar diferentes indicadores que pueden venir con la gráficafeaturesDibujados?: any[] // para manejar casos como el indicador 3 donde se dibujan características en el mapa además de mostrar la gráfica
+  },
+  temporalLayer?: boolean,
+  valorBusqueda?: string
 ) => {
   getAppStore().dispatch(
     appActions.widgetStatePropChange(
       widgetResultId, // id del WidgetResult en el layout desde el widget controller
       "results", // nombre de la propiedad que se va a actualizar en el estado del widget
       {
-        sourceWidgetId: props.id, // id del widget que envía los datos (este widget)
-        title: "Resultados de prueba", // título que se mostrará en el widget de resultados
+        props, // para tomar el id del widget que envía los datos (este widget)
+        title: titleTable !== '' ? titleTable : `Resultados ${valorBusqueda ?? ""}`, // título que se mostrará en el widget de resultados
         features: features, // datos de las características a mostrar
         fields: fields, // campos a mostrar en la tabla de resultados
         spatialReference: spatialReference, // referencia espacial de los datos
+        withGraphic, // información del gráfico asociado
+        temporalLayer, // indica si los resultados corresponden a una capa temporal
+        valorBusqueda, // valor de búsqueda asociado a los resultados, útil para identificar capas temporales por consulta
+        isCoropletico
       },
     ),
   );
