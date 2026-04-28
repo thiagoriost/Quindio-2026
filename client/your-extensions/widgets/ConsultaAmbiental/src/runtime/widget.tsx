@@ -5,7 +5,6 @@ import { useCascadingFilters } from './hooks/useCascadingFilters'
 import { FiltrosClasificacion } from './components/FiltrosClasificacion'
 import { SearchActionBar } from '../../../shared/components/search-action-bar'
 import { ArcgisService } from '../../../shared/services/arcgis.service'
-import { alertService } from '../../../shared/services/alert.service'
 import { urls } from '../../../api/serviciosQuindio'
 import type { ApiResponse } from 'widgets/shared/models/api-response.model'
 import { useCancelableHttp } from '../../../shared/hooks/useCancelableHttp'
@@ -15,6 +14,9 @@ import { JimuMapViewComponent, type JimuMapView } from 'jimu-arcgis'
 import FeatureLayer from "esri/layers/FeatureLayer"
 import { consultarCapasAmbientales, obtenerOpcionesNombres } from '../services/ambiental.service'
 import OurLoading from '../../../commonWidgets/our_loading/OurLoading'
+
+import { alertService } from '../../../shared/services/alert.service'
+import { AlertContainer } from '../../../shared/components/alert-container'
 
 import {
     AREAS,
@@ -660,7 +662,8 @@ const Widget = (props: any) => {
     }
 
     const onBuscar = async () => {
-if(validaLoggerLocalStorage('logger')) console.log('onBuscar:', filters)
+        if(validaLoggerLocalStorage('logger')) console.log('onBuscar:', filters)
+        limpiarYCerrarWidgetResultados(widgetResultId)
         const { categoria } = filters
 
         if (categoria === 3) { // Trámites ambientales
@@ -680,7 +683,9 @@ if(validaLoggerLocalStorage('logger')) console.log('onBuscar:', filters)
         await consultarCapasAmbientales(filters, {
             realizarConsulta,
             alertService,
-            abrirTablaResultados
+            abrirTablaResultados,
+            props,
+            widgetResultId
         })
 
 
@@ -806,6 +811,8 @@ if(validaLoggerLocalStorage('logger')) console.log('onBuscar:', filters)
     return (
 
         <div style={{height: '100%', padding: '5px', boxSizing: 'border-box'}}>
+
+            <AlertContainer />
 
             {/* Componente de acceso al MapView cef 20250327 */}
             <JimuMapViewComponent
