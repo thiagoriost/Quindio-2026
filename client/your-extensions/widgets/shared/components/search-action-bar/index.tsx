@@ -3,6 +3,8 @@ import { React, jsx } from 'jimu-core'
 import { Button, /* Loading, */ Tooltip, Icon } from 'jimu-ui'
 import HelpOutlined from 'jimu-icons/svg/outlined/suggested/help.svg'
 import { validaLoggerLocalStorage} from "../../../shared/utils/export.utils"
+
+// @ts-expect-error
 import './style.scss'
 
 /**

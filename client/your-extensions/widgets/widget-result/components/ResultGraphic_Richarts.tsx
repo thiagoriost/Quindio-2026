@@ -43,6 +43,7 @@ import {
   Legend
 } from "recharts"
 import React, { useState, useEffect } from "react"
+// @ts-ignore
 import "../src/styles/widgetResultFloating.css"
 import { validaLoggerLocalStorage } from "../../shared/utils/export.utils"
 
@@ -77,6 +78,12 @@ interface Props {
   yKey?: string;
   barKeys?: BarKeyDef[];
   title?: string;
+}
+
+const formatNumber = (value: any) => {
+  const numeric = Number(value)
+  if (!Number.isFinite(numeric)) return String(value ?? "-")
+  return numeric.toLocaleString("es-CO", { maximumFractionDigits: 2 })
 }
 
 
@@ -141,6 +148,24 @@ const ResultGraphic = ({ data, type = "bar", xKey = "name", yKey = "value", barK
   }, [chartData, chartTitle])
 
   const isMultiBar = activeBarKeys && activeBarKeys.length > 0  
+  const isAgropecuariaPie = type === "pie" && chartData.some((item) => item?.produccion != null && item?.porcentaje != null)// si al menos un item tiene las propiedades "produccion" y "porcentaje", se asume que es un gráfico de pastel agropecuario que requiere tooltip personalizado
+
+  const renderPieTooltip = ({ active, payload }: any) => {
+    if (!active || !payload || payload.length === 0) return null
+
+    const item = payload[0]?.payload || {}
+    const nombre = item?.[xKey] ?? payload[0]?.name ?? "Sin dato"
+    const produccion = item?.produccion ?? item?.[yKey] ?? payload[0]?.value ?? 0
+    const porcentaje = item?.porcentaje ?? ((payload[0]?.percent ?? 0) * 100)
+
+    return (
+      <div style={{ background: "#fff", border: "1px solid #ddd", padding: "8px", fontSize: "12px" }}>
+        <div><strong>{String(nombre)}</strong></div>
+        <div>Produccion: {formatNumber(produccion)}</div>
+        <div>Porcentaje: {Number(porcentaje).toFixed(2)}%</div>
+      </div>
+    )
+  }
 
   return (
     <div className="widget-result-graphic">
@@ -177,14 +202,14 @@ const ResultGraphic = ({ data, type = "bar", xKey = "name", yKey = "value", barK
                   cx="50%"
                   cy="50%"
                   outerRadius="80%"
-                  label
+                  label={isAgropecuariaPie ? false : true}
                 >
                   {chartData.map((_, index) => (
                     <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip />
-                <Legend />
+                <Tooltip content={isAgropecuariaPie ? renderPieTooltip : undefined} />
+                {!isAgropecuariaPie && <Legend />}
               </PieChart>
             )}
         </ResponsiveContainer>

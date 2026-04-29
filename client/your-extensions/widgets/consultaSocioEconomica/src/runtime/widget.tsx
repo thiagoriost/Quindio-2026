@@ -18,9 +18,11 @@ import { ejecutarConsulta, restoreInitialExtent, validaLoggerLocalStorage, limpi
 
 import { SearchActionBar } from "../../../shared/components/search-action-bar"
 import { WIDGET_IDS } from "../../../shared/constants/widget-ids"
-import { clearPoint } from "../../../../widgets/utils/module"
+
 import { urls} from "../../../api/serviciosQuindio"
 import OurLoading from '../../../commonWidgets/our_loading/OurLoading'
+
+// @ts-ignore
 import '../styles/styles.css'
 
 
@@ -204,10 +206,17 @@ const WidgetSocioEconomica = (props: AllWidgetProps<any>) => {
   }
 
   const consultaPorAnio = async (selectedUrl: string) => {
-    const features = await ejecutarConsulta({ returnGeometry: true, campos:['ANIO'], url: selectedUrl, where: '1=1' })
+    const features = await ejecutarConsulta({
+      returnGeometry: false,
+      campos:['ANIO'],
+      url: selectedUrl,
+      where: '1=1',
+      orderByFields: 'ANIO',
+      returnDistinctValues: true
+    })
 
     // obtener los años disponibles para el indicador seleccionado, y poblar el select de año
-    const anios = Array.from(new Set(features.map(f => f.attributes.ANIO))).sort() as string[]
+    const anios = features.map(f => f.attributes.ANIO)
     if(validaLoggerLocalStorage('logger')) console.log({features, aniosDisponibles: anios})
     setAniosDisponibles(anios)
     setSelectedAnio(null)
@@ -226,8 +235,15 @@ const WidgetSocioEconomica = (props: AllWidgetProps<any>) => {
     setBuscarAble(false)
     const url = `${urls.SERVICIO_SOCIOECONOMICO}/${tipoDesplazadoId}`
     setConsultaPorSeleccionada(prev => ({ ...prev, url }))
-    const features = await ejecutarConsulta({ returnGeometry: false, campos: ['ANIO'], url, where: '1=1' })
-    const anios = Array.from(new Set(features.map((f: any) => f.attributes.ANIO))).sort() as string[]
+    const features = await ejecutarConsulta({
+      returnGeometry: false,
+      campos: ['ANIO'],
+      url,
+      where: '1=1',
+      orderByFields: 'ANIO',
+      returnDistinctValues: true
+    })
+    const anios = features.map((f: any) => f.attributes.ANIO)
     if(validaLoggerLocalStorage('logger')) console.log({aniosTipoDesplazado: anios})
     setAniosDisponibles(anios)
     setDisabledAnio(false)
@@ -245,8 +261,15 @@ const WidgetSocioEconomica = (props: AllWidgetProps<any>) => {
     setBuscarAble(false)
     const indicador = INDICADORES_SOCIOECONOMICOS.find(i => i.id === tipoIndicadorId)
     setConsultaPorSeleccionada(prev => ({ ...prev, name: indicador?.configName ?? prev.name }))
-    const features = await ejecutarConsulta({ returnGeometry: false, campos: ['ANIO'], url: consultaPorSeleccionada.url, where: '1=1' })
-    const anios = Array.from(new Set(features.map((f: any) => f.attributes.ANIO))).sort() as string[]
+    const features = await ejecutarConsulta({
+      returnGeometry: false,
+      campos: ['ANIO'],
+      url: consultaPorSeleccionada.url,
+      where: '1=1',
+      orderByFields: 'ANIO',
+      returnDistinctValues: true
+    })
+    const anios = features.map((f: any) => f.attributes.ANIO)
     if(validaLoggerLocalStorage('logger')) console.log({aniosTipoIndicador: anios})
     setAniosDisponibles(anios)
     setDisabledAnio(false)
@@ -263,8 +286,15 @@ const WidgetSocioEconomica = (props: AllWidgetProps<any>) => {
     setDisabledAnio(true)
     setBuscarAble(false)
     const where = `${LEYENDA_COROPLETICO_QUINDIO.serviciosPublicos.fieldTipoServicio}='${tipoServicio}'`
-    const features = await ejecutarConsulta({ returnGeometry: false, campos: ['ANIO'], url: consultaPorSeleccionada.url, where })
-    const anios = Array.from(new Set(features.map((f: any) => f.attributes.ANIO))).sort() as string[]
+    const features = await ejecutarConsulta({
+      returnGeometry: false,
+      campos: ['ANIO'],
+      url: consultaPorSeleccionada.url,
+      where,
+      orderByFields: 'ANIO',
+      returnDistinctValues: true
+    })
+    const anios = features.map((f: any) => f.attributes.ANIO)
     if(validaLoggerLocalStorage('logger')) console.log({aniosTipoServicio: anios})
     setAniosDisponibles(anios)
     setDisabledAnio(false)

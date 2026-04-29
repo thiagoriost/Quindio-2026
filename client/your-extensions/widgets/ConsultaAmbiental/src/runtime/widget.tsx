@@ -5,7 +5,6 @@ import { useCascadingFilters } from './hooks/useCascadingFilters'
 import { FiltrosClasificacion } from './components/FiltrosClasificacion'
 import { SearchActionBar } from '../../../shared/components/search-action-bar'
 import { ArcgisService } from '../../../shared/services/arcgis.service'
-import { alertService } from '../../../shared/services/alert.service'
 import { urls } from '../../../api/serviciosQuindio'
 import type { ApiResponse } from 'widgets/shared/models/api-response.model'
 import { useCancelableHttp } from '../../../shared/hooks/useCancelableHttp'
@@ -14,6 +13,10 @@ import { WIDGET_IDS } from '../../../shared/constants/widget-ids'
 import { JimuMapViewComponent, type JimuMapView } from 'jimu-arcgis'
 import FeatureLayer from "esri/layers/FeatureLayer"
 import { consultarCapasAmbientales, obtenerOpcionesNombres } from '../services/ambiental.service'
+import OurLoading from '../../../commonWidgets/our_loading/OurLoading'
+
+import { alertService } from '../../../shared/services/alert.service'
+import { AlertContainer } from '../../../shared/components/alert-container'
 
 import {
     AREAS,
@@ -23,6 +26,7 @@ import {
     toOptions
 } from './config/consulta-ambiental.config'
 import { abrirTablaResultados, limpiarYCerrarWidgetResultados } from '../../../widget-result/src/runtime/widget'
+// @ts-ignore
 import './styles/consulta-ambiental.css'
 import { validaLoggerLocalStorage } from '../../../shared/utils/export.utils'
 
@@ -658,7 +662,8 @@ const Widget = (props: any) => {
     }
 
     const onBuscar = async () => {
-if(validaLoggerLocalStorage('logger')) console.log('onBuscar:', filters)
+        if(validaLoggerLocalStorage('logger')) console.log('onBuscar:', filters)
+        limpiarYCerrarWidgetResultados(widgetResultId)
         const { categoria } = filters
 
         if (categoria === 3) { // Trámites ambientales
@@ -678,7 +683,9 @@ if(validaLoggerLocalStorage('logger')) console.log('onBuscar:', filters)
         await consultarCapasAmbientales(filters, {
             realizarConsulta,
             alertService,
-            abrirTablaResultados
+            abrirTablaResultados,
+            props,
+            widgetResultId
         })
 
 
@@ -805,6 +812,8 @@ if(validaLoggerLocalStorage('logger')) console.log('onBuscar:', filters)
 
         <div style={{height: '100%', padding: '5px', boxSizing: 'border-box'}}>
 
+            <AlertContainer />
+
             {/* Componente de acceso al MapView cef 20250327 */}
             <JimuMapViewComponent
                 useMapWidgetId={props.useMapWidgetIds?.[0]}
@@ -813,7 +822,7 @@ if(validaLoggerLocalStorage('logger')) console.log('onBuscar:', filters)
                 }}
             />
 
-            <div className="consulta-widget consulta-scroll">
+            <div className="consulta-widget consulta-scroll loading-host">
               <FiltrosClasificacion
                   filtros={filters}
                   setFiltro={setFilter}
@@ -834,6 +843,8 @@ if(validaLoggerLocalStorage('logger')) console.log('onBuscar:', filters)
                   disableSearch={loading}
                   helpText="Esta funcionalidad permite realizar consultas relacionadas de categorias ambientales"
               />
+
+              {loading && <OurLoading />}
             </div>
         </div>
 

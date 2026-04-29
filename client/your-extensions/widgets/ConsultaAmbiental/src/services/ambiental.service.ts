@@ -14,9 +14,11 @@ export const obtenerLayerId = (subcategoria: string): number | null => {
 export const consultarCapasAmbientales = async (
     filters: any,
     deps: {
-        realizarConsulta: Function;
-        alertService: any;
-        abrirTablaResultados: Function;
+        realizarConsulta: (urlBase: string, layerId: number, where: string) => Promise<any>;
+        alertService: { warning: (title: string, message?: string) => void };
+        abrirTablaResultados: (...args: any[]) => void;
+        props: any;
+        widgetResultId: string;
     }
 ) => {
     const { subcategoria, nombre, idMunicipio } = filters
@@ -51,11 +53,19 @@ export const consultarCapasAmbientales = async (
             alias: f.alias
         })) || []
 
+        const withGraphic = {
+            showGraphic: false
+        }
+
         deps.abrirTablaResultados(
             false,
             resultado.features,
             fields,
-            resultado.spatialReference as __esri.SpatialReference
+            deps.props,
+            deps.widgetResultId,
+            resultado.spatialReference as __esri.SpatialReference,
+            undefined,
+            withGraphic
         )
 
     } catch (error) {

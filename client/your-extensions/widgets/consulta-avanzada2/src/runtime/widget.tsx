@@ -1,10 +1,12 @@
 import { React, type AllWidgetProps } from 'jimu-core'
 import { JimuMapViewComponent, type JimuMapView } from 'jimu-arcgis' // The map object can be accessed using the JimuMapViewComponent
 import { Button } from 'jimu-ui' // import components
+// @ts-ignore
 import 'react-data-grid/lib/styles.css'
 
 import { Polygon } from '@arcgis/core/geometry'
 import type { InterfaceResponseConsulta, interfaceFeature } from '../types/interfaceResponseConsultaSimple'
+// @ts-ignore
 import '../styles/style.css'
 import FeatureLayer from '@arcgis/core/layers/FeatureLayer'
 import { type interfaceMensajeModal, typeMSM } from '../types/interfaces'

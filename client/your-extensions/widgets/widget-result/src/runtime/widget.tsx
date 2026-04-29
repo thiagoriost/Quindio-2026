@@ -37,6 +37,8 @@ import { appActions, getAppStore } from 'jimu-core'
 import { WidgetState } from 'jimu-core'
 import FeatureLayer from '@arcgis/core/layers/FeatureLayer'
 import GroupLayer from '@arcgis/core/layers/GroupLayer'
+
+// @ts-ignore
 import '../styles/widgetResultFloating.css'
 
 // cef 20260313

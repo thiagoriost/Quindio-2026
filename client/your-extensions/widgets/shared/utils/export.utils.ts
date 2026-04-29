@@ -319,6 +319,8 @@ export interface QueryOptions {
     where?: string;
     campos?: string[];
     returnGeometry?: boolean;
+    orderByFields?: string[] | string;
+    returnDistinctValues?: boolean;
     spatialReference?: __esri.SpatialReference;
     varJimuMapView?: JimuMapView;
   }
@@ -328,6 +330,8 @@ export const ejecutarConsulta = async ({
     where,
     campos,
     returnGeometry = true,
+    orderByFields,
+    returnDistinctValues = false,
     spatialReference
   }: QueryOptions): Promise<__esri.Graphic[]> => {
 
@@ -336,11 +340,14 @@ export const ejecutarConsulta = async ({
     }
 
     try {
+      const normalizedOrderByFields = typeof orderByFields === 'string' ? [orderByFields] : orderByFields
 
       const query = new Query({
         where,
         outFields: campos?.length ? campos : ["*"],
         returnGeometry,
+        orderByFields: normalizedOrderByFields,
+        returnDistinctValues,
         outSpatialReference: spatialReference,
         spatialRelationship: "intersects"
       })

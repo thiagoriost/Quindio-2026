@@ -1,9 +1,10 @@
-import { React } from "jimu-core";
-const { useEffect, useState } = React;
-import { Button, Icon, Modal, ModalBody, ModalFooter, ModalHeader, Alert } from 'jimu-ui'; // import components
-import { interfaceMensajeModal } from "./interfaces";
-import './style.css'
+import { React } from "jimu-core"
+import { Button, Icon, Modal, ModalBody, ModalFooter, ModalHeader, Alert } from 'jimu-ui' // import components
+import type { interfaceMensajeModal } from "./interfaces"
 
+// @ts-expect-error
+import './style.css'
+const { useEffect, useState } = React
 
 interface Modal_Props {
     mensajeModal: interfaceMensajeModal;
@@ -12,18 +13,18 @@ interface Modal_Props {
 
 /**
  * Renderiza el modal, los metododos comentados quedean pendientes para futuras mejoras comportamiento
- * @param param0 
+ * @param param0
  * @dateUpdated 2025-08-12
  * @changes Aplicación estilos genéricos
- * @returns 
+ * @returns
  */
 const ModalComponent: React.FC<Modal_Props> = ({mensajeModal, setMensajeModal}) => {
-  const [utilsModule, setUtilsModule] = useState<any>(null);
+  const [utilsModule, setUtilsModule] = useState<any>(null)
 
   useEffect(() => {
-    import('../../utils/module').then(modulo => setUtilsModule(modulo));
+    import('../../utils/module').then(modulo => { setUtilsModule(modulo) })
     // import('../../../commonWidgets/widgetsModule').then(modulo => setWidgetModules(modulo));
-  }, []);
+  }, [])
 
   return (
     <div>
@@ -32,7 +33,7 @@ const ModalComponent: React.FC<Modal_Props> = ({mensajeModal, setMensajeModal}) 
             // onEnter={()=>{if (utilsModule?.logger()) console.log(222)}}
             // onExit={()=>{if (utilsModule?.logger()) console.log(3333)}}
             // onOpened={()=>{if (utilsModule?.logger()) console.log(444)}}
-            toggle={(e)=>{if (utilsModule?.logger()) console.log(e); setMensajeModal({...mensajeModal, deployed:false})}}
+            toggle={(e: any)=>{ if (utilsModule?.logger()) console.log(e); setMensajeModal({...mensajeModal, deployed:false}) }}
             isOpen={mensajeModal.deployed}
             style={{
                 backgroundColor: 'green'
@@ -40,7 +41,7 @@ const ModalComponent: React.FC<Modal_Props> = ({mensajeModal, setMensajeModal}) 
             >
             <ModalHeader
                 closeIcon={<Icon icon="<svg xmlns=&quot;http://www.w3.org/2000/svg&quot; fill=&quot;none&quot; viewBox=&quot;0 0 16 16&quot;><path fill=&quot;#000&quot; d=&quot;m8.745 8 6.1 6.1a.527.527 0 1 1-.745.746L8 8.746l-6.1 6.1a.527.527 0 1 1-.746-.746l6.1-6.1-6.1-6.1a.527.527 0 0 1 .746-.746l6.1 6.1 6.1-6.1a.527.527 0 0 1 .746.746z&quot;></path></svg>" />}
-                toggle={(e)=>{setMensajeModal({...mensajeModal, deployed:false})}}
+                toggle={(e)=>{ setMensajeModal({...mensajeModal, deployed:false}) }}
             >
                 {mensajeModal.tittle}
             </ModalHeader>
@@ -50,7 +51,7 @@ const ModalComponent: React.FC<Modal_Props> = ({mensajeModal, setMensajeModal}) 
                     buttonType="default"
                     // closable
                     form="basic"
-                    onClose={function noRefCheck(){}}
+                    onClose={function noRefCheck() { /* empty */ }}
                     open
                     size="medium"
                     text={mensajeModal.body}
@@ -58,13 +59,13 @@ const ModalComponent: React.FC<Modal_Props> = ({mensajeModal, setMensajeModal}) 
                     withIcon
                 />
                 {
-                    mensajeModal.subBody && 
+                    mensajeModal.subBody &&
                         <Alert
                         aria-live="polite"
                         buttonType="default"
                         // closable
                         form="basic"
-                        onClose={function noRefCheck(){}}
+                        onClose={function noRefCheck() { /* empty */ }}
                         open
                         size="medium"
                         text={mensajeModal.subBody}
@@ -73,12 +74,12 @@ const ModalComponent: React.FC<Modal_Props> = ({mensajeModal, setMensajeModal}) 
                         className="mt-2"
                         />
                 }
-                    
+
                 </ModalBody>
             <ModalFooter>
                 <Button onClick={(e)=>{
-                    if (utilsModule?.logger()) console.log(e);
-                    setMensajeModal({...mensajeModal, deployed:false})}}>
+                    if (utilsModule?.logger()) console.log(e)
+                    setMensajeModal({...mensajeModal, deployed:false}) }}>
                     X
                 </Button>
                 {' '}
