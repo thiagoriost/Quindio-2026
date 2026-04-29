@@ -1,0 +1,18 @@
+{
+  "name": "culturaTurismoConsulta",
+  "label": "Consulta Cultura y Turismo",
+  "type": "widget",
+  "version": "1.19.0",
+  "dependency": ["jimu-arcgis"],
+  "exbVersion": "1.19.0",
+  "author": "IGAC",
+  "description": "Consulta básica de cultura y turismo con ubicación en mapa",
+  "copyright": "Instituto Geográfico Agustín Codazzi (IGAC)",
+  "license": "",
+  "properties": {},
+  "translatedLocales": ["es"],
+  "defaultSize": {
+    "width": 800,
+    "height": 600
+  }
+}
