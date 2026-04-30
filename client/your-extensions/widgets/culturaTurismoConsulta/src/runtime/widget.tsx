@@ -9,7 +9,7 @@ import { SearchActionBar } from '../../../shared/components/search-action-bar'
 import { AlertContainer } from '../../../shared/components/alert-container'
 import OurLoading from '../../../commonWidgets/our_loading/OurLoading'
 import { urls } from '../../../api/serviciosQuindio'
-import { ejecutarConsulta, validaLoggerLocalStorage } from '../../../shared/utils/export.utils'
+import { drawAndCenterFeatures, ejecutarConsulta, validaLoggerLocalStorage } from '../../../shared/utils/export.utils'
 import { alertService } from '../../../shared/services/alert.service'
 import { abrirTablaResultados, limpiarYCerrarWidgetResultados } from '../../../widget-result/src/runtime/widget'
 import { WIDGET_IDS } from '../../../shared/constants/widget-ids'
@@ -103,11 +103,9 @@ const Widget = (props: AllWidgetProps<any>) => {
   const initialScaleRef = React.useRef<number | null>(null)
 
   const clearMapResults = React.useCallback(() => {
-    if (graphicsLayer) {
-      graphicsLayer.removeAll()
-    }
+   
     limpiarYCerrarWidgetResultados(widgetResultId)
-  }, [graphicsLayer, widgetResultId])
+  }, [widgetResultId])
 
   const resetToDefaultMapView = React.useCallback(async () => {
     const view = jimuMapView?.view
@@ -381,61 +379,7 @@ const Widget = (props: AllWidgetProps<any>) => {
     setSelectedNombre('')
   }, [selectedMunicipio, rawNames])
 
-  const drawAndCenterFeatures = (async (features: __esri.Graphic[]) => {
-    if (!jimuMapView || !features?.length) return
-
-    const view = jimuMapView.view
-    let layer = graphicsLayer
-
-    if (!layer) {
-      layer = new GraphicsLayer({ id: 'cultura-turismo-consulta-layer' })
-      view.map.add(layer)
-      setGraphicsLayer(layer)
-    }
-
-    layer.removeAll()
-
-    const graphics = features
-      .filter(feature => !!feature.geometry)
-      .map(feature => {
-        const geometryType = feature.geometry.type
-
-        const symbol = geometryType === 'polygon'
-          ? {
-              type: 'simple-fill',
-              color: [255, 165, 0, 0.2],
-              outline: { color: [255, 69, 0], width: 2 }
-            }
-          : geometryType === 'polyline'
-            ? {
-                type: 'simple-line',
-                color: [255, 69, 0, 0.9],
-                width: 2
-              }
-            : {
-                type: 'simple-marker',
-                style: 'circle',
-                size: '8px',
-                color: [255, 69, 0, 0.9],
-                outline: { color: [255, 255, 255, 0.9], width: 1 }
-              }
-
-        return new Graphic({
-          geometry: feature.geometry,
-          attributes: feature.attributes,
-          // @ts-expect-error - El tipo de symbol no se reconoce correctamente, revisar tipos de Graphic
-          symbol
-        })
-      })
-
-    if (!graphics.length) {
-      alertService.warning('Sin geometrías', 'Los registros encontrados no tienen geometría para ubicar en el mapa.')
-      return
-    }
-
-    layer.addMany(graphics)
-    await view.goTo(graphics.map(graphic => graphic.geometry))
-  })
+  
 
   const onBuscar = React.useCallback(async () => {
     if (!selectedSubcategoria) {
@@ -478,7 +422,7 @@ const Widget = (props: AllWidgetProps<any>) => {
         return
       }
 
-      await drawAndCenterFeatures(features)
+      await drawAndCenterFeatures(features, jimuMapView, graphicsLayer, setGraphicsLayer, `cultura-turismo-consulta-layer-${selectedSubcategoria}`)
 
       
       if (validaLoggerLocalStorage('logger')) {
