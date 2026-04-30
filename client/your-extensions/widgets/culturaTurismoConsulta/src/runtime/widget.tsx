@@ -9,7 +9,7 @@ import { SearchActionBar } from '../../../shared/components/search-action-bar'
 import { AlertContainer } from '../../../shared/components/alert-container'
 import OurLoading from '../../../commonWidgets/our_loading/OurLoading'
 import { urls } from '../../../api/serviciosQuindio'
-import { ejecutarConsulta } from '../../../shared/utils/export.utils'
+import { ejecutarConsulta, validaLoggerLocalStorage } from '../../../shared/utils/export.utils'
 import { alertService } from '../../../shared/services/alert.service'
 import { abrirTablaResultados, limpiarYCerrarWidgetResultados } from '../../../widget-result/src/runtime/widget'
 import { WIDGET_IDS } from '../../../shared/constants/widget-ids'
@@ -32,16 +32,8 @@ interface SelectOption {
 interface RawNameItem {
   nombre: string
   municipio: string
+  IDMUNICIPIO: string
 }
-
-const MUNICIPIO_FIELD_CANDIDATES = [
-  'IDMUNICIPIO',
-  'MUNICIPIO',
-  'NOMBREMUNICIPIO',
-  'NOM_MPIO',
-  'NOM_MUNI',
-  'MPIO'
-]
 
 const NOMBRE_FIELD_CANDIDATES = [
   'NOMBRE',
@@ -55,6 +47,7 @@ const NOMBRE_FIELD_CANDIDATES = [
 ]
 
 const toUniqueOptions = (values: string[]) => {
+  if (values.length < 1) return []
   return Array.from(new Set(values.map(v => String(v).trim()).filter(Boolean)))
     .sort((a, b) => a.localeCompare(b, 'es'))
     .map(v => ({ value: v, label: v }))
@@ -133,7 +126,7 @@ const Widget = (props: AllWidgetProps<any>) => {
     }
   }, [jimuMapView])
 
-  const activeViewChangeHandler = React.useCallback((view: JimuMapView) => {
+  const activeViewChangeHandler = ((view: JimuMapView) => {
     if (!view) return
 
     setJimuMapView(view)
@@ -143,7 +136,7 @@ const Widget = (props: AllWidgetProps<any>) => {
       initialZoomRef.current = typeof view.view.zoom === 'number' ? view.view.zoom : null
       initialScaleRef.current = typeof view.view.scale === 'number' ? view.view.scale : null
     }
-  }, [])
+  })
 
   const loadLayerHierarchy = React.useCallback(async () => {
     setLoading(true)
@@ -153,21 +146,38 @@ const Widget = (props: AllWidgetProps<any>) => {
         responseType: 'json'
       })
 
-      const layers: LayerOption[] = (response.data?.layers || []).map((layer: any) => ({
+      const rawLayers = response.data?.layers || []
+      const layers: LayerOption[] = rawLayers.map((layer: any) => ({
         id: layer.id,
         name: layer.name,
-        parentLayerId: layer.parentLayerId,
-        subLayerIds: layer.subLayerIds || []
+        parentLayerId: typeof layer.parentLayer?.id === 'number' ? layer.parentLayer.id : -1,
+        subLayerIds: Array.isArray(layer.subLayers)
+          ? layer.subLayers
+              .map((subLayer: any) => subLayer?.id)
+              .filter((id: any) => typeof id === 'number')
+          : []
       }))
 
       setAllLayers(layers)
 
-      const roots = layers.filter(layer => layer.parentLayerId === -1)
-      const tematicasOptions = roots.length > 0
-        ? roots.map(layer => ({ value: String(layer.id), label: layer.name }))
-        : [{ value: 'all', label: 'General' }]
+      const parentLayers = layers.filter(layer => layer.parentLayerId === -1)
+      const childLayers = layers.filter(layer => layer.parentLayerId !== -1)
+      const tematicasOptions = parentLayers.filter(layer => (layer.subLayerIds?.length || 0) > 0)
 
-      setTematicas(tematicasOptions)
+      setTematicas(tematicasOptions.length > 0
+        ? tematicasOptions.map(layer => ({ value: String(layer.id), label: layer.name }))
+        : []
+      )
+
+      if (validaLoggerLocalStorage('logger')) {
+        console.log({
+          url: `${urls.SERVICIO_CULTURA_TURISMO}/layers`,
+          totalLayers: layers.length,
+          parentLayers,
+          childLayers,
+          tematicasOptions
+        })
+      }
     } catch (err) {
       console.error('Error cargando jerarquía de capas de Cultura y Turismo:', err)
       alertService.error('Error', 'No fue posible cargar las capas de Cultura y Turismo.')
@@ -226,28 +236,48 @@ const Widget = (props: AllWidgetProps<any>) => {
 
     if (children.length === 0) {
       const ownLayer = allLayers.find(layer => layer.id === categoriaId)
-      const fallback = ownLayer ? [{ value: String(ownLayer.id), label: ownLayer.name }] : []
+      const fallback = ownLayer ? [{ value: String(ownLayer.id), label: ownLayer.name }] : [] // Si la categoría no tiene hijos, se muestra a sí misma como única opción de subcategoría
       setSubcategorias(fallback)
-      setSelectedSubcategoria(fallback[0]?.value ?? '')
+      setSelectedSubcategoria(fallback[0]?.value)
+      if (validaLoggerLocalStorage('logger')) {
+        console.log({
+          selectedCategoria,
+          categoriaId,
+          children,
+          fallback,
+          ownLayer
+        })
+      }
       return
     }
 
     setSubcategorias(children.map(layer => ({ value: String(layer.id), label: layer.name })))
     setSelectedSubcategoria('')
+    if (validaLoggerLocalStorage('logger')) {
+      console.log({
+        selectedCategoria,
+        categoriaId,
+        children
+      })
+    }
   }, [selectedCategoria, allLayers])
 
   const loadMunicipiosAndNombres = React.useCallback(async (layerId: number) => {
     setLoading(true)
     try {
       const url = `${urls.SERVICIO_CULTURA_TURISMO}/${layerId}`
-      const features = await ejecutarConsulta({
+
+      // Consulta para traer solo municipios sin repetidos (como la consulta de años en socioeconomica)
+      const municipioFeatures = await ejecutarConsulta({
         url,
         where: '1=1',
-        campos: ['*'],
-        returnGeometry: false
+        campos: ['MUNICIPIO', 'IDMUNICIPIO'],
+        returnGeometry: false,
+        orderByFields: 'MUNICIPIO',
+        returnDistinctValues: true
       })
 
-      if (!features.length) {
+      if (!municipioFeatures.length) {
         setMunicipios([])
         setNombres([])
         setRawNames([])
@@ -257,28 +287,56 @@ const Widget = (props: AllWidgetProps<any>) => {
         return
       }
 
-      const attributeNames = Object.keys(features[0].attributes || {})
-      const detectedMunicipioField = guessField(attributeNames, MUNICIPIO_FIELD_CANDIDATES)
-      const detectedNombreField = guessField(attributeNames, NOMBRE_FIELD_CANDIDATES) || attributeNames[0]
+      setMunicipioField('IDMUNICIPIO') // Asumimos que el campo de municipio es IDMUNICIPIO para facilitar la consulta de nombres luego, si no se encuentra el campo se limpia todo igual
+      const municipiosOptions = municipioFeatures
+        .map(f => {
+          const val = String(f.attributes?.MUNICIPIO ?? '').trim()
+          const IDMUNICIPIO = String(f.attributes?.IDMUNICIPIO).trim()
+          return { value: IDMUNICIPIO, label: val }
+        })
+        .filter(o => o.value)
+      setMunicipios(municipiosOptions)
 
-      setMunicipioField(detectedMunicipioField)
+      // Consulta completa para poblar nombres
+      const features = await ejecutarConsulta({
+        url,
+        where: '1=1',
+        campos: ['*'],
+        returnGeometry: false
+      })
+
+      if (!features.length) {
+        setNombres([])
+        setRawNames([])
+        setNombreField(null)
+        return
+      }
+
+      const attributeNames = Object.keys(features[0].attributes || {})
+      const detectedNombreField = guessField(attributeNames, NOMBRE_FIELD_CANDIDATES) || attributeNames[0]
       setNombreField(detectedNombreField)
 
       const nextRawNames: RawNameItem[] = features
         .map(feature => {
-          const municipio = detectedMunicipioField ? String(feature.attributes?.[detectedMunicipioField] ?? '') : ''
-          const nombre = String(feature.attributes?.[detectedNombreField] ?? '')
-          return { municipio: municipio.trim(), nombre: nombre.trim() }
+          const municipio = String(feature.attributes?.MUNICIPIO ?? '').trim()
+          const nombre = String(feature.attributes?.[detectedNombreField] ?? '').trim()
+          const IDMUNICIPIO = String(feature.attributes?.IDMUNICIPIO).trim()
+          return { municipio, nombre, IDMUNICIPIO }
         })
         .filter(item => item.nombre)
 
       setRawNames(nextRawNames)
       setNombres(toUniqueOptions(nextRawNames.map(item => item.nombre)))
-
-      if (detectedMunicipioField) {
-        setMunicipios(toUniqueOptions(nextRawNames.map(item => item.municipio).filter(Boolean)))
-      } else {
-        setMunicipios([])
+      if (validaLoggerLocalStorage('logger')) {
+        console.log({
+          url,
+          municipioFeatures,
+          municipiosOptions,
+          features,
+          attributeNames,
+          detectedNombreField,
+          nextRawNames
+        })
       }
     } catch (err) {
       console.error('Error cargando municipios y nombres para Cultura y Turismo:', err)
@@ -310,14 +368,20 @@ const Widget = (props: AllWidgetProps<any>) => {
     }
 
     const filtered = rawNames
-      .filter(item => item.municipio === selectedMunicipio)
+      .filter(item => item.IDMUNICIPIO === selectedMunicipio)
       .map(item => item.nombre)
-
+    if (validaLoggerLocalStorage('logger')) {
+        console.log({
+          selectedMunicipio,
+          rawNames,
+          filtered
+        })
+    }
     setNombres(toUniqueOptions(filtered))
     setSelectedNombre('')
   }, [selectedMunicipio, rawNames])
 
-  const drawAndCenterFeatures = React.useCallback(async (features: __esri.Graphic[]) => {
+  const drawAndCenterFeatures = (async (features: __esri.Graphic[]) => {
     if (!jimuMapView || !features?.length) return
 
     const view = jimuMapView.view
@@ -371,7 +435,7 @@ const Widget = (props: AllWidgetProps<any>) => {
 
     layer.addMany(graphics)
     await view.goTo(graphics.map(graphic => graphic.geometry))
-  }, [graphicsLayer, jimuMapView])
+  })
 
   const onBuscar = React.useCallback(async () => {
     if (!selectedSubcategoria) {
@@ -394,6 +458,10 @@ const Widget = (props: AllWidgetProps<any>) => {
         whereParts.push(`${nombreField} = '${escapeSqlValue(selectedNombre)}'`)
       }
 
+      if (categorias && selectedCategoria) {
+        whereParts.push(`CATEGORIA = '${escapeSqlValue(categorias.find(option => option.value === selectedCategoria)?.label || '')}'`)
+      }
+
       const where = whereParts.length > 0 ? whereParts.join(' AND ') : '1=1'
       const layerUrl = `${urls.SERVICIO_CULTURA_TURISMO}/${selectedSubcategoria}`
 
@@ -412,6 +480,18 @@ const Widget = (props: AllWidgetProps<any>) => {
 
       await drawAndCenterFeatures(features)
 
+      
+      if (validaLoggerLocalStorage('logger')) {
+        console.log({
+          selectedCategoria,
+          whereParts,
+          where,
+          layerUrl,
+          features,
+        })
+      }
+      
+      /*
       const fields = Object.keys(features[0].attributes || {}).map(name => ({
         name,
         alias: name,
@@ -424,7 +504,6 @@ const Widget = (props: AllWidgetProps<any>) => {
       }))
 
       const subcategoriaLabel = subcategorias.find(option => option.value === selectedSubcategoria)?.label || 'Subcategoría'
-
       abrirTablaResultados(
         false,
         featuresFixed,
@@ -432,8 +511,11 @@ const Widget = (props: AllWidgetProps<any>) => {
         props,
         widgetResultId,
         features[0].geometry?.spatialReference || jimuMapView?.view?.spatialReference,
-        `Consulta Cultura y Turismo - ${subcategoriaLabel}`
-      )
+        `Consulta Cultura y Turismo - ${subcategoriaLabel}`,
+        {
+          showGraphic: false
+        }
+      ) */
 
       alertService.success('Consulta completada', `Se encontraron ${features.length} registros.`)
     } catch (err) {
@@ -541,30 +623,36 @@ const Widget = (props: AllWidgetProps<any>) => {
             ))}
           </Select>
 
-          <Label>Subcategoría:</Label>
-          <Select
-            value={selectedSubcategoria}
-            disabled={loading || subcategorias.length === 0}
-            onChange={(e) => {
-              clearMapResults()
-              setSelectedSubcategoria(e.target.value)
-              setSelectedMunicipio('')
-              setSelectedNombre('')
-              setError('')
-            }}
-          >
-            <Option value="">Seleccione...</Option>
-            {subcategorias.map(option => (
-              <Option key={option.value} value={option.value}>
-                {option.label}
-              </Option>
-            ))}
-          </Select>
+          {
+            subcategorias.length > 1 &&
+            <>
+              <Label>Subcategoría:</Label>
+              <Select
+                value={selectedSubcategoria}
+                disabled={loading || subcategorias.length === 0}
+                onChange={(e) => {
+                  clearMapResults()
+                  setSelectedSubcategoria(e.target.value)
+                  setSelectedMunicipio('')
+                  setSelectedNombre('')
+                  setError('')
+                }}
+              >
+                <Option value="">Seleccione...</Option>
+                {subcategorias.map(option => (
+                  <Option key={option.value} value={option.value}>
+                    {option.label}
+                  </Option>
+                ))}
+              </Select>
+            </>
+          }
+
 
           <Label>Municipio:</Label>
           <Select
             value={selectedMunicipio}
-            disabled={loading || municipios.length === 0}
+            disabled={loading || !selectedTematica || !selectedCategoria || !selectedSubcategoria || municipios.length === 0}
             onChange={(e) => {
               clearMapResults()
               setSelectedMunicipio(e.target.value)
@@ -602,7 +690,7 @@ const Widget = (props: AllWidgetProps<any>) => {
           onSearch={onBuscar}
           onClear={onLimpiar}
           loading={loading}
-          disableSearch={loading || !selectedSubcategoria}
+          disableSearch={loading || !selectedMunicipio}
           helpText="Seleccione temática, categoría y subcategoría. Puede filtrar por municipio y nombre para ubicar geometrías en el mapa."
           error={error}
         />
