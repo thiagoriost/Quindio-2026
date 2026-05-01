@@ -13,6 +13,7 @@ import { drawAndCenterFeatures, ejecutarConsulta, validaLoggerLocalStorage } fro
 import { alertService } from '../../../shared/services/alert.service'
 import { abrirTablaResultados, limpiarYCerrarWidgetResultados } from '../../../widget-result/src/runtime/widget'
 import { WIDGET_IDS } from '../../../shared/constants/widget-ids'
+import { MUNICIPIOS_QUINDIO } from '../../../shared/constants/municipiosQuindio'
 
 // @ts-expect-error - No se encuentran los tipos de estas funciones, revisar exportaciones en widget-result
 import '../styles/styles.css'
@@ -98,6 +99,20 @@ const getSubcategoriaCategoria = (value: string): string => {
 
 const buildSubcategoriaValue = (layerId: number, categoria: string): string => {
   return `${layerId}${SUBCATEGORIA_SEPARATOR}${categoria}`
+}
+
+const municipioById = new Map(
+  MUNICIPIOS_QUINDIO.map(item => [String(item.IDMUNICIPI).trim(), String(item.NOMBRE).trim()])
+)
+
+const resolveMunicipioName = (attributes: CulturaTurismoAttributes): string => {
+  const fromFeature = String(attributes.MUNICIPIO ?? '').trim()
+  if (fromFeature) return fromFeature
+
+  const municipioId = String(attributes.IDMUNICIPIO ?? '').trim()
+  if (!municipioId) return ''
+
+  return municipioById.get(municipioId) ?? ''
 }
 
 const guessField = (attributeNames: string[], candidates: string[]): string | null => {
@@ -247,6 +262,7 @@ const Widget = (props: AllWidgetProps<any>) => {
       const fallbackCategories = allLayers
         .filter(layer => layer.parentLayerId === -1)
         .map(layer => ({ value: String(layer.id), label: layer.name }))
+        .sort((a, b) => a.label.localeCompare(b.label, 'es'))
       setCategorias(fallbackCategories)
       setSelectedCategoria('')
       setSubcategorias([])
@@ -264,7 +280,9 @@ const Widget = (props: AllWidgetProps<any>) => {
       return
     }
 
-    const categoriasOptions = children.map(layer => ({ value: String(layer.id), label: layer.name }))    
+    const categoriasOptions = children
+      .map(layer => ({ value: String(layer.id), label: layer.name }))
+      .sort((a, b) => a.label.localeCompare(b.label, 'es'))
     setCategorias(categoriasOptions)
     setSelectedCategoria('')
     setSubcategorias([])
@@ -360,7 +378,7 @@ const Widget = (props: AllWidgetProps<any>) => {
 
       const nextRawNames: RawNameItem[] = orderedFeatures
         .map(feature => {
-          const municipio = String(feature.attributes?.MUNICIPIO ?? '').trim()
+          const municipio = resolveMunicipioName(feature.attributes)
           const categoria = String(feature.attributes?.CATEGORIA ?? '').trim()
           const nombre = String(feature.attributes?.[detectedNombreField] ?? '').trim()
           const IDMUNICIPIO = String(feature.attributes?.IDMUNICIPIO ?? '').trim()
@@ -370,8 +388,15 @@ const Widget = (props: AllWidgetProps<any>) => {
 
       loadedLayerIdRef.current = layerId
       setRawNames(nextRawNames)
-
-      if (validaLoggerLocalStorage('logger')) console.log({ url, orderedFeatures, attributeNames, detectedNombreField, nextRawNames })
+      const updateState = {
+        url,
+        orderedFeatures,
+        attributeNames,
+        detectedNombreField,
+        nextRawNames
+      }
+      if (validaLoggerLocalStorage('logger')) console.log(updateState)
+      setStado({ ...stado, ...updateState })
     } catch (err) {
       console.error('Error cargando datos para Cultura y Turismo:', err)
       alertService.error('Error', 'No fue posible cargar datos para la subcategoría seleccionada.')
