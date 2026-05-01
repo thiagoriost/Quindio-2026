@@ -33,6 +33,31 @@ interface RawNameItem {
   nombre: string
   municipio: string
   IDMUNICIPIO: string
+  categoria: string
+}
+
+interface CulturaTurismoAttributes {
+  OBJECTID?: number
+  IDINFRAINSTITUCIONAL?: number
+  NUMEROPREDIAL?: string
+  IDMUNICIPIO?: string
+  MUNICIPIO?: string
+  NOMBRE?: string
+  DIRECCION?: string
+  URL?: string
+  NIT?: string
+  IDTIPOINSTITUCION?: number
+  CATEGORIA?: string
+  IDJERARQUIA?: number
+  JERARQUIA?: string
+  RESPONSABLE?: string
+  IMAGEN?: string
+  [key: string]: string | number | null | undefined
+}
+
+interface CulturaTurismoFeature {
+  attributes: CulturaTurismoAttributes
+  geometry?: __esri.Geometry
 }
 
 const NOMBRE_FIELD_CANDIDATES = [
@@ -54,6 +79,26 @@ const toUniqueOptions = (values: string[]) => {
 }
 
 const escapeSqlValue = (value: string) => value.replace(/'/g, "''")
+
+const SUBCATEGORIA_SEPARATOR = '::'
+
+const getSubcategoriaLayerId = (value: string): number | null => {
+  if (!value) return null
+  const rawLayerId = value.includes(SUBCATEGORIA_SEPARATOR)
+    ? value.split(SUBCATEGORIA_SEPARATOR)[0]
+    : value
+  const parsedLayerId = Number(rawLayerId)
+  return Number.isFinite(parsedLayerId) ? parsedLayerId : null
+}
+
+const getSubcategoriaCategoria = (value: string): string => {
+  if (!value || !value.includes(SUBCATEGORIA_SEPARATOR)) return ''
+  return value.split(SUBCATEGORIA_SEPARATOR).slice(1).join(SUBCATEGORIA_SEPARATOR).trim()
+}
+
+const buildSubcategoriaValue = (layerId: number, categoria: string): string => {
+  return `${layerId}${SUBCATEGORIA_SEPARATOR}${categoria}`
+}
 
 const guessField = (attributeNames: string[], candidates: string[]): string | null => {
   const upperCandidates = candidates.map(c => c.toUpperCase())
@@ -103,6 +148,7 @@ const Widget = (props: AllWidgetProps<any>) => {
   const initialExtentRef = React.useRef<__esri.Extent | null>(null)
   const initialZoomRef = React.useRef<number | null>(null)
   const initialScaleRef = React.useRef<number | null>(null)
+  const loadedLayerIdRef = React.useRef<number | null>(null)
 
   const clearMapResults = React.useCallback(() => {
    
@@ -279,86 +325,81 @@ const Widget = (props: AllWidgetProps<any>) => {
     try {
       const url = `${urls.SERVICIO_CULTURA_TURISMO}/${layerId}`
 
-      // Consulta para traer solo municipios sin repetidos (como la consulta de años en socioeconomica)
-      const municipioFeatures = await ejecutarConsulta({
-        url,
-        where: '1=1',
-        campos: ['MUNICIPIO', 'IDMUNICIPIO'],
-        returnGeometry: false,
-        orderByFields: 'MUNICIPIO',
-        returnDistinctValues: true
-      })
-
-      if (!municipioFeatures.length) {
-        setMunicipios([])
-        setNombres([])
-        setRawNames([])
-        setMunicipioField(null)
-        setNombreField(null)
-        alertService.info('Sin datos', 'La subcategoría seleccionada no tiene registros disponibles.')
-        return
-      }
-
-      setMunicipioField('IDMUNICIPIO') // Asumimos que el campo de municipio es IDMUNICIPIO para facilitar la consulta de nombres luego, si no se encuentra el campo se limpia todo igual
-      const municipiosOptions = municipioFeatures
-        .map(f => {
-          const val = String(f.attributes?.MUNICIPIO ?? '').trim()
-          const IDMUNICIPIO = String(f.attributes?.IDMUNICIPIO).trim()
-          return { value: IDMUNICIPIO, label: val }
-        })
-        .filter(o => o.value)
-      setMunicipios(municipiosOptions)
-
-      // Consulta completa para poblar nombres
-      const features = await ejecutarConsulta({
+      // Consulta completa: municipios, categorías y nombres se derivarán de rawNames
+      const features = (await ejecutarConsulta({
         url,
         where: '1=1',
         campos: ['*'],
         returnGeometry: false
-      })
+      })) as CulturaTurismoFeature[]
 
       if (!features.length) {
-        setNombres([])
         setRawNames([])
         setNombreField(null)
+        setMunicipioField(null)
+        loadedLayerIdRef.current = layerId
+        alertService.info('Sin datos', 'La subcategoría seleccionada no tiene registros disponibles.')
         return
       }
 
-      const attributeNames = Object.keys(features[0].attributes || {})
+      const orderedFeatures = [...features].sort((a, b) => {
+        const categoriaA = String(a.attributes?.CATEGORIA ?? '').trim()
+        const categoriaB = String(b.attributes?.CATEGORIA ?? '').trim()
+        const categoriaCompare = categoriaA.localeCompare(categoriaB, 'es')
+        if (categoriaCompare !== 0) return categoriaCompare
+
+        const nombreA = String(a.attributes?.NOMBRE ?? '').trim()
+        const nombreB = String(b.attributes?.NOMBRE ?? '').trim()
+        return nombreA.localeCompare(nombreB, 'es')
+      })
+
+      const attributeNames = Object.keys(orderedFeatures[0].attributes || {})
       const detectedNombreField = guessField(attributeNames, NOMBRE_FIELD_CANDIDATES) || attributeNames[0]
       setNombreField(detectedNombreField)
+      setMunicipioField('IDMUNICIPIO')
 
-      const nextRawNames: RawNameItem[] = features
+      const nextRawNames: RawNameItem[] = orderedFeatures
         .map(feature => {
           const municipio = String(feature.attributes?.MUNICIPIO ?? '').trim()
+          const categoria = String(feature.attributes?.CATEGORIA ?? '').trim()
           const nombre = String(feature.attributes?.[detectedNombreField] ?? '').trim()
-          const IDMUNICIPIO = String(feature.attributes?.IDMUNICIPIO).trim()
-          return { municipio, nombre, IDMUNICIPIO }
+          const IDMUNICIPIO = String(feature.attributes?.IDMUNICIPIO ?? '').trim()
+          return { municipio, nombre, IDMUNICIPIO, categoria }
         })
         .filter(item => item.nombre)
 
+      loadedLayerIdRef.current = layerId
       setRawNames(nextRawNames)
-      setNombres(toUniqueOptions(nextRawNames.map(item => item.nombre)))
-      const state = {
-        url,
-        municipioFeatures,
-        municipiosOptions,
-        features,
-        attributeNames,
-        detectedNombreField,
-        nextRawNames
-      }        
-      setStado({ ...stado, ...state })
-    if (validaLoggerLocalStorage('logger')) console.log(state)
+
+      if (validaLoggerLocalStorage('logger')) console.log({ url, orderedFeatures, attributeNames, detectedNombreField, nextRawNames })
     } catch (err) {
-      console.error('Error cargando municipios y nombres para Cultura y Turismo:', err)
-      alertService.error('Error', 'No fue posible cargar municipios y nombres para la subcategoría seleccionada.')
+      console.error('Error cargando datos para Cultura y Turismo:', err)
+      alertService.error('Error', 'No fue posible cargar datos para la subcategoría seleccionada.')
     } finally {
       setLoading(false)
     }
   }, [])
 
+  // Carga datos del layer solo cuando cambia el layerId
   React.useEffect(() => {
+    const layerId = getSubcategoriaLayerId(selectedSubcategoria)
+
+    if (!layerId) {
+      setSelectedMunicipio('')
+      setSelectedNombre('')
+      setMunicipios([])
+      setNombres([])
+      setRawNames([])
+      setMunicipioField(null)
+      setNombreField(null)
+      setSubcategorias([])
+      loadedLayerIdRef.current = null
+      return
+    }
+
+    // Si el layerId no cambió, solo re-filtrar (sin recargar datos)
+    if (layerId === loadedLayerIdRef.current) return
+
     setSelectedMunicipio('')
     setSelectedNombre('')
     setMunicipios([])
@@ -367,31 +408,53 @@ const Widget = (props: AllWidgetProps<any>) => {
     setMunicipioField(null)
     setNombreField(null)
 
-    if (!selectedSubcategoria) return
-
-    void loadMunicipiosAndNombres(Number(selectedSubcategoria))
+    void loadMunicipiosAndNombres(layerId)
   }, [selectedSubcategoria, loadMunicipiosAndNombres])
 
+  // Deriva subcategorias desde rawNames al cargar un layer
   React.useEffect(() => {
-    if (!selectedMunicipio) {
-      setNombres(toUniqueOptions(rawNames.map(item => item.nombre)))
-      setSelectedNombre('')
+    const layerId = loadedLayerIdRef.current
+    if (!rawNames.length || !layerId) {
       return
     }
 
-    const filtered = rawNames
-      .filter(item => item.IDMUNICIPIO === selectedMunicipio)
-      .map(item => item.nombre)
+    const categoriasDistinct = toUniqueOptions(rawNames.map(item => item.categoria).filter(Boolean))
+    if (!categoriasDistinct.length) return
+
+    const subcategoriasByCategoria = categoriasDistinct.map(opt => ({
+      value: buildSubcategoriaValue(layerId, opt.value),
+      label: opt.label
+    }))
+    setSubcategorias(subcategoriasByCategoria)
+    setSelectedSubcategoria(subcategoriasByCategoria[0].value)
+  }, [rawNames])
+
+  // Filtra municipios y nombres según subcategoría y municipio seleccionados
+  React.useEffect(() => {
+    const categoriaFiltro = getSubcategoriaCategoria(selectedSubcategoria)
+    const filteredByCategoria = categoriaFiltro
+      ? rawNames.filter(item => item.categoria === categoriaFiltro)
+      : rawNames
+
+    const municipiosMap = new Map<string, SelectOption>()
+    filteredByCategoria.forEach(item => {
+      if (item.IDMUNICIPIO && item.municipio && !municipiosMap.has(item.IDMUNICIPIO)) {
+        municipiosMap.set(item.IDMUNICIPIO, { value: item.IDMUNICIPIO, label: item.municipio })
+      }
+    })
+    const derivedMunicipios = Array.from(municipiosMap.values())
+      .sort((a, b) => a.label.localeCompare(b.label, 'es'))
+    setMunicipios(derivedMunicipios)
+
+    const filteredByMunicipio = selectedMunicipio
+      ? filteredByCategoria.filter(item => item.IDMUNICIPIO === selectedMunicipio)
+      : filteredByCategoria
+    setNombres(toUniqueOptions(filteredByMunicipio.map(item => item.nombre)))
+
     if (validaLoggerLocalStorage('logger')) {
-        console.log({
-          selectedMunicipio,
-          rawNames,
-          filtered
-        })
+      console.log({ categoriaFiltro, selectedMunicipio, filteredByCategoria, derivedMunicipios, filteredByMunicipio })
     }
-    setNombres(toUniqueOptions(filtered))
-    setSelectedNombre('')
-  }, [selectedMunicipio, rawNames])
+  }, [rawNames, selectedSubcategoria, selectedMunicipio])
 
   
 
@@ -416,12 +479,23 @@ const Widget = (props: AllWidgetProps<any>) => {
         whereParts.push(`${nombreField} = '${escapeSqlValue(selectedNombre)}'`)
       }
 
-      if (categorias && selectedCategoria) {
+      const selectedSubcategoriaCategoria = getSubcategoriaCategoria(selectedSubcategoria)
+
+      if (selectedSubcategoriaCategoria) {
+        whereParts.push(`CATEGORIA = '${escapeSqlValue(selectedSubcategoriaCategoria)}'`)
+      } else if (categorias && selectedCategoria) {
         whereParts.push(`CATEGORIA = '${escapeSqlValue(categorias.find(option => option.value === selectedCategoria)?.label || '')}'`)
       }
 
       const where = whereParts.length > 0 ? whereParts.join(' AND ') : '1=1'
-      const layerUrl = `${urls.SERVICIO_CULTURA_TURISMO}/${selectedSubcategoria}`
+      const selectedSubcategoriaLayerId = getSubcategoriaLayerId(selectedSubcategoria)
+      if (!selectedSubcategoriaLayerId) {
+        setError('Debe seleccionar una subcategoría válida para buscar.')
+        alertService.warning('Faltan datos', 'Seleccione una subcategoría válida antes de realizar la consulta.')
+        return
+      }
+
+      const layerUrl = `${urls.SERVICIO_CULTURA_TURISMO}/${selectedSubcategoriaLayerId}`
 
       const features = await ejecutarConsulta({
         url: layerUrl,
