@@ -16,7 +16,7 @@ import { JimuMapViewComponent, type JimuMapView } from "jimu-arcgis"
 import { MUNICIPIOS_QUINDIO } from "../../../shared/constants/municipiosQuindio"
 import { SearchActionBar } from "../../../shared/components/search-action-bar"
 import { urls } from "../../../api/serviciosQuindio"
-import { ejecutarConsulta, validaLoggerLocalStorage } from "../../../shared/utils/export.utils"
+import { drawAndCenterFeatures, ejecutarConsulta, validaLoggerLocalStorage } from "../../../shared/utils/export.utils"
 import { WIDGET_IDS } from "../../../shared/constants/widget-ids"
 import { abrirTablaResultados, limpiarYCerrarWidgetResultados } from "../../../widget-result/src/runtime/widget"
 import OurLoading from '../../../commonWidgets/our_loading/OurLoading'
@@ -213,7 +213,7 @@ const Widget = (props: AllWidgetProps<any>) => {
    * @param {__esri.Graphic[]} features - Lista de features con geometría a dibujar
    * @returns {Promise<void>}
    */
-  const drawAndCenterFeatures = async (features: __esri.Graphic[]) => {
+  /* const drawAndCenterFeatures = async (features: __esri.Graphic[]) => {
     if (!jimuMapView || !features?.length) return
 
     const view = jimuMapView.view
@@ -254,7 +254,7 @@ const Widget = (props: AllWidgetProps<any>) => {
 
     layer.addMany(graphics)
     await view.goTo(graphics.map(g => g.geometry))
-  }
+  } */
 
   /**
    * Construye el arreglo de datos para el gráfico de torta a partir de los features consultados.
@@ -363,7 +363,7 @@ const Widget = (props: AllWidgetProps<any>) => {
         return
       }
 
-      await drawAndCenterFeatures(features)
+      await drawAndCenterFeatures(features, jimuMapView, graphicsLayer, setGraphicsLayer, `consulta-agropecuaria-layer-${selectedTipo.toLowerCase()}`)
 
       const fields = Object.keys(features[0].attributes || {}).map((name) => ({
         name,

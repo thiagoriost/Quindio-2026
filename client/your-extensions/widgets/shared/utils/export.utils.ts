@@ -610,3 +610,65 @@ export const transformToCamelCase = (str: string) => {
     })
     .join("")
 }
+
+export const drawAndCenterFeatures = (async (features: __esri.Graphic[], jimuMapView: { view: any }, graphicsLayer: any, setGraphicsLayer: (arg0: any) => void, nameLayer: string, ) => {
+    if (!jimuMapView || !features?.length) return
+
+    const view = jimuMapView.view
+     let layer = graphicsLayer
+
+    if (!layer) {
+      layer = new GraphicsLayer({ id: nameLayer })
+      view.map.add(layer)
+      setGraphicsLayer(layer)
+    }
+
+    layer.removeAll()
+
+    const graphics = features
+      .filter(feature => !!feature.geometry)
+      .map(feature => {
+        const geometryType = feature.geometry.type
+
+        const symbol = geometryType === 'polygon'
+          ? {
+              type: 'simple-fill',
+              color: [255, 165, 0, 0.2],
+              outline: { color: [255, 69, 0], width: 2 }
+            }
+          : geometryType === 'polyline'
+            ? {
+                type: 'simple-line',
+                color: [255, 69, 0, 0.9],
+                width: 2
+              }
+            : {
+                type: 'simple-marker',
+                style: 'circle',
+                size: '8px',
+                color: [255, 69, 0, 0.9],
+                outline: { color: [255, 255, 255, 0.9], width: 1 }
+              }
+
+        return new Graphic({
+          geometry: feature.geometry,
+          attributes: feature.attributes,
+          // @ts-expect-error - El tipo de symbol no se reconoce correctamente, revisar tipos de Graphic
+          symbol
+        })
+      })
+
+    if (!graphics.length) {
+      // alertService.warning('Sin geometrías', 'Los registros encontrados no tienen geometría para ubicar en el mapa.')
+      return
+    }
+
+    layer.addMany(graphics)
+    await view.goTo(graphics.map(graphic => graphic.geometry))
+
+    // Acercamiento adicional después de centrar las geometrías.
+    const newZoom = view.zoom + 5
+    await view.goTo({ zoom: newZoom })
+    const newScale = view.scale * 0.1 / 2
+    await view.goTo({ scale: newScale })
+  })
