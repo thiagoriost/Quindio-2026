@@ -207,7 +207,7 @@ const Widget = (props: AllWidgetProps<any>) => {
         responseType: 'json'
       })
 
-      const rawLayers = response.data?.layers || []
+      const rawLayers = response.data?.layers.filter((layer: { id: number }) => layer.id !== 23) || []
       const layers: LayerOption[] = rawLayers.map((layer: any) => ({
         id: layer.id,
         name: layer.name,
