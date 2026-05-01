@@ -12,21 +12,9 @@
   overflow-x: hidden;
 }
 
-.cultura-form-grid {
-  display: grid;
-  grid-template-columns: 92px 1fr;
-  column-gap: 8px;
-  row-gap: 8px;
-  align-items: center;
-}
-
-.cultura-form-grid .jimu-label {
-  margin-bottom: 0;
-  font-weight: var(--font-weight-semibold);
-}
-
-.cultura-form-grid .jimu-select {
+.select {
   width: 100%;
+  margin-bottom: 10px;
 }
 
 .loading-host {
