@@ -665,4 +665,10 @@ export const drawAndCenterFeatures = (async (features: __esri.Graphic[], jimuMap
 
     layer.addMany(graphics)
     await view.goTo(graphics.map(graphic => graphic.geometry))
+
+    // Acercamiento adicional después de centrar las geometrías.
+    const newZoom = view.zoom + 5
+    await view.goTo({ zoom: newZoom })
+    const newScale = view.scale * 0.1 / 2
+    await view.goTo({ scale: newScale })
   })

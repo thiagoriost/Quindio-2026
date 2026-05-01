@@ -98,6 +98,8 @@ const Widget = (props: AllWidgetProps<any>) => {
   const [municipioField, setMunicipioField] = React.useState<string | null>(null)
   const [nombreField, setNombreField] = React.useState<string | null>(null)
 
+  const [stado, setStado] = React.useState<Record<string, any>>({})
+
   const initialExtentRef = React.useRef<__esri.Extent | null>(null)
   const initialZoomRef = React.useRef<number | null>(null)
   const initialScaleRef = React.useRef<number | null>(null)
@@ -216,10 +218,20 @@ const Widget = (props: AllWidgetProps<any>) => {
       return
     }
 
-    setCategorias(children.map(layer => ({ value: String(layer.id), label: layer.name })))
+    const categoriasOptions = children.map(layer => ({ value: String(layer.id), label: layer.name }))    
+    setCategorias(categoriasOptions)
     setSelectedCategoria('')
     setSubcategorias([])
     setSelectedSubcategoria('')
+    setStado({ ...stado, categoriasOptions, children, tematicaId, selectedTematica })
+    if (validaLoggerLocalStorage('logger')) {
+      console.log({
+        selectedTematica,
+        tematicaId,
+        children,
+        categoriasOptions
+      })
+    }
   }, [selectedTematica, allLayers])
 
   React.useEffect(() => {
@@ -237,27 +249,29 @@ const Widget = (props: AllWidgetProps<any>) => {
       const fallback = ownLayer ? [{ value: String(ownLayer.id), label: ownLayer.name }] : [] // Si la categoría no tiene hijos, se muestra a sí misma como única opción de subcategoría
       setSubcategorias(fallback)
       setSelectedSubcategoria(fallback[0]?.value)
-      if (validaLoggerLocalStorage('logger')) {
-        console.log({
-          selectedCategoria,
-          categoriaId,
-          children,
-          fallback,
-          ownLayer
-        })
+      const updateState = {
+        selectedCategoria,
+        categoriaId,
+        children,
+        fallback,
+        ownLayer,
       }
+      setStado({ ...stado, ...updateState })
+      if (validaLoggerLocalStorage('logger')) console.log(updateState)
       return
     }
 
     setSubcategorias(children.map(layer => ({ value: String(layer.id), label: layer.name })))
     setSelectedSubcategoria('')
-    if (validaLoggerLocalStorage('logger')) {
-      console.log({
-        selectedCategoria,
-        categoriaId,
-        children
-      })
+     const updateState = {
+      selectedCategoria,
+      categoriaId,
+      children
     }
+    if (validaLoggerLocalStorage('logger'))  console.log(updateState)
+   
+    setStado({ ...stado, ...updateState })
+
   }, [selectedCategoria, allLayers])
 
   const loadMunicipiosAndNombres = React.useCallback(async (layerId: number) => {
@@ -325,17 +339,17 @@ const Widget = (props: AllWidgetProps<any>) => {
 
       setRawNames(nextRawNames)
       setNombres(toUniqueOptions(nextRawNames.map(item => item.nombre)))
-      if (validaLoggerLocalStorage('logger')) {
-        console.log({
-          url,
-          municipioFeatures,
-          municipiosOptions,
-          features,
-          attributeNames,
-          detectedNombreField,
-          nextRawNames
-        })
-      }
+      const state = {
+        url,
+        municipioFeatures,
+        municipiosOptions,
+        features,
+        attributeNames,
+        detectedNombreField,
+        nextRawNames
+      }        
+      setStado({ ...stado, ...state })
+    if (validaLoggerLocalStorage('logger')) console.log(state)
     } catch (err) {
       console.error('Error cargando municipios y nombres para Cultura y Turismo:', err)
       alertService.error('Error', 'No fue posible cargar municipios y nombres para la subcategoría seleccionada.')
