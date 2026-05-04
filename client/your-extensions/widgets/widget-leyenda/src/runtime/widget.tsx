@@ -26,6 +26,7 @@ import GraphicsLayer from '@arcgis/core/layers/GraphicsLayer'
 import { useOnWidgetClose } from '../../../shared/hooks/useOnWidgetClose';
 import { appActions, getAppStore } from 'jimu-core'
 import { WidgetState } from 'jimu-core'
+// @ts-ignore
 import '../styles/widget_Leyenda_Floating.css'
 import { /* restoreInitialExtent, */ CoroplethConfig, validaLoggerLocalStorage } from '../../../shared/utils/export.utils'
 
@@ -154,12 +155,11 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
 
         if (!data) return
 
-        const { features } = data
-
-        if (!features?.length) return
-
-        if(validaLoggerLocalStorage('logger')) console.log("Resultados recibidos en widget-leyenda:", features)
         setOpen(true)
+        const { features } = data        
+        if (!features?.length) return
+        if(validaLoggerLocalStorage('logger')) console.log("Resultados recibidos en widget-leyenda:", features)
+
 
     }, [data])
 
