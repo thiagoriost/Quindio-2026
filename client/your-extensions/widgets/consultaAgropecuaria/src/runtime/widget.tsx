@@ -364,7 +364,11 @@ const Widget = (props: AllWidgetProps<any>) => {
       }
 
       const DrawJustOneGeometries = [features[0]]
-      await drawAndCenterFeatures(DrawJustOneGeometries, jimuMapView, graphicsLayer, setGraphicsLayer, `consulta-agropecuaria-layer-${selectedTipo.toLowerCase()}`)
+      const scale = {
+        modifyScale: false,
+        scale: 0.1
+      }
+      await drawAndCenterFeatures(scale, DrawJustOneGeometries, jimuMapView, graphicsLayer, setGraphicsLayer, `consulta-agropecuaria-layer-${selectedTipo.toLowerCase()}`)
 
       const fields = Object.keys(features[0].attributes || {}).map((name) => ({
         name,

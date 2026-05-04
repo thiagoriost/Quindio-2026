@@ -611,7 +611,7 @@ export const transformToCamelCase = (str: string) => {
     .join("")
 }
 
-export const drawAndCenterFeatures = (async (features: __esri.Graphic[], jimuMapView: { view: any }, graphicsLayer: any, setGraphicsLayer: (arg0: any) => void, nameLayer: string, ) => {
+export const drawAndCenterFeatures = (async (scale = {modifyScale: true, scale:0.1}, features: __esri.Graphic[], jimuMapView: { view: any }, graphicsLayer: any, setGraphicsLayer: (arg0: any) => void, nameLayer: string, ) => {
     if (!jimuMapView || !features?.length) return
 
     const view = jimuMapView.view
@@ -669,6 +669,8 @@ export const drawAndCenterFeatures = (async (features: __esri.Graphic[], jimuMap
     // Acercamiento adicional después de centrar las geometrías.
     const newZoom = view.zoom + 5
     await view.goTo({ zoom: newZoom })
-    const newScale = view.scale * 0.1 / 2
-    await view.goTo({ scale: newScale })
+    if (scale.modifyScale) {
+      const newScale = view.scale * scale.scale / 2
+      await view.goTo({ scale: newScale })
+    }
   })
