@@ -629,7 +629,7 @@ export const drawAndCenterFeatures = (async (features: __esri.Graphic[], jimuMap
       .filter(feature => !!feature.geometry)
       .map(feature => {
         const geometryType = feature.geometry.type
-
+        if (validaLoggerLocalStorage('logger')) console.log("Tipo de geometría para dibujar =>", {feature})
         const symbol = geometryType === 'polygon'
           ? {
               type: 'simple-fill',
