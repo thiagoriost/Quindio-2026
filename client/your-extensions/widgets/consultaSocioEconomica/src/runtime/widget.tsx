@@ -17,7 +17,9 @@ import { limpiarYCerrarwidgetLeyenda } from '../../../widget-leyenda/src/runtime
 import { ejecutarConsulta, restoreInitialExtent, validaLoggerLocalStorage, limpiarFeaturesDibujados, transformToCamelCase} from "../../../shared/utils/export.utils"
 
 import { SearchActionBar } from "../../../shared/components/search-action-bar"
+import { AlertContainer } from '../../../shared/components/alert-container'
 import { WIDGET_IDS } from "../../../shared/constants/widget-ids"
+import { alertService } from '../../../shared/services/alert.service'
 
 import { urls} from "../../../api/serviciosQuindio"
 import OurLoading from '../../../commonWidgets/our_loading/OurLoading'
@@ -349,11 +351,21 @@ const WidgetSocioEconomica = (props: AllWidgetProps<any>) => {
 
   }, [props])
 
-  const buscar = async () => {
+  /**
+   * Ejecuta la consulta socioeconómica con los filtros seleccionados, abre la tabla de resultados
+   * y muestra una notificación informativa al finalizar para guiar el cambio de municipio desde
+   * la opción "View Table".
+   *
+   * @returns {Promise<void>} Promesa que se resuelve cuando termina el flujo de búsqueda.
+   */
+  const buscar = async (): Promise<void> => {
 
     setLoading(true)
     // limpiar geometrías previamente dibujadas
-    varJimuMapView?.view?.graphics?.removeAll()
+    // varJimuMapView?.view?.graphics?.removeAll()
+    limpiarYCerrarWidgetResultados(widgetResultId)
+    limpiarYCerrarwidgetLeyenda(WIDGET_IDS.LEYENDA)
+    limpiarFeaturesDibujados(varJimuMapView, [])
     let urlCapa, campos, where
 
     const esServiciosPublicos = consultaPorSeleccionada?.name === NAMES_CAPAS_CONSULTA_SOCIOECONOMICA.serviciosPublicos
@@ -489,6 +501,13 @@ const WidgetSocioEconomica = (props: AllWidgetProps<any>) => {
       temporalLayer,
       selectedAnio
     )
+
+    /**
+     * Notificación informativa posterior a la consulta exitosa.
+     * Indica al usuario que puede cambiar el municipio objetivo desde "Ver Tabla".
+     */
+    alertService.info('Información', 'Puede cambiar el municipio objetivo desde la opción "Ver Tabla".')
+
     setLoading(false)
 
   }
@@ -496,6 +515,7 @@ const WidgetSocioEconomica = (props: AllWidgetProps<any>) => {
 
   return (
     <div style={{height:'100%', padding: '5px', boxSizing: 'border-box'}}>
+      <AlertContainer />
       {props.useMapWidgetIds && props.useMapWidgetIds.length === 1 && (
         <JimuMapViewComponent useMapWidgetId={props.useMapWidgetIds?.[0]} onActiveViewChange={activeViewChangeHandler} />
       )}      {
@@ -597,7 +617,7 @@ const WidgetSocioEconomica = (props: AllWidgetProps<any>) => {
                   onClear={handleClear}
                   loading={loading}
                   // disableSearch={!isValid || disabled}
-                  helpText="Seleccione un establecimiento desde consulta educación o un indicador para habilitar la búsqueda"
+                  helpText="Seleccione los filtros para realizar la consulta socioeconómica. Puede seleccionar un solo municipio como resultado, luego desde la opción 'Ver Tabla' podrá cambiar el municipio objetivo para visualizar su información en el mapa."
                   searchLabel="Buscar"
                   error={error}
                   disableSearch={!buscarAble}
