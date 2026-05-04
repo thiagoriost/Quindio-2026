@@ -3,7 +3,6 @@ import { JimuMapViewComponent, type JimuMapView } from 'jimu-arcgis'
 import { Label, Select, Option } from 'jimu-ui'
 import esriRequest from '@arcgis/core/request'
 import GraphicsLayer from '@arcgis/core/layers/GraphicsLayer'
-import Graphic from '@arcgis/core/Graphic'
 
 import { SearchActionBar } from '../../../shared/components/search-action-bar'
 import { AlertContainer } from '../../../shared/components/alert-container'
@@ -11,7 +10,7 @@ import OurLoading from '../../../commonWidgets/our_loading/OurLoading'
 import { urls } from '../../../api/serviciosQuindio'
 import { drawAndCenterFeatures, ejecutarConsulta, validaLoggerLocalStorage } from '../../../shared/utils/export.utils'
 import { alertService } from '../../../shared/services/alert.service'
-import { abrirTablaResultados, limpiarYCerrarWidgetResultados } from '../../../widget-result/src/runtime/widget'
+import { limpiarYCerrarWidgetResultados } from '../../../widget-result/src/runtime/widget'
 import { WIDGET_IDS } from '../../../shared/constants/widget-ids'
 import { MUNICIPIOS_QUINDIO } from '../../../shared/constants/municipiosQuindio'
 
@@ -72,6 +71,9 @@ const NOMBRE_FIELD_CANDIDATES = [
   'DESCRIPCION'
 ]
 
+/**
+ * Normaliza una lista de textos a opciones de select únicas y ordenadas.
+ */
 const toUniqueOptions = (values: string[]) => {
   if (values.length < 1) return []
   return Array.from(new Set(values.map(v => String(v).trim()).filter(Boolean)))
@@ -79,10 +81,13 @@ const toUniqueOptions = (values: string[]) => {
     .map(v => ({ value: v, label: v }))
 }
 
-const escapeSqlValue = (value: string) => value.replace(/'/g, "''")
+const escapeSqlValue = (value: string) => value.replace(/'/g, "''") // Escapa comillas simples para evitar inyección SQL en consultas
 
-const SUBCATEGORIA_SEPARATOR = '::'
+const SUBCATEGORIA_SEPARATOR = '::' // Separador para construir el valor compuesto de subcategoría (layerId::categoria)
 
+/**
+ * Extrae el id de layer desde el valor compuesto de subcategoría.
+ */
 const getSubcategoriaLayerId = (value: string): number | null => {
   if (!value) return null
   const rawLayerId = value.includes(SUBCATEGORIA_SEPARATOR)
@@ -92,11 +97,17 @@ const getSubcategoriaLayerId = (value: string): number | null => {
   return Number.isFinite(parsedLayerId) ? parsedLayerId : null
 }
 
+/**
+ * Extrae la categoría textual desde el valor compuesto de subcategoría.
+ */
 const getSubcategoriaCategoria = (value: string): string => {
   if (!value || !value.includes(SUBCATEGORIA_SEPARATOR)) return ''
   return value.split(SUBCATEGORIA_SEPARATOR).slice(1).join(SUBCATEGORIA_SEPARATOR).trim()
 }
 
+/**
+ * Construye el valor compuesto de subcategoría con formato layerId::categoria.
+ */
 const buildSubcategoriaValue = (layerId: number, categoria: string): string => {
   return `${layerId}${SUBCATEGORIA_SEPARATOR}${categoria}`
 }
@@ -105,6 +116,10 @@ const municipioById = new Map(
   MUNICIPIOS_QUINDIO.map(item => [String(item.IDMUNICIPI).trim(), String(item.NOMBRE).trim()])
 )
 
+/**
+ * Resuelve el nombre del municipio usando primero el atributo MUNICIPIO y,
+ * si no existe, hace fallback por IDMUNICIPIO contra la constante local.
+ */
 const resolveMunicipioName = (attributes: CulturaTurismoAttributes): string => {
   const fromFeature = String(attributes.MUNICIPIO ?? '').trim()
   if (fromFeature) return fromFeature
@@ -115,6 +130,10 @@ const resolveMunicipioName = (attributes: CulturaTurismoAttributes): string => {
   return municipioById.get(municipioId) ?? ''
 }
 
+/**
+ * Intenta detectar el campo más apropiado para nombre usando coincidencia
+ * exacta y luego parcial contra una lista de candidatos.
+ */
 const guessField = (attributeNames: string[], candidates: string[]): string | null => {
   const upperCandidates = candidates.map(c => c.toUpperCase())
   const upperAttr = attributeNames.map(name => ({ raw: name, upper: name.toUpperCase() }))
@@ -135,41 +154,111 @@ const guessField = (attributeNames: string[], candidates: string[]): string | nu
 const Widget = (props: AllWidgetProps<any>) => {
   const widgetResultId = WIDGET_IDS.RESULT
 
+  /** Estado de carga global del widget (consultas y búsquedas). */
   const [loading, setLoading] = React.useState(false)
+  /** Mensaje de error mostrado en la barra de acciones del formulario. */
   const [error, setError] = React.useState('')
 
+  /** Vista activa del mapa para navegación y dibujo de resultados. */
   const [jimuMapView, setJimuMapView] = React.useState<JimuMapView | null>(null)
+  /** Capa gráfica temporal usada para pintar resultados de la consulta. */
   const [graphicsLayer, setGraphicsLayer] = React.useState<GraphicsLayer | null>(null)
 
+  /** Todas las capas obtenidas del servicio para construir jerarquía de filtros. */
   const [allLayers, setAllLayers] = React.useState<LayerOption[]>([])
+  /** Opciones visibles del select Temática. */
   const [tematicas, setTematicas] = React.useState<SelectOption[]>([])
+  /** Opciones visibles del select Categoría. */
   const [categorias, setCategorias] = React.useState<SelectOption[]>([])
+  /** Opciones visibles del select Subcategoría. */
   const [subcategorias, setSubcategorias] = React.useState<SelectOption[]>([])
-  const [municipios, setMunicipios] = React.useState<SelectOption[]>([])
-  const [nombres, setNombres] = React.useState<SelectOption[]>([])
 
+  /** Valor seleccionado en Temática. */
   const [selectedTematica, setSelectedTematica] = React.useState('')
+  /** Valor seleccionado en Categoría. */
   const [selectedCategoria, setSelectedCategoria] = React.useState('')
+  /** Valor compuesto seleccionado en Subcategoría (layerId::categoria). */
   const [selectedSubcategoria, setSelectedSubcategoria] = React.useState('')
+  /** Identificador de municipio seleccionado. */
   const [selectedMunicipio, setSelectedMunicipio] = React.useState('')
+  /** Nombre seleccionado. */
   const [selectedNombre, setSelectedNombre] = React.useState('')
 
+  /** Dataset base (normalizado) para derivar municipios y nombres. */
   const [rawNames, setRawNames] = React.useState<RawNameItem[]>([])
+  /** Campo real de municipio detectado/usado para construir SQL de búsqueda. */
   const [municipioField, setMunicipioField] = React.useState<string | null>(null)
+  /** Campo real de nombre detectado dinámicamente en atributos del servicio. */
   const [nombreField, setNombreField] = React.useState<string | null>(null)
 
-  const [stado, setStado] = React.useState<Record<string, any>>({})
-
+  /** Extensión inicial para restablecer la vista al limpiar. */
   const initialExtentRef = React.useRef<__esri.Extent | null>(null)
+  /** Zoom inicial para restablecer la vista al limpiar. */
   const initialZoomRef = React.useRef<number | null>(null)
+  /** Escala inicial para restablecer la vista al limpiar. */
   const initialScaleRef = React.useRef<number | null>(null)
+  /** Último layerId cargado para evitar recargas redundantes. */
   const loadedLayerIdRef = React.useRef<number | null>(null)
 
+  /**
+   * Índice de hijos por parentLayerId para evitar filtros repetidos sobre allLayers.
+   */
+  const childrenByParentId = React.useMemo(() => {
+    const acc = new Map<number, LayerOption[]>()
+    for (const layer of allLayers) {
+      const current = acc.get(layer.parentLayerId) ?? []
+      current.push(layer)
+      acc.set(layer.parentLayerId, current)
+    }
+    return acc
+  }, [allLayers])
+
+  /**
+   * Filtra el dataset base por categoría seleccionada en subcategoría.
+   */
+  const filteredByCategoria = React.useMemo(() => {
+    const categoriaFiltro = getSubcategoriaCategoria(selectedSubcategoria)
+    return categoriaFiltro
+      ? rawNames.filter(item => item.categoria === categoriaFiltro)
+      : rawNames
+  }, [rawNames, selectedSubcategoria])
+
+  /**
+   * Deriva las opciones de municipio desde el dataset filtrado por categoría.
+   */
+  const municipios = React.useMemo(() => {
+    const municipiosMap = new Map<string, SelectOption>()
+    filteredByCategoria.forEach(item => {
+      if (item.IDMUNICIPIO && item.municipio && !municipiosMap.has(item.IDMUNICIPIO)) {
+        municipiosMap.set(item.IDMUNICIPIO, { value: item.IDMUNICIPIO, label: item.municipio })
+      }
+    })
+
+    return Array.from(municipiosMap.values())
+      .sort((a, b) => a.label.localeCompare(b.label, 'es'))
+  }, [filteredByCategoria])
+
+  /**
+   * Deriva las opciones de nombre desde el dataset filtrado por categoría y municipio.
+   */
+  const nombres = React.useMemo(() => {
+    const filteredByMunicipio = selectedMunicipio
+      ? filteredByCategoria.filter(item => item.IDMUNICIPIO === selectedMunicipio)
+      : filteredByCategoria
+    return toUniqueOptions(filteredByMunicipio.map(item => item.nombre))
+  }, [filteredByCategoria, selectedMunicipio])
+
+  /**
+   * Limpia gráficos/resultados de mapa vinculados al widget de resultados.
+   */
   const clearMapResults = React.useCallback(() => {
    
     limpiarYCerrarWidgetResultados(widgetResultId)
   }, [widgetResultId])
 
+  /**
+   * Restablece la vista de mapa a su extensión, zoom y escala iniciales.
+   */
   const resetToDefaultMapView = React.useCallback(async () => {
     const view = jimuMapView?.view
     const initialExtent = initialExtentRef.current
@@ -187,6 +276,9 @@ const Widget = (props: AllWidgetProps<any>) => {
     }
   }, [jimuMapView])
 
+  /**
+   * Captura la vista activa y conserva el estado inicial de navegación del mapa.
+   */
   const activeViewChangeHandler = ((view: JimuMapView) => {
     if (!view) return
 
@@ -199,6 +291,9 @@ const Widget = (props: AllWidgetProps<any>) => {
     }
   })
 
+  /**
+   * Carga la jerarquía de capas del servicio y prepara las opciones iniciales.
+   */
   const loadLayerHierarchy = React.useCallback(async () => {
     setLoading(true)
     try {
@@ -247,10 +342,14 @@ const Widget = (props: AllWidgetProps<any>) => {
     }
   }, [])
 
+  /** Ejecuta la carga inicial de jerarquía al montar el widget. */
   React.useEffect(() => {
     void loadLayerHierarchy()
   }, [loadLayerHierarchy])
 
+  /**
+   * Recalcula categorías al cambiar temática y reinicia filtros dependientes.
+   */
   React.useEffect(() => {
     if (!selectedTematica) {
       setCategorias([])
@@ -271,7 +370,7 @@ const Widget = (props: AllWidgetProps<any>) => {
     }
 
     const tematicaId = Number(selectedTematica)
-    const children = allLayers.filter(layer => layer.parentLayerId === tematicaId)
+    const children = childrenByParentId.get(tematicaId) ?? []
 
     if (children.length === 0) {
       const ownLayer = allLayers.find(layer => layer.id === tematicaId)
@@ -287,7 +386,6 @@ const Widget = (props: AllWidgetProps<any>) => {
     setSelectedCategoria('')
     setSubcategorias([])
     setSelectedSubcategoria('')
-    setStado({ ...stado, categoriasOptions, children, tematicaId, selectedTematica })
     if (validaLoggerLocalStorage('logger')) {
       console.log({
         selectedTematica,
@@ -296,8 +394,11 @@ const Widget = (props: AllWidgetProps<any>) => {
         categoriasOptions
       })
     }
-  }, [selectedTematica, allLayers])
+  }, [selectedTematica, allLayers, childrenByParentId])
 
+  /**
+   * Recalcula subcategorías al cambiar categoría y ajusta selección por defecto.
+   */
   React.useEffect(() => {
     if (!selectedCategoria) {
       setSubcategorias([])
@@ -306,7 +407,7 @@ const Widget = (props: AllWidgetProps<any>) => {
     }
 
     const categoriaId = Number(selectedCategoria)
-    const children = allLayers.filter(layer => layer.parentLayerId === categoriaId)
+    const children = childrenByParentId.get(categoriaId) ?? []
 
     if (children.length === 0) {
       const ownLayer = allLayers.find(layer => layer.id === categoriaId)
@@ -320,7 +421,6 @@ const Widget = (props: AllWidgetProps<any>) => {
         fallback,
         ownLayer,
       }
-      setStado({ ...stado, ...updateState })
       if (validaLoggerLocalStorage('logger')) console.log(updateState)
       return
     }
@@ -333,11 +433,13 @@ const Widget = (props: AllWidgetProps<any>) => {
       children
     }
     if (validaLoggerLocalStorage('logger'))  console.log(updateState)
-   
-    setStado({ ...stado, ...updateState })
 
-  }, [selectedCategoria, allLayers])
+  }, [selectedCategoria, allLayers, childrenByParentId])
 
+  /**
+   * Consulta datos del layer seleccionado y normaliza atributos de trabajo
+   * para construir filtros dependientes (subcategoría, municipio, nombre).
+   */
   const loadMunicipiosAndNombres = React.useCallback(async (layerId: number) => {
     setLoading(true)
     try {
@@ -360,6 +462,7 @@ const Widget = (props: AllWidgetProps<any>) => {
         return
       }
 
+      // Ordena primero por categoría y luego por nombre para mejorar experiencia de usuario en selects dependientes
       const orderedFeatures = [...features].sort((a, b) => {
         const categoriaA = String(a.attributes?.CATEGORIA ?? '').trim()
         const categoriaB = String(b.attributes?.CATEGORIA ?? '').trim()
@@ -376,6 +479,7 @@ const Widget = (props: AllWidgetProps<any>) => {
       setNombreField(detectedNombreField)
       setMunicipioField('IDMUNICIPIO')
 
+      // Normaliza el dataset base para filtros dependientes a partir de atributos del servicio y lógica de resolución de municipio
       const nextRawNames: RawNameItem[] = orderedFeatures
         .map(feature => {
           const municipio = resolveMunicipioName(feature.attributes)
@@ -388,15 +492,15 @@ const Widget = (props: AllWidgetProps<any>) => {
 
       loadedLayerIdRef.current = layerId
       setRawNames(nextRawNames)
-      const updateState = {
-        url,
-        orderedFeatures,
-        attributeNames,
-        detectedNombreField,
-        nextRawNames
+      if (validaLoggerLocalStorage('logger')) {
+        console.log({
+          url,
+          orderedFeatures,
+          attributeNames,
+          detectedNombreField,
+          nextRawNames
+        })
       }
-      if (validaLoggerLocalStorage('logger')) console.log(updateState)
-      setStado({ ...stado, ...updateState })
     } catch (err) {
       console.error('Error cargando datos para Cultura y Turismo:', err)
       alertService.error('Error', 'No fue posible cargar datos para la subcategoría seleccionada.')
@@ -405,15 +509,15 @@ const Widget = (props: AllWidgetProps<any>) => {
     }
   }, [])
 
-  // Carga datos del layer solo cuando cambia el layerId
+  /**
+   * Dispara recarga únicamente cuando cambia el layerId derivado de subcategoría.
+   */
   React.useEffect(() => {
     const layerId = getSubcategoriaLayerId(selectedSubcategoria)
 
     if (!layerId) {
       setSelectedMunicipio('')
       setSelectedNombre('')
-      setMunicipios([])
-      setNombres([])
       setRawNames([])
       setMunicipioField(null)
       setNombreField(null)
@@ -427,8 +531,6 @@ const Widget = (props: AllWidgetProps<any>) => {
 
     setSelectedMunicipio('')
     setSelectedNombre('')
-    setMunicipios([])
-    setNombres([])
     setRawNames([])
     setMunicipioField(null)
     setNombreField(null)
@@ -436,16 +538,20 @@ const Widget = (props: AllWidgetProps<any>) => {
     void loadMunicipiosAndNombres(layerId)
   }, [selectedSubcategoria, loadMunicipiosAndNombres])
 
-  // Deriva subcategorias desde rawNames al cargar un layer
+  /**
+   * Deriva el catálogo de subcategorías a partir de categorías presentes en rawNames.
+   */
   React.useEffect(() => {
     const layerId = loadedLayerIdRef.current
     if (!rawNames.length || !layerId) {
       return
     }
 
+    // Extrae categorías únicas del dataset base para construir opciones de subcategoría, usando la capa como contexto para evitar mezclas de categorías entre diferentes capas
     const categoriasDistinct = toUniqueOptions(rawNames.map(item => item.categoria).filter(Boolean))
     if (!categoriasDistinct.length) return
 
+    // Construye opciones de subcategoría con formato layerId::categoria para mantener referencia al layerId original en la selección y evitar recargas innecesarias al cambiar entre categorías de la misma capa
     const subcategoriasByCategoria = categoriasDistinct.map(opt => ({
       value: buildSubcategoriaValue(layerId, opt.value),
       label: opt.label
@@ -454,35 +560,9 @@ const Widget = (props: AllWidgetProps<any>) => {
     setSelectedSubcategoria(subcategoriasByCategoria[0].value)
   }, [rawNames])
 
-  // Filtra municipios y nombres según subcategoría y municipio seleccionados
-  React.useEffect(() => {
-    const categoriaFiltro = getSubcategoriaCategoria(selectedSubcategoria)
-    const filteredByCategoria = categoriaFiltro
-      ? rawNames.filter(item => item.categoria === categoriaFiltro)
-      : rawNames
-
-    const municipiosMap = new Map<string, SelectOption>()
-    filteredByCategoria.forEach(item => {
-      if (item.IDMUNICIPIO && item.municipio && !municipiosMap.has(item.IDMUNICIPIO)) {
-        municipiosMap.set(item.IDMUNICIPIO, { value: item.IDMUNICIPIO, label: item.municipio })
-      }
-    })
-    const derivedMunicipios = Array.from(municipiosMap.values())
-      .sort((a, b) => a.label.localeCompare(b.label, 'es'))
-    setMunicipios(derivedMunicipios)
-
-    const filteredByMunicipio = selectedMunicipio
-      ? filteredByCategoria.filter(item => item.IDMUNICIPIO === selectedMunicipio)
-      : filteredByCategoria
-    setNombres(toUniqueOptions(filteredByMunicipio.map(item => item.nombre)))
-
-    if (validaLoggerLocalStorage('logger')) {
-      console.log({ categoriaFiltro, selectedMunicipio, filteredByCategoria, derivedMunicipios, filteredByMunicipio })
-    }
-  }, [rawNames, selectedSubcategoria, selectedMunicipio])
-
-  
-
+  /**
+   * Ejecuta la consulta principal con los filtros seleccionados y dibuja resultados.
+   */
   const onBuscar = React.useCallback(async () => {
     if (!selectedSubcategoria) {
       setError('Debe seleccionar una subcategoría para buscar.')
@@ -535,6 +615,7 @@ const Widget = (props: AllWidgetProps<any>) => {
         return
       }
 
+      // Dibuja resultados en el mapa usando la función compartida y pasando el layerId para gestionar capas por subcategoría y evitar mezclas de resultados entre diferentes subcategorías
       await drawAndCenterFeatures(features, jimuMapView, graphicsLayer, setGraphicsLayer, `cultura-turismo-consulta-layer-${selectedSubcategoria}`)
 
       
@@ -595,6 +676,9 @@ const Widget = (props: AllWidgetProps<any>) => {
     widgetResultId
   ])
 
+  /**
+   * Limpia todos los filtros del formulario y restablece estado visual del mapa.
+   */
   const onLimpiar = React.useCallback(() => {
     setSelectedTematica('')
     setSelectedCategoria('')
@@ -604,8 +688,6 @@ const Widget = (props: AllWidgetProps<any>) => {
 
     setCategorias([])
     setSubcategorias([])
-    setMunicipios([])
-    setNombres([])
     setRawNames([])
 
     setMunicipioField(null)
@@ -618,6 +700,7 @@ const Widget = (props: AllWidgetProps<any>) => {
     alertService.info('Formulario limpiado', 'Se limpiaron los filtros de Cultura y Turismo.')
   }, [clearMapResults, resetToDefaultMapView])
 
+  /** Limpia automáticamente el formulario cuando el widget se cierra. */
   React.useEffect(() => {
     if (props.state === 'CLOSED') {
       onLimpiar()
@@ -636,7 +719,7 @@ const Widget = (props: AllWidgetProps<any>) => {
       )}
 
       <div className="consulta-widget consulta-scroll loading-host">
-        <div className="cultura-form-grid">
+        <div>
           <Label>Temática:</Label>
           <Select
             value={selectedTematica}
@@ -741,16 +824,16 @@ const Widget = (props: AllWidgetProps<any>) => {
               </Option>
             ))}
           </Select>
-        </div>
 
-        <SearchActionBar
-          onSearch={onBuscar}
-          onClear={onLimpiar}
-          loading={loading}
-          disableSearch={loading || !selectedMunicipio}
-          helpText="Seleccione temática, categoría y subcategoría. Puede filtrar por municipio y nombre para ubicar geometrías en el mapa."
-          error={error}
-        />
+          <SearchActionBar
+            onSearch={onBuscar}
+            onClear={onLimpiar}
+            loading={loading}
+            disableSearch={loading || !selectedMunicipio}
+            helpText="Seleccione temática, categoría y subcategoría. Puede filtrar por municipio y nombre para ubicar geometrías en el mapa."
+            error={error}
+          />
+        </div>
 
         {loading && <OurLoading />}
       </div>
