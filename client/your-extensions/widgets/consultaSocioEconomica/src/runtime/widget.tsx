@@ -502,11 +502,13 @@ const WidgetSocioEconomica = (props: AllWidgetProps<any>) => {
       selectedAnio
     )
 
-    /**
-     * Notificación informativa posterior a la consulta exitosa.
-     * Indica al usuario que puede cambiar el municipio objetivo desde "Ver Tabla".
-     */
-    alertService.info('Información', 'Puede cambiar el municipio objetivo desde la opción "Ver Tabla".')
+    if (consultaPorSeleccionada.id !== 2 && consultaPorSeleccionada.id !== 0 && consultaPorSeleccionada.id !== 9) {
+      /**
+       * Notificación informativa posterior a la consulta exitosa.
+       * Indica al usuario que puede cambiar el municipio objetivo desde "Ver Tabla".
+       */
+      alertService.info('Información', 'Puede cambiar el municipio objetivo desde la opción "Ver Tabla".')      
+    }
 
     setLoading(false)
 
