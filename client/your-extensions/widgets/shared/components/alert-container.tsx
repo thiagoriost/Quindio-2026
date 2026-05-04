@@ -1,7 +1,24 @@
 /** @jsx jsx */
 import { Alert } from 'jimu-ui'
-import { useEffect, useState } from 'react'
-import { alertService, AlertMessage } from '../../shared/services/alert.service'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { alertService, type AlertMessage } from '../../shared/services/alert.service'
+
+/**
+ * Propiedades de configuración del contenedor de alertas.
+ */
+interface AlertContainerProps {
+  /**
+   * Habilita o deshabilita el cierre automático global.
+   * @default true
+   */
+  autoCloseEnabled?: boolean
+  /**
+   * Duración (ms) para cierre automático cuando la alerta no define `duration`.
+   * Si es menor o igual a 0, no se programa cierre automático por fallback.
+   * @default 6000
+   */
+  autoCloseTimeoutMs?: number
+}
 
 /**
  * AlertContainer
@@ -22,22 +39,40 @@ import { alertService, AlertMessage } from '../../shared/services/alert.service'
  * Este componente debe declararse una sola vez en un nivel alto
  * de la aplicación (por ejemplo en App.tsx o layout principal).
  *
+ * @param {AlertContainerProps} [props] - Configuración opcional de comportamiento del auto-cierre.
  * @component
  * @returns {JSX.Element} Contenedor visual con la lista de alertas activas.
  */
-export const AlertContainer = () => {
+export const AlertContainer = ({
+  autoCloseEnabled = true,
+  autoCloseTimeoutMs = 6000
+}: AlertContainerProps) => {
   /**
    * Estado local que contiene la lista de alertas activas.
    */
   const [alerts, setAlerts] = useState<AlertMessage[]>([])
 
   /**
-   * Hook ejecutado una sola vez al montar el componente.
-   * Útil para depuración o inicialización futura.
+   * Registro de temporizadores por ID de alerta para evitar duplicados y permitir limpieza explícita.
    */
-  useEffect(() => {
-    console.log('AlertContainer montado')
+  const timersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
+
+  /**
+   * Cierra una alerta y limpia su timer asociado (si existe).
+   *
+   * @param {string} alertId - Identificador de la alerta a cerrar.
+   * @returns {void}
+   */
+  const dismissAlert = useCallback((alertId: string): void => {
+    const timer = timersRef.current.get(alertId)
+    if (timer) {
+      clearTimeout(timer)
+      timersRef.current.delete(alertId)
+    }
+
+    alertService.remove(alertId)
   }, [])
+
 
   /**
    * Se suscribe al alertService para recibir actualizaciones
@@ -60,6 +95,61 @@ export const AlertContainer = () => {
 
     return () => {
       alertService.unsubscribe(listener)
+    }
+  }, [])
+
+  /**
+   * Programa el cierre automático de alertas activas.
+   *
+   * Reglas:
+   * - Usa `alert.duration` si está definido.
+   * - Si no existe, usa `autoCloseTimeoutMs` como fallback.
+   * - No crea timers duplicados para la misma alerta.
+   * - Limpia timers de alertas que ya no están activas.
+   */
+  useEffect(() => {
+    if (!autoCloseEnabled) {
+      return
+    }
+
+    const activeIds = new Set(alerts.map(alert => alert.id))
+
+    alerts.forEach(alert => {
+      if (timersRef.current.has(alert.id)) {
+        return
+      }
+
+      const timeoutMs = alert.duration ?? autoCloseTimeoutMs
+      if (!timeoutMs || timeoutMs <= 0) {
+        return
+      }
+
+      const timeoutId = setTimeout(() => {
+        dismissAlert(alert.id)
+      }, timeoutMs)
+
+      timersRef.current.set(alert.id, timeoutId)
+    })
+
+    timersRef.current.forEach((timerId, alertId) => {
+      if (!activeIds.has(alertId)) {
+        clearTimeout(timerId)
+        timersRef.current.delete(alertId)
+      }
+    })
+  }, [alerts, autoCloseEnabled, autoCloseTimeoutMs, dismissAlert])
+
+  /**
+   * Limpia todos los timers pendientes al desmontar el componente.
+   */
+  useEffect(() => {
+    const timers = timersRef.current
+
+    return () => {
+      timers.forEach((timerId) => {
+        clearTimeout(timerId)
+      })
+      timers.clear()
     }
   }, [])
 
@@ -86,7 +176,7 @@ export const AlertContainer = () => {
           type={alert.type}
           title={alert.title}
           text={alert.text}
-          onClose={() => alertService.remove(alert.id)}
+          onClose={() => { dismissAlert(alert.id) }}
           style={{ width: 390 }}
         />
       ))}
