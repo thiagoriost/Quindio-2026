@@ -6,6 +6,7 @@ import GraphicsLayer from '@arcgis/core/layers/GraphicsLayer'
 
 import { SearchActionBar } from '../../../shared/components/search-action-bar'
 import { AlertContainer } from '../../../shared/components/alert-container'
+import PanelInformativo, { itemsInformacionContacto } from '../../../shared/components/PanelInformativo/PanelInformativo'
 import OurLoading from '../../../commonWidgets/our_loading/OurLoading'
 import { urls } from '../../../api/serviciosQuindio'
 import { drawAndCenterFeatures, ejecutarConsulta, validaLoggerLocalStorage } from '../../../shared/utils/export.utils'
@@ -175,6 +176,72 @@ const guessField = (attributeNames: string[], candidates: string[]): string | nu
   return null
 }
 
+interface PanelInformativoData {
+  titulo: string
+  imagenUrl: string
+  telefono: string
+  direccion: string
+  horario: string
+  sitioWeb: string
+  email: string
+}
+
+const PANEL_INFO_BASE_URL = String((urls as Record<string, unknown>).URL_ARCHIVOS_QUINDIO ?? '')
+
+/**
+ * Obtiene el primer valor no vacío de una lista ordenada de posibles campos.
+ * @param attributes - Atributos disponibles del feature.
+ * @param fieldCandidates - Nombres de campo candidatos en orden de prioridad.
+ * @returns Primer valor encontrado no vacío, o cadena vacía si no existe.
+ */
+const getFirstNonEmptyAttribute = (attributes: CulturaTurismoAttributes, fieldCandidates: string[]): string => {
+  const upperCandidates = fieldCandidates.map(field => field.toUpperCase())
+  const attributeEntries = Object.entries(attributes).map(([key, value]) => ({ key: key.toUpperCase(), value }))
+
+  for (const candidate of upperCandidates) {
+    const entry = attributeEntries.find(item => item.key === candidate)
+    const nextValue = String(entry?.value ?? '').trim()
+    if (nextValue) return nextValue
+  }
+
+  return ''
+}
+
+/**
+ * Normaliza una ruta de imagen para que pueda renderizarse en el panel.
+ * @param rawImageUrl - Valor de imagen proveniente de atributos del servicio.
+ * @returns URL absoluta o relativa utilizable por la etiqueta `img`.
+ */
+const resolvePanelImageUrl = (rawImageUrl: string): string => {
+  const normalized = String(rawImageUrl ?? '').trim()
+  if (!normalized) return ''
+
+  if (/^https?:\/\//i.test(normalized)) {
+    return normalized
+  }
+
+  if (normalized.startsWith('//')) {
+    return `https:${normalized}`
+  }
+
+  if (!PANEL_INFO_BASE_URL) {
+    return normalized
+  }
+
+  const base = PANEL_INFO_BASE_URL.endsWith('/') ? PANEL_INFO_BASE_URL : `${PANEL_INFO_BASE_URL}/`
+  const path = normalized.startsWith('/') ? normalized.slice(1) : normalized
+  return `${base}${path}`
+}
+
+/**
+ * Valida si el texto recibido corresponde exactamente a la temática Cultura.
+ * @param value - Etiqueta a validar.
+ * @returns `true` cuando la etiqueta es Cultura (ignorando mayúsculas y acentos).
+ */
+const isCulturaLabel = (value: string): boolean => {
+  return value.trim().localeCompare('Cultura', 'es', { sensitivity: 'base' }) === 0
+}
+
 const Widget = (props: AllWidgetProps<any>) => {
   const widgetResultId = WIDGET_IDS.RESULT
 
@@ -214,6 +281,10 @@ const Widget = (props: AllWidgetProps<any>) => {
   const [municipioField, setMunicipioField] = React.useState<string | null>(null)
   /** Campo real de nombre detectado dinámicamente en atributos del servicio. */
   const [nombreField, setNombreField] = React.useState<string | null>(null)
+  /** Feature seleccionado para mostrar detalle en PanelInformativo. */
+  const [panelInfoFeature, setPanelInfoFeature] = React.useState<CulturaTurismoFeature | null>(null)
+  /** Estado de carga para la consulta de detalle del PanelInformativo. */
+  const [panelInfoLoading, setPanelInfoLoading] = React.useState(false)
 
   /** Extensión inicial para restablecer la vista al limpiar. */
   const initialExtentRef = React.useRef<__esri.Extent | null>(null)
@@ -223,6 +294,8 @@ const Widget = (props: AllWidgetProps<any>) => {
   const initialScaleRef = React.useRef<number | null>(null)
   /** Último layerId cargado para evitar recargas redundantes. */
   const loadedLayerIdRef = React.useRef<number | null>(null)
+  /** Última firma de consulta usada para evitar recargas redundantes del panel. */
+  const panelInfoQueryKeyRef = React.useRef('')
 
   /**
    * Índice de hijos por parentLayerId para evitar filtros repetidos sobre allLayers.
@@ -271,6 +344,74 @@ const Widget = (props: AllWidgetProps<any>) => {
       : filteredByCategoria
     return toUniqueOptions(filteredByMunicipio.map(item => item.nombre))
   }, [filteredByCategoria, selectedMunicipio])
+
+  /** Etiqueta actual de temática seleccionada para evaluaciones de flujo. */
+  const selectedTematicaLabel = React.useMemo(() => {
+    return tematicas.find(option => option.value === selectedTematica)?.label ?? ''
+  }, [selectedTematica, tematicas])
+
+  /**
+   * Define el flujo exacto que activa la vista de PanelInformativo.
+   * Temática debe ser Cultura y los filtros de categoría, municipio y nombre deben estar completos.
+   */
+  const shouldShowPanelInformativo = React.useMemo(() => {
+    return isCulturaLabel(selectedTematicaLabel)
+      && Boolean(selectedCategoria)
+      && Boolean(selectedMunicipio)
+      && Boolean(selectedNombre)
+  }, [selectedTematicaLabel, selectedCategoria, selectedMunicipio, selectedNombre])
+
+  /**
+   * Construye la cláusula WHERE actual reutilizable para búsquedas y detalle.
+   * @returns Expresión SQL en formato ArcGIS.
+   */
+  const buildCurrentWhereClause = React.useCallback((): string => {
+    const whereParts: string[] = []
+
+    if (selectedMunicipio && municipioField) {
+      whereParts.push(`${municipioField} = '${escapeSqlValue(selectedMunicipio)}'`)
+    }
+
+    if (selectedNombre && nombreField) {
+      whereParts.push(`${nombreField} = '${escapeSqlValue(selectedNombre)}'`)
+    }
+
+    const selectedSubcategoriaCategoria = getSubcategoriaCategoria(selectedSubcategoria)
+
+    if (selectedSubcategoriaCategoria) {
+      whereParts.push(`CATEGORIA = '${escapeSqlValue(selectedSubcategoriaCategoria)}'`)
+    } else if (categorias && selectedCategoria) {
+      whereParts.push(`CATEGORIA = '${escapeSqlValue(categorias.find(option => option.value === selectedCategoria)?.label || '')}'`)
+    }
+
+    return whereParts.length > 0 ? whereParts.join(' AND ') : '1=1'
+  }, [selectedMunicipio, municipioField, selectedNombre, nombreField, selectedSubcategoria, categorias, selectedCategoria])
+
+  /**
+   * Adapta atributos del feature seleccionado al contrato esperado por PanelInformativo.
+   */
+  const panelInformativoData = React.useMemo<PanelInformativoData | null>(() => {
+    const attributes = panelInfoFeature?.attributes
+    if (!attributes) return null
+
+    return {
+      titulo: getFirstNonEmptyAttribute(attributes, ['NOMBRE', 'NOMBRESITIO', 'NOMBREESTABLECIMIENTO']) || selectedNombre,
+      imagenUrl: resolvePanelImageUrl(getFirstNonEmptyAttribute(attributes, ['IMAGEN', 'FOTO', 'FOTOS'])),
+      telefono: getFirstNonEmptyAttribute(attributes, ['TELEFONO', 'TELEFONO1', 'CELULAR', 'MOVIL']),
+      direccion: getFirstNonEmptyAttribute(attributes, ['DIRECCION', 'DIR']),
+      horario: getFirstNonEmptyAttribute(attributes, ['HORARIO', 'HORARIOS']),
+      sitioWeb: getFirstNonEmptyAttribute(attributes, ['SITIOWEB', 'SITIO_WEB', 'URL', 'PAGINAWEB', 'PAGINA_WEB']),
+      email: getFirstNonEmptyAttribute(attributes, ['EMAIL', 'CORREO', 'CORREOELECTRONICO'])
+    }
+  }, [panelInfoFeature, selectedNombre])
+
+  /**
+   * Regresa al formulario sin perder filtros principales, ocultando el panel de detalle.
+   */
+  const onBackToParameters = React.useCallback(() => {
+    setSelectedNombre('')
+    setError('')
+  }, [])
 
   /**
    * Limpia gráficos/resultados de mapa vinculados al widget de resultados.
@@ -585,6 +726,64 @@ const Widget = (props: AllWidgetProps<any>) => {
   }, [rawNames])
 
   /**
+   * Carga el detalle cuando se cumple el flujo de Cultura y existen filtros completos.
+   */
+  React.useEffect(() => {
+    if (!shouldShowPanelInformativo) {
+      setPanelInfoFeature(null)
+      panelInfoQueryKeyRef.current = ''
+      return
+    }
+
+    const selectedSubcategoriaLayerId = getSubcategoriaLayerId(selectedSubcategoria)
+    if (!selectedSubcategoriaLayerId) {
+      setPanelInfoFeature(null)
+      return
+    }
+
+    const where = buildCurrentWhereClause()
+    const queryKey = `${selectedSubcategoriaLayerId}|${where}`
+
+    if (panelInfoQueryKeyRef.current === queryKey && panelInfoFeature) {
+      return
+    }
+
+    let cancelled = false
+    panelInfoQueryKeyRef.current = queryKey
+
+    const loadPanelInfo = async () => {
+      setPanelInfoLoading(true)
+      try {
+        const features = (await ejecutarConsulta({
+          url: `${urls.SERVICIO_CULTURA_TURISMO}/${selectedSubcategoriaLayerId}`,
+          where,
+          campos: ['*'],
+          returnGeometry: false
+        })) as CulturaTurismoFeature[]
+
+        if (!cancelled) {
+          setPanelInfoFeature(features[0] ?? null)
+        }
+      } catch (err) {
+        console.error('Error cargando detalle de PanelInformativo:', err)
+        if (!cancelled) {
+          setPanelInfoFeature(null)
+        }
+      } finally {
+        if (!cancelled) {
+          setPanelInfoLoading(false)
+        }
+      }
+    }
+
+    void loadPanelInfo()
+
+    return () => {
+      cancelled = true
+    }
+  }, [buildCurrentWhereClause, panelInfoFeature, selectedSubcategoria, shouldShowPanelInformativo])
+
+  /**
    * Ejecuta la consulta principal con los filtros seleccionados y dibuja resultados.
    */
   const onBuscar = React.useCallback(async () => {
@@ -598,25 +797,7 @@ const Widget = (props: AllWidgetProps<any>) => {
     setError('')
 
     try {
-      const whereParts: string[] = []
-
-      if (selectedMunicipio && municipioField) {
-        whereParts.push(`${municipioField} = '${escapeSqlValue(selectedMunicipio)}'`)
-      }
-
-      if (selectedNombre && nombreField) {
-        whereParts.push(`${nombreField} = '${escapeSqlValue(selectedNombre)}'`)
-      }
-
-      const selectedSubcategoriaCategoria = getSubcategoriaCategoria(selectedSubcategoria)
-
-      if (selectedSubcategoriaCategoria) {
-        whereParts.push(`CATEGORIA = '${escapeSqlValue(selectedSubcategoriaCategoria)}'`)
-      } else if (categorias && selectedCategoria) {
-        whereParts.push(`CATEGORIA = '${escapeSqlValue(categorias.find(option => option.value === selectedCategoria)?.label || '')}'`)
-      }
-
-      const where = whereParts.length > 0 ? whereParts.join(' AND ') : '1=1'
+      const where = buildCurrentWhereClause()
       const selectedSubcategoriaLayerId = getSubcategoriaLayerId(selectedSubcategoria)
       if (!selectedSubcategoriaLayerId) {
         setError('Debe seleccionar una subcategoría válida para buscar.')
@@ -640,13 +821,12 @@ const Widget = (props: AllWidgetProps<any>) => {
       }
 
       // Dibuja resultados en el mapa usando la función compartida y pasando el layerId para gestionar capas por subcategoría y evitar mezclas de resultados entre diferentes subcategorías
-      await drawAndCenterFeatures(features, jimuMapView, graphicsLayer, setGraphicsLayer, `cultura-turismo-consulta-layer-${selectedSubcategoria}`)
+      await drawAndCenterFeatures(undefined, features, jimuMapView, graphicsLayer, setGraphicsLayer, `cultura-turismo-consulta-layer-${selectedSubcategoria}`)
 
       
       if (validaLoggerLocalStorage('logger')) {
         console.log({
           selectedCategoria,
-          whereParts,
           where,
           layerUrl,
           features,
@@ -687,17 +867,13 @@ const Widget = (props: AllWidgetProps<any>) => {
       setLoading(false)
     }
   }, [
+    buildCurrentWhereClause,
     clearMapResults,
     drawAndCenterFeatures,
     jimuMapView,
-    municipioField,
-    nombreField,
-    props,
-    selectedMunicipio,
-    selectedNombre,
+    selectedCategoria,
     selectedSubcategoria,
-    subcategorias,
-    widgetResultId
+    subcategorias
   ])
 
   /**
@@ -716,6 +892,8 @@ const Widget = (props: AllWidgetProps<any>) => {
 
     setMunicipioField(null)
     setNombreField(null)
+    setPanelInfoFeature(null)
+    panelInfoQueryKeyRef.current = ''
     setError('')
 
     clearMapResults()
@@ -742,6 +920,45 @@ const Widget = (props: AllWidgetProps<any>) => {
         />
       )}
 
+      {shouldShowPanelInformativo
+        ? (
+          <div className="consulta-widget">
+            {panelInformativoData && (
+              <PanelInformativo
+                imagenUrl={panelInformativoData.imagenUrl}
+                titulo={panelInformativoData.titulo || selectedNombre}
+                listaIconoTextoItems={itemsInformacionContacto({
+                  telefono: panelInformativoData.telefono,
+                  direccion: panelInformativoData.direccion,
+                  horario: panelInformativoData.horario,
+                  sitioWeb: panelInformativoData.sitioWeb,
+                  email: panelInformativoData.email
+                })}
+                chipsIconoTextoTitulo=""
+                chipsIconoTextoItems={[]}
+                chipsIconoTextoIcono=""
+                chipsTextoTitulo=""
+                chipsTextoItems={[]}
+                botonOnClick={onBackToParameters}
+                botonLabel="Parámetros"
+              />
+            )}
+
+            {(panelInfoLoading || loading) && <OurLoading />}
+
+            {!panelInfoLoading && !loading && !panelInformativoData && (
+              <SearchActionBar
+                onSearch={onBuscar}
+                onClear={onBackToParameters}
+                loading={false}
+                disableSearch={false}
+                helpText="No fue posible cargar el detalle del registro seleccionado."
+                error=""
+              />
+            )}
+          </div>
+          )
+        : (
       <div className="consulta-widget consulta-scroll loading-host">
         <div>
           <Label>Temática:</Label>
@@ -861,6 +1078,7 @@ const Widget = (props: AllWidgetProps<any>) => {
 
         {loading && <OurLoading />}
       </div>
+          )}
     </div>
   )
 }
