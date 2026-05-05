@@ -24,11 +24,32 @@ export async function queryCapa(execute, arcgisService, baseUrl, layerId, params
     return response;
 }
 
-export function handleError(response, setMessage) {
+export async function cargarDesdeArcgisService(execute, arcgisService, url, idCapa, propsQuery, setLoading=undefined) {
+    if (setLoading)
+        setLoading(true);
+    
+    try {
+        const response = await queryCapa(execute, arcgisService, url, idCapa, propsQuery)
+            if (handleError(response) === -1) {
+            throw("Error accediendo a la capa");
+        }
+        
+        return { ...response.data };
+    } finally {
+        if (setLoading)
+            setLoading(false);
+    }    
+}
+
+
+export function handleError(response, setMessage=null) {
     if (response.success) 
         return 0;
     
-    setMessage(response.error ?? 'No fue posible consultar el servicio')
+    if (setMessage) {
+        setMessage(response.error ?? 'No fue posible consultar el servicio')
+    }
+
     return -1    
 }
 

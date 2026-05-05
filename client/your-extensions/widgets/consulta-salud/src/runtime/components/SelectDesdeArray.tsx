@@ -2,13 +2,13 @@
 import { jsx } from 'jimu-core'
 import { Select, Label, Option } from 'jimu-ui'
 
-export default function SelectDesdeArray({label, disabled, array, valor, setValor}) {
+export default function SelectDesdeArray({label, disabled, array, valor, onChange, setValor}) {
     return (
         <>
         <Label>{label}</Label>        
         <Select        
         value={valor}
-        onChange={(e) => setValor(e.target.value)}
+        onChange={ onChange ? (e) => onChange(e) : (e) => setValor(e.target.value)  }
         disabled={disabled}>
             <Option value="">Seleccione...</Option>
             
@@ -21,3 +21,5 @@ export default function SelectDesdeArray({label, disabled, array, valor, setValo
         </>
     )
 }
+
+

@@ -73,6 +73,8 @@ const NOMBRE_FIELD_CANDIDATES = [
 
 /**
  * Normaliza una lista de textos a opciones de select únicas y ordenadas.
+ * @param values - Arreglo de cadenas a normalizar.
+ * @returns Arreglo de {@link SelectOption} deduplicado y ordenado alfabéticamente en español.
  */
 const toUniqueOptions = (values: string[]) => {
   if (values.length < 1) return []
@@ -81,12 +83,20 @@ const toUniqueOptions = (values: string[]) => {
     .map(v => ({ value: v, label: v }))
 }
 
-const escapeSqlValue = (value: string) => value.replace(/'/g, "''") // Escapa comillas simples para evitar inyección SQL en consultas
+/**
+ * Escapa comillas simples en una cadena para su uso seguro en cláusulas SQL.
+ * @param value - Cadena de entrada a escapar.
+ * @returns Cadena con las comillas simples duplicadas (`'` → `''`).
+ */
+const escapeSqlValue = (value: string) => value.replace(/'/g, "''")
 
-const SUBCATEGORIA_SEPARATOR = '::' // Separador para construir el valor compuesto de subcategoría (layerId::categoria)
+/** Separador usado para construir el valor compuesto de subcategoría con formato `layerId::categoria`. */
+const SUBCATEGORIA_SEPARATOR = '::'
 
 /**
  * Extrae el id de layer desde el valor compuesto de subcategoría.
+ * @param value - Valor con formato `layerId::categoria` o solo `layerId`.
+ * @returns El identificador numérico de la capa, o `null` si el valor es inválido.
  */
 const getSubcategoriaLayerId = (value: string): number | null => {
   if (!value) return null
@@ -99,6 +109,8 @@ const getSubcategoriaLayerId = (value: string): number | null => {
 
 /**
  * Extrae la categoría textual desde el valor compuesto de subcategoría.
+ * @param value - Valor con formato `layerId::categoria`.
+ * @returns La parte textual de la categoría, o cadena vacía si el separador no está presente.
  */
 const getSubcategoriaCategoria = (value: string): string => {
   if (!value || !value.includes(SUBCATEGORIA_SEPARATOR)) return ''
@@ -106,7 +118,10 @@ const getSubcategoriaCategoria = (value: string): string => {
 }
 
 /**
- * Construye el valor compuesto de subcategoría con formato layerId::categoria.
+ * Construye el valor compuesto de subcategoría con formato `layerId::categoria`.
+ * @param layerId - Identificador numérico de la capa.
+ * @param categoria - Nombre textual de la categoría.
+ * @returns Cadena con formato `layerId::categoria`.
  */
 const buildSubcategoriaValue = (layerId: number, categoria: string): string => {
   return `${layerId}${SUBCATEGORIA_SEPARATOR}${categoria}`
@@ -117,8 +132,12 @@ const municipioById = new Map(
 )
 
 /**
- * Resuelve el nombre del municipio usando primero el atributo MUNICIPIO y,
- * si no existe, hace fallback por IDMUNICIPIO contra la constante local.
+ * Resuelve el nombre del municipio a partir de los atributos de un feature.
+ *
+ * Usa primero el atributo `MUNICIPIO` y, si no existe o está vacío,
+ * hace fallback mediante `IDMUNICIPIO` contra el catálogo {@link MUNICIPIOS_QUINDIO}.
+ * @param attributes - Atributos del feature de Cultura y Turismo.
+ * @returns Nombre del municipio resuelto, o cadena vacía si no se puede determinar.
  */
 const resolveMunicipioName = (attributes: CulturaTurismoAttributes): string => {
   const fromFeature = String(attributes.MUNICIPIO ?? '').trim()
@@ -131,8 +150,13 @@ const resolveMunicipioName = (attributes: CulturaTurismoAttributes): string => {
 }
 
 /**
- * Intenta detectar el campo más apropiado para nombre usando coincidencia
- * exacta y luego parcial contra una lista de candidatos.
+ * Detecta el campo más apropiado para nombre en un conjunto de atributos.
+ *
+ * Evalúa primero coincidencia exacta (insensible a mayúsculas) y luego
+ * coincidencia parcial contra la lista de candidatos proporcionada.
+ * @param attributeNames - Nombres de campo disponibles en el feature.
+ * @param candidates - Lista ordenada de nombres candidatos a buscar.
+ * @returns El nombre real del campo encontrado, o `null` si ninguno coincide.
  */
 const guessField = (attributeNames: string[], candidates: string[]): string | null => {
   const upperCandidates = candidates.map(c => c.toUpperCase())

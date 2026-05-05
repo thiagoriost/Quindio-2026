@@ -1,18 +1,20 @@
 /** @jsx jsx */
 import { React, jsx } from 'jimu-core'
 import { Select, Label, Option } from 'jimu-ui'
-const { useEffect, useImperativeHandle, forwardRef, useRef } = React
+const { useEffect,useState, useImperativeHandle, forwardRef, useRef } = React
 
 import type { ConsultaComponentHandle, ConsultaGeneralProps } from '../consulta-general-types'
 import type { ArcGisFeature, ArcGisField, SelectOption } from '../types'
-import { arrayValueLabel, handleError, listarCapas, queryCapa } from '../util'
+import { arrayValueLabel, cargarDesdeArcgisService, handleError, listarCapas, queryCapa } from '../util'
 import SelectMunicipio from './SelectMunicipio'
 import SelectDesdeArray from './SelectDesdeArray'
 
-const ConsultaGeneral = forwardRef<ConsultaComponentHandle, ConsultaGeneralProps>(({
+const ConsultaGeneral = forwardRef(({
     loading,
+    setLoading,
     execute,
     url,
+    urlAlfanumerico,
     idMunicipio,
     setIdMunicipio,
     municipios,
@@ -20,10 +22,11 @@ const ConsultaGeneral = forwardRef<ConsultaComponentHandle, ConsultaGeneralProps
     arcgisService,
     httpService
 }, ref) => {
-    const [tipoEstablecimientos, setTipoEstablecimientos] = React.useState<SelectOption[]>([])
-    const [idTipoEstablecimiento, setIdTipoEstablecimiento] = React.useState('')
-    const [instituciones, setInstituciones] = React.useState<SelectOption[]>([])
-    const [institucion, setInstitucion] = React.useState<string>('')
+    const [tipoEstablecimientos, setTipoEstablecimientos] = useState<SelectOption[]>([])
+    const [idTipoEstablecimiento, setIdTipoEstablecimiento] = useState('')
+    const [instituciones, setInstituciones] = useState<SelectOption[]>([])
+    const [idInstitucion, setIdInstitucion] = useState<string>('');
+    const [nombreInstitucion, setNombreInstitucion] = useState<string>('');
 
     const resultadosRef = useRef<{
         features: ArcGisFeature[]
@@ -36,29 +39,45 @@ const ConsultaGeneral = forwardRef<ConsultaComponentHandle, ConsultaGeneralProps
     })
 
     const getFeatures = () => (
-        institucion
-            ? resultadosRef.current.features.filter((feature) => String(feature.attributes?.OBJECTID ?? '') === institucion)
+        idInstitucion
+            ? resultadosRef.current.features.filter((feature) => String(feature.attributes?.OBJECTID ?? '') === idInstitucion)
             : resultadosRef.current.features
     )
 
     useImperativeHandle(ref, () => ({
-        consultar: async () => {
-            const features = getFeatures()
+        consultar: async () => {           
+            const features = getFeatures();
+
+            // Capacidades de la institucion 
+            const capacidades = (await cargarDesdeArcgisService(execute, arcgisService, urlAlfanumerico, 2, {
+                where: `NOMBREEQUIPAMIENTO='${nombreInstitucion}'`,
+                outFields: '*',
+                returnGeometry: false,
+            }, setLoading)).features;
+
+            // Servicios de la institucion 
+            const servicios = (await cargarDesdeArcgisService(execute, arcgisService, urlAlfanumerico, 0, {
+                where: `NOMBREEQUIPAMIENTO='${nombreInstitucion}'`,
+                outFields: '*',
+                returnGeometry: false,
+            }, setLoading)).features;
 
             return {
                 features,
                 fields: resultadosRef.current.fields,
-                spatialReference: resultadosRef.current.spatialReference
+                spatialReference: resultadosRef.current.spatialReference,
+                cgCapacidades: capacidades,
+                cgServicios: servicios                
             }
         },
         getFeatures: () => getFeatures(),
         limpiar: () => {
-            setIdTipoEstablecimiento('')
-            setInstitucion('')
-            setInstituciones([])
-            setIdMunicipio('')
+            setIdTipoEstablecimiento(tipoEstablecimientos[0]?.value || '')
+            setIdInstitucion(instituciones[0]?.value || '')
+            setNombreInstitucion(instituciones[0]?.label || '')
+            setIdMunicipio(municipios[0]?.value || '')
         }
-    }), [institucion, setIdMunicipio])
+    }), [idInstitucion, nombreInstitucion, tipoEstablecimientos, instituciones, municipios]);
 
     useEffect(() => {
         const initConsultaGeneral = async () => {
@@ -66,7 +85,13 @@ const ConsultaGeneral = forwardRef<ConsultaComponentHandle, ConsultaGeneralProps
         }
 
         void initConsultaGeneral()
-    }, [])
+    }, []);
+
+    useEffect(() => {
+        if (!idTipoEstablecimiento && tipoEstablecimientos.length > 0) {
+            setIdTipoEstablecimiento(tipoEstablecimientos[0].value)
+        }
+    }, [idTipoEstablecimiento, tipoEstablecimientos]);
 
     useEffect(() => {
         const cargarInstituciones = async () => {
@@ -80,91 +105,44 @@ const ConsultaGeneral = forwardRef<ConsultaComponentHandle, ConsultaGeneralProps
                 return
             }
 
-            const response = await queryCapa(execute, arcgisService, url, parseInt(idTipoEstablecimiento, 10), {
+            const resp = await cargarDesdeArcgisService(execute, arcgisService, url, parseInt(idTipoEstablecimiento, 10), {
                 where: `IDMUNICIPIO="${idMunicipio}"`,
                 outFields: '*',
                 returnGeometry: true
-            })
+            }, setLoading)
 
-            if (handleError(response, setMessage) === -1) {
-                return
-            }
+            resultadosRef.current = {...resp}            
 
-            const features = response.data.features || []; 
-            const fields = response.data.fields;
-            const spatialReference = response.data.spatialReference
-
-            resultadosRef.current = {
-                features,
-                fields,
-                spatialReference
-            }            
-
-            setInstituciones(arrayValueLabel(features, 'OBJECTID', 'NOMBREEQUIPAMIENTO'))
-            setInstitucion('')
-
-            if (!features.length) {
-                setMessage('No se encontraron instituciones para los filtros seleccionados')
-            }
+            const opcionesInstituciones = arrayValueLabel(resp.features, 'OBJECTID', 'NOMBREEQUIPAMIENTO')
+            setInstituciones(opcionesInstituciones);
+            setIdInstitucion(opcionesInstituciones[0]?.value || '');
+            setNombreInstitucion(opcionesInstituciones[0]?.label || '');
         }
 
         void cargarInstituciones()
-    }, [idMunicipio, idTipoEstablecimiento])
+    }, [idMunicipio, idTipoEstablecimiento]);
 
     return (
-        <PanelConsulta
-        idTipoEstablecimiento={idTipoEstablecimiento}
-        setIdTipoEstablecimiento={setIdTipoEstablecimiento}
-        instituciones={instituciones}
-        institucion={institucion}
-        setInstitucion={setInstitucion}
-        loading={loading}
-        tipoEstablecimientos={tipoEstablecimientos}
-        municipios={municipios}
-        idMunicipio={idMunicipio}
-        setIdMunicipio={setIdMunicipio}
-        />
-    )
-})
-
-function PanelConsulta({
-    idTipoEstablecimiento,
-    setIdTipoEstablecimiento,
-    instituciones,
-    institucion,
-    setInstitucion,
-    loading,
-    tipoEstablecimientos,
-    municipios,
-    idMunicipio,
-    setIdMunicipio
-}) {
-    return (
-        <>
-            <Label>Categoría</Label>
-            <Select
-                value={idTipoEstablecimiento}
-                onChange={(e) => {
-                    setIdTipoEstablecimiento(e.target.value)
-                    setInstitucion('')
-                }}
-                disabled={loading || tipoEstablecimientos.length === 0}
-            >
-                <Option value="">Seleccione...</Option>
-
-                {tipoEstablecimientos.map((option) => (
-                    <Option key={option.value} value={option.value}>
-                        {option.label}
-                    </Option>
-                ))}
-            </Select>
+        <>       
+            <SelectDesdeArray label={'Categoría'} valor={idTipoEstablecimiento} 
+            onChange={(e) => {                
+                setIdTipoEstablecimiento(e.target.value)
+                setIdInstitucion('')
+            }}
+            array={tipoEstablecimientos} disabled={loading} />
 
             <SelectMunicipio loading={loading} municipios={municipios} idMunicipio={idMunicipio} setIdMunicipio={setIdMunicipio} />
-
-            <SelectDesdeArray label={'Institución'} valor={institucion} setValor={setInstitucion} array={instituciones} disabled={loading} />
+                    
+            <SelectDesdeArray label={'Institución'} valor={idInstitucion} 
+            onChange={(e) => {
+                const selected = instituciones.find(option => option.value === e.target.value)
+                setIdInstitucion(e.target.value)
+                setNombreInstitucion(selected?.label || '')
+            }}
+            array={instituciones} disabled={loading} />
         </>
     )
-}
+})
 
 export default ConsultaGeneral
 
@@ -175,7 +153,7 @@ async function cargarTiposEstablecimiento(execute, httpService, url, setTipoEsta
     const opciones = layers.map((layer) => ({
         value: String(layer.id),
         label: String(layer.name)
-    }))
+    })).sort((a, b) => a.label.localeCompare(b.label))
 
-    setTipoEstablecimientos(opciones.sort((a, b) => a.label.localeCompare(b.label)))
+    setTipoEstablecimientos(opciones)
 }
