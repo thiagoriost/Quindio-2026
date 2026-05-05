@@ -789,7 +789,7 @@ const Widget = (props: AllWidgetProps<any>) => {
   }, [rawNames])
 
   /**
-   * Ejecuta la consulta principal con los filtros seleccionados y dibuja resultados.
+   * Restablece la vista inicial del mapa y ejecuta la consulta principal con los filtros seleccionados.
    */
   const onBuscar = React.useCallback(async () => {
     if (!canSearch) {
@@ -806,6 +806,8 @@ const Widget = (props: AllWidgetProps<any>) => {
     setError('')
 
     try {
+      await resetToDefaultMapView()
+
       const where = buildCurrentWhereClause()
       const selectedSubcategoriaLayerId = getSubcategoriaLayerId(selectedSubcategoria)
       if (!selectedSubcategoriaLayerId) {
@@ -893,6 +895,7 @@ const Widget = (props: AllWidgetProps<any>) => {
     isCulturaFlowComplete,
     jimuMapView,
     loadPanelInfo,
+    resetToDefaultMapView,
     selectedCategoria,
     selectedSubcategoria,
     subcategorias
