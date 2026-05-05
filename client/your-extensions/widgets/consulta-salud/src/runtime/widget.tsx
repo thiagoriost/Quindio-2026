@@ -1,13 +1,17 @@
 /** @jsx jsx */
 import { React, jsx, AllWidgetProps } from 'jimu-core'
+
+// @ts-ignore
 import '../styles/styles.scss'
 const { useEffect, useState, useRef } = React
 
-import { urls } from '../../../api/servicios'
+import { urls } from '../../../api/serviciosQuindio'
 import { WIDGET_IDS } from '../../../shared/constants/widget-ids'
 import { ArcgisService } from '../../../shared/services/arcgis.service'
 import { HttpService } from '../../../shared/services/http.service'
 import { useCancelableHttp } from '../../../shared/hooks/useCancelableHttp'
+import stethoscopeIcon from '../assets/stethoscope-solid-full.svg'
+import starIcon from '../assets/star-solid-full.svg'
 
 import {
     abrirTablaResultados,
@@ -30,7 +34,8 @@ import type {
 import { listaMunicipios } from './components/SelectMunicipio'
 import SelectDesdeArray from './components/SelectDesdeArray'
 import DetalleLabelValueFoto from './components/DetalleLabelValueFoto'
-import { validaLoggerLocalStorage } from '../../../shared/utils/export.utils'
+import { ResultTable } from '../../../shared/components/ResultTable'
+import PanelInformativo, { itemsInformacionContacto } from '../../../shared/components/PanelInformativo/PanelInformativo'
 
 const arcgisService = new ArcgisService()
 const httpService = new HttpService();
@@ -40,7 +45,7 @@ const Widget = (props: AllWidgetProps<IMConfig>) => {
     const [message, setMessage] = useState('');
     const [mostrarBusqueda, setMostrarBusqueda] = useState(true);
     
-    const { execute, cancelAll } = useCancelableHttp()
+    const { execute, cancelAll } = useCancelableHttp();
     const cancelAllRef = useRef(cancelAll);
     const widgetResultId = WIDGET_IDS.RESULT
 
@@ -52,14 +57,17 @@ const Widget = (props: AllWidgetProps<IMConfig>) => {
         general: useRef<ConsultaComponentHandle>(null), 
         indicadores: useRef<ConsultaComponentHandle>(null),
         tematicas: useRef<ConsultaComponentHandle>(null)
-    }
+    };
+
+    const refDatos = useRef({});
 
     useEffect(() => {
         const cargarMunicipios = async () => {
             setLoading(true)
-            const lista = await listaMunicipios(execute, arcgisService)
+            const lista = await listaMunicipios(execute, arcgisService) ?? []
             setLoading(false);
-            setMunicipios (lista);            
+            setMunicipios(lista);
+            setIdMunicipio((current) => current || lista?.[0]?.value || '')
         }          
 
         void cargarMunicipios();      
@@ -81,40 +89,20 @@ const Widget = (props: AllWidgetProps<IMConfig>) => {
     }
 
     const consultar = async ()=> {        
-        const result = await refs[tipoConsulta].current.consultar()
-        
-        if (result.features.length > 0) {
-            
-            const withGraphic = result.withGraphic ? result.withGraphic : {
-                showGraphic:false,
-                titleCoropletico:'',
-                graphicData:{},
-                graphicType: 'bar',
-                graphicTitle: '',
-                selectedIndicador:999
-            }
-            
-            const isCoropletico = tipoConsulta === 'indicadores'?true:false
-            const titleTable = `Resultado`
-            const temporalLayer = false
-            const valorBusqueda = tipoConsulta
+        const result = await refs[tipoConsulta].current.consultar();
 
-            abrirTablaResultados(
-                isCoropletico,
-                result.features,
-                result.fields,
-                props,
-                widgetResultId,
-                result.spatialReference,
-                titleTable,
-                withGraphic,                
-                temporalLayer,
-                valorBusqueda
-            )            
-        }
+        abrirTablaResultados(
+            result.features,
+            result.fields,
+            props,
+            widgetResultId,
+            result.spatialReference,
+            result.withGraphic
+        )
         
         if (tipoConsulta === 'general') {
-            setMostrarBusqueda(false)            
+            setMostrarBusqueda(false);
+            refDatos.current = {...result};
         }
     }
 
@@ -128,7 +116,20 @@ const Widget = (props: AllWidgetProps<IMConfig>) => {
         { value: 'general', label: 'General' },
         { value: 'indicadores', label: 'Indicadores' },
         { value: 'tematicas', label: 'Temáticas' }
-    ];
+    ];    
+
+    const capacidadesItems = Array.isArray(refDatos.current.cgCapacidades)
+    ? refDatos.current.cgCapacidades.map((item) => ({
+        label: item.attributes.TIPO_CAPACIDAD,
+        value: item.attributes.VALORCAPACIDAD
+        }))
+    : [];
+    
+    const serviciosItems = Array.isArray(refDatos.current.cgServicios)
+    ? refDatos.current.cgServicios.map((item) => ({
+        value: item.attributes.TIPO_SERVICIO
+        })).sort((a: any, b: any) => a.value.localeCompare(b.value))
+    : [];
 
     return (
         mostrarBusqueda ? (
@@ -138,6 +139,7 @@ const Widget = (props: AllWidgetProps<IMConfig>) => {
             setTipoConsulta={setTipoConsulta}
             refs={refs}
             loading={loading}
+            setLoading={setLoading}
             execute={execute}
             props={props}
             idMunicipio={idMunicipio}
@@ -148,25 +150,37 @@ const Widget = (props: AllWidgetProps<IMConfig>) => {
             consultar={consultar}
             limpiar={limpiar}/>
         ) : (
-            <DetalleLabelValueFoto 
-            title="Detalle de la consulta"
-            items={[
-                {label:"Nombre", value: refs.general.current?.getFeatures()?.[0]?.attributes["NOMBREEQUIPAMIENTO"] },
-                {label:"Horario", value: refs.general.current?.getFeatures()?.[0]?.attributes["HORARIOS"] },
-                {label:"Dirección", value: refs.general.current?.getFeatures()?.[0]?.attributes["DIRECCION"] },
-                {label:"Teléfono", value: refs.general.current?.getFeatures()?.[0]?.attributes["TELEFONO"] },
-                {label:"Sitio web", value: refs.general.current?.getFeatures()?.[0]?.attributes["SITIOWEB"] },
-                {label:"Email", value: refs.general.current?.getFeatures()?.[0]?.attributes["EMAIL"] },
-            ]}
-            imageUrl={refs.general.current?.getFeatures()?.[0]?.attributes?.['FOTOS']
-                ? `https://sigquindio.gov.co/ArchivosQuindioIII/${refs.general.current.getFeatures()[0].attributes['FOTOS']}`
-                : ''}
-            onVolver={() => setMostrarBusqueda(true)}/>
+            <div className="consulta-salud">                
+                <PanelInformativo
+                imagenUrl={refs.general.current?.getFeatures()?.[0]?.attributes?.['FOTOS']
+                    ? `${urls.URL_ARCHIVOS_QUINDIO}${refs.general.current.getFeatures()[0].attributes['FOTOS']}`
+                    : ''
+                }
+                titulo={ refs.general.current?.getFeatures()?.[0]?.attributes["NOMBREEQUIPAMIENTO"]}
+                listaIconoTextoItems={
+                     /*
+                     [ {iconoSrc: starIcon, iconoAlt:"Estrella", texto:"Item importante", valor:refs.general.current?.getFeatures()?.[0]?.attributes["HORARIOS"]}]    
+                    */
+                    itemsInformacionContacto({
+                        horario: refs.general.current?.getFeatures()?.[0]?.attributes["HORARIOS"],
+                        direccion: refs.general.current?.getFeatures()?.[0]?.attributes["DIRECCION"],
+                        telefono: refs.general.current?.getFeatures()?.[0]?.attributes["TELEFONO"],
+                        sitioWeb: refs.general.current?.getFeatures()?.[0]?.attributes["SITIOWEB"],
+                        email: refs.general.current?.getFeatures()?.[0]?.attributes["EMAIL"]
+                    })
+                }
+                chipsIconoTextoTitulo={"capacidades"}
+                chipsIconoTextoItems={capacidadesItems}
+                chipsIconoTextoIcono={stethoscopeIcon}                              
+                chipsTextoTitulo={"servicios"}
+                chipsTextoItems={serviciosItems}              
+                botonOnClick={() => setMostrarBusqueda(true)} />
+            </div>
         )
     )
 }
 
-function FormularioDeBusqueda({tiposConsulta, tipoConsulta, setTipoConsulta, refs, loading, execute, props, idMunicipio, setIdMunicipio, 
+function FormularioDeBusqueda({tiposConsulta, tipoConsulta, setTipoConsulta, refs, loading, setLoading, execute, props, idMunicipio, setIdMunicipio, 
     municipios, message, setMessage, consultar, limpiar}: any) {
     return (
     <div className="consulta-salud" >
@@ -179,8 +193,10 @@ function FormularioDeBusqueda({tiposConsulta, tipoConsulta, setTipoConsulta, ref
                 httpService={httpService}
                 ref={refs.general}
                 loading={loading}
+                setLoading={setLoading}
                 execute={execute}
                 url={props.config.urlSalud}
+                urlAlfanumerico={props.config.urlSaludAlfanumerico}
                 idMunicipio={idMunicipio}
                 setIdMunicipio={setIdMunicipio}
                 municipios={municipios}
@@ -208,7 +224,7 @@ function FormularioDeBusqueda({tiposConsulta, tipoConsulta, setTipoConsulta, ref
                 idMunicipio={idMunicipio}
                 setIdMunicipio={setIdMunicipio}
                 municipios={municipios}
-                 execute={execute}
+                execute={execute}
                 url={props.config.urlSaludAlfanumerico}
                 setMessage={setMessage} />
             )}
@@ -222,7 +238,7 @@ function FormularioDeBusqueda({tiposConsulta, tipoConsulta, setTipoConsulta, ref
             />
 
             <div>
-                message: {message}  
+                {message}  
             </div>
         </div>
     )
