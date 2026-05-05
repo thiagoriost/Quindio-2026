@@ -6,7 +6,7 @@ import GraphicsLayer from '@arcgis/core/layers/GraphicsLayer'
 
 import { SearchActionBar } from '../../../shared/components/search-action-bar'
 import { AlertContainer } from '../../../shared/components/alert-container'
-import PanelInformativo, { itemsInformacionContacto } from '../../../shared/components/PanelInformativo/PanelInformativo'
+import PanelInformativo, { itemsInformacionContacto, type InformacionAdicionalItem } from '../../../shared/components/PanelInformativo/PanelInformativo'
 import OurLoading from '../../../commonWidgets/our_loading/OurLoading'
 import { urls } from '../../../api/serviciosQuindio'
 import { drawAndCenterFeatures, ejecutarConsulta, validaLoggerLocalStorage } from '../../../shared/utils/export.utils'
@@ -47,6 +47,9 @@ interface CulturaTurismoAttributes {
   DIRECCION?: string
   URL?: string
   NIT?: string
+  CIIU?: string
+  REGISTROMERCANTIL?: string
+  RNT?: string
   IDTIPOINSTITUCION?: number
   CATEGORIA?: string
   IDJERARQUIA?: number
@@ -59,6 +62,10 @@ interface CulturaTurismoAttributes {
 interface CulturaTurismoFeature {
   attributes: CulturaTurismoAttributes
   geometry?: __esri.Geometry
+}
+
+interface QueryFeature extends __esri.Graphic {
+  attributes: CulturaTurismoAttributes
 }
 
 const NOMBRE_FIELD_CANDIDATES = [
@@ -184,9 +191,26 @@ interface PanelInformativoData {
   horario: string
   sitioWeb: string
   email: string
+  informacionAdicional: InformacionAdicionalItem[]
 }
 
 const PANEL_INFO_BASE_URL = String((urls as Record<string, unknown>).URL_ARCHIVOS_QUINDIO ?? '')
+
+/**
+ * Construye un item de información adicional solo cuando el valor existe.
+ * @param label - Etiqueta visible del campo.
+ * @param value - Valor crudo del atributo del servicio.
+ * @returns Item tipado o `null` si el valor está vacío.
+ */
+const buildInformacionAdicionalItem = (label: string, value: string): InformacionAdicionalItem | null => {
+  const normalizedValue = value.trim()
+  if (!normalizedValue) return null
+
+  return {
+    label,
+    value: normalizedValue
+  }
+}
 
 /**
  * Obtiene el primer valor no vacío de una lista ordenada de posibles campos.
@@ -283,8 +307,8 @@ const Widget = (props: AllWidgetProps<any>) => {
   const [nombreField, setNombreField] = React.useState<string | null>(null)
   /** Feature seleccionado para mostrar detalle en PanelInformativo. */
   const [panelInfoFeature, setPanelInfoFeature] = React.useState<CulturaTurismoFeature | null>(null)
-  /** Estado de carga para la consulta de detalle del PanelInformativo. */
-  const [panelInfoLoading, setPanelInfoLoading] = React.useState(false)
+  /** Controla si la vista de detalle (PanelInformativo) está activa. */
+  const [showPanelInformativo, setShowPanelInformativo] = React.useState(false)
 
   /** Extensión inicial para restablecer la vista al limpiar. */
   const initialExtentRef = React.useRef<__esri.Extent | null>(null)
@@ -294,8 +318,6 @@ const Widget = (props: AllWidgetProps<any>) => {
   const initialScaleRef = React.useRef<number | null>(null)
   /** Último layerId cargado para evitar recargas redundantes. */
   const loadedLayerIdRef = React.useRef<number | null>(null)
-  /** Última firma de consulta usada para evitar recargas redundantes del panel. */
-  const panelInfoQueryKeyRef = React.useRef('')
 
   /**
    * Índice de hijos por parentLayerId para evitar filtros repetidos sobre allLayers.
@@ -351,15 +373,21 @@ const Widget = (props: AllWidgetProps<any>) => {
   }, [selectedTematica, tematicas])
 
   /**
-   * Define el flujo exacto que activa la vista de PanelInformativo.
-   * Temática debe ser Cultura y los filtros de categoría, municipio y nombre deben estar completos.
+   * Determina si el flujo Cultura tiene todos los filtros necesarios para detalle.
    */
-  const shouldShowPanelInformativo = React.useMemo(() => {
+  const isCulturaFlowComplete = React.useMemo(() => {
     return isCulturaLabel(selectedTematicaLabel)
       && Boolean(selectedCategoria)
       && Boolean(selectedMunicipio)
       && Boolean(selectedNombre)
   }, [selectedTematicaLabel, selectedCategoria, selectedMunicipio, selectedNombre])
+
+  /**
+   * Define cuándo la acción Buscar está disponible para ejecutar consulta final.
+   */
+  const canSearch = React.useMemo(() => {
+    return !loading && Boolean(selectedMunicipio)
+  }, [loading, selectedMunicipio])
 
   /**
    * Construye la cláusula WHERE actual reutilizable para búsquedas y detalle.
@@ -394,6 +422,13 @@ const Widget = (props: AllWidgetProps<any>) => {
     const attributes = panelInfoFeature?.attributes
     if (!attributes) return null
 
+    const informacionAdicional = [
+      buildInformacionAdicionalItem('NIT', getFirstNonEmptyAttribute(attributes, ['NIT'])),
+      buildInformacionAdicionalItem('CIIU', getFirstNonEmptyAttribute(attributes, ['CIIU'])),
+      buildInformacionAdicionalItem('Registro mercantil', getFirstNonEmptyAttribute(attributes, ['REGISTROMERCANTIL', 'REGISTRO_MERCANTIL'])),
+      buildInformacionAdicionalItem('RNT', getFirstNonEmptyAttribute(attributes, ['RNT']))
+    ].filter((item): item is InformacionAdicionalItem => item !== null)
+
     return {
       titulo: getFirstNonEmptyAttribute(attributes, ['NOMBRE', 'NOMBRESITIO', 'NOMBREESTABLECIMIENTO']) || selectedNombre,
       imagenUrl: resolvePanelImageUrl(getFirstNonEmptyAttribute(attributes, ['IMAGEN', 'FOTO', 'FOTOS'])),
@@ -401,14 +436,38 @@ const Widget = (props: AllWidgetProps<any>) => {
       direccion: getFirstNonEmptyAttribute(attributes, ['DIRECCION', 'DIR']),
       horario: getFirstNonEmptyAttribute(attributes, ['HORARIO', 'HORARIOS']),
       sitioWeb: getFirstNonEmptyAttribute(attributes, ['SITIOWEB', 'SITIO_WEB', 'URL', 'PAGINAWEB', 'PAGINA_WEB']),
-      email: getFirstNonEmptyAttribute(attributes, ['EMAIL', 'CORREO', 'CORREOELECTRONICO'])
+      email: getFirstNonEmptyAttribute(attributes, ['EMAIL', 'CORREO', 'CORREOELECTRONICO']),
+      informacionAdicional
     }
   }, [panelInfoFeature, selectedNombre])
+
+  /**
+   * Selecciona y persiste el feature que alimenta el PanelInformativo.
+   * Solo debe llamarse después de ejecutar una consulta final con botón Buscar.
+   * @param features - Resultado de la consulta final (con o sin geometría).
+   */
+  const loadPanelInfo = React.useCallback((features: QueryFeature[]) => {
+    if (!features.length) {
+      setPanelInfoFeature(null)
+      setShowPanelInformativo(false)
+      return
+    }
+
+    const byNombre = features.find(feature => {
+      const attrNombre = String(feature.attributes?.[nombreField || 'NOMBRE'] ?? feature.attributes?.NOMBRE ?? '').trim()
+      return attrNombre === selectedNombre
+    })
+
+    const selectedFeature = (byNombre ?? features[0]) as CulturaTurismoFeature
+    setPanelInfoFeature(selectedFeature)
+    setShowPanelInformativo(true)
+  }, [nombreField, selectedNombre])
 
   /**
    * Regresa al formulario sin perder filtros principales, ocultando el panel de detalle.
    */
   const onBackToParameters = React.useCallback(() => {
+    setShowPanelInformativo(false)
     setSelectedNombre('')
     setError('')
   }, [])
@@ -681,6 +740,8 @@ const Widget = (props: AllWidgetProps<any>) => {
     const layerId = getSubcategoriaLayerId(selectedSubcategoria)
 
     if (!layerId) {
+      setShowPanelInformativo(false)
+      setPanelInfoFeature(null)
       setSelectedMunicipio('')
       setSelectedNombre('')
       setRawNames([])
@@ -696,6 +757,8 @@ const Widget = (props: AllWidgetProps<any>) => {
 
     setSelectedMunicipio('')
     setSelectedNombre('')
+    setShowPanelInformativo(false)
+    setPanelInfoFeature(null)
     setRawNames([])
     setMunicipioField(null)
     setNombreField(null)
@@ -726,67 +789,13 @@ const Widget = (props: AllWidgetProps<any>) => {
   }, [rawNames])
 
   /**
-   * Carga el detalle cuando se cumple el flujo de Cultura y existen filtros completos.
-   */
-  React.useEffect(() => {
-    if (!shouldShowPanelInformativo) {
-      setPanelInfoFeature(null)
-      panelInfoQueryKeyRef.current = ''
-      return
-    }
-
-    const selectedSubcategoriaLayerId = getSubcategoriaLayerId(selectedSubcategoria)
-    if (!selectedSubcategoriaLayerId) {
-      setPanelInfoFeature(null)
-      return
-    }
-
-    const where = buildCurrentWhereClause()
-    const queryKey = `${selectedSubcategoriaLayerId}|${where}`
-
-    if (panelInfoQueryKeyRef.current === queryKey && panelInfoFeature) {
-      return
-    }
-
-    let cancelled = false
-    panelInfoQueryKeyRef.current = queryKey
-
-    const loadPanelInfo = async () => {
-      setPanelInfoLoading(true)
-      try {
-        const features = (await ejecutarConsulta({
-          url: `${urls.SERVICIO_CULTURA_TURISMO}/${selectedSubcategoriaLayerId}`,
-          where,
-          campos: ['*'],
-          returnGeometry: false
-        })) as CulturaTurismoFeature[]
-
-        if (!cancelled) {
-          setPanelInfoFeature(features[0] ?? null)
-        }
-      } catch (err) {
-        console.error('Error cargando detalle de PanelInformativo:', err)
-        if (!cancelled) {
-          setPanelInfoFeature(null)
-        }
-      } finally {
-        if (!cancelled) {
-          setPanelInfoLoading(false)
-        }
-      }
-    }
-
-    void loadPanelInfo()
-
-    return () => {
-      cancelled = true
-    }
-  }, [buildCurrentWhereClause, panelInfoFeature, selectedSubcategoria, shouldShowPanelInformativo])
-
-  /**
    * Ejecuta la consulta principal con los filtros seleccionados y dibuja resultados.
    */
   const onBuscar = React.useCallback(async () => {
+    if (!canSearch) {
+      return
+    }
+
     if (!selectedSubcategoria) {
       setError('Debe seleccionar una subcategoría para buscar.')
       alertService.warning('Faltan datos', 'Seleccione una subcategoría antes de realizar la consulta.')
@@ -812,9 +821,11 @@ const Widget = (props: AllWidgetProps<any>) => {
         where,
         campos: ['*'],
         returnGeometry: true
-      })
+      }) as QueryFeature[]
 
       if (!features.length) {
+        setShowPanelInformativo(false)
+        setPanelInfoFeature(null)
         clearMapResults()
         alertService.warning('Sin resultados', 'No se encontraron resultados para los filtros seleccionados.')
         return
@@ -823,6 +834,13 @@ const Widget = (props: AllWidgetProps<any>) => {
       // Dibuja resultados en el mapa usando la función compartida y pasando el layerId para gestionar capas por subcategoría y evitar mezclas de resultados entre diferentes subcategorías
       await drawAndCenterFeatures(undefined, features, jimuMapView, graphicsLayer, setGraphicsLayer, `cultura-turismo-consulta-layer-${selectedSubcategoria}`)
 
+      if (isCulturaFlowComplete) {
+        loadPanelInfo(features)
+      } else {
+        setShowPanelInformativo(false)
+        setPanelInfoFeature(null)
+      }
+
       
       if (validaLoggerLocalStorage('logger')) {
         console.log({
@@ -830,6 +848,7 @@ const Widget = (props: AllWidgetProps<any>) => {
           where,
           layerUrl,
           features,
+          attributesSample: features[0].attributes,
         })
       }
       
@@ -868,9 +887,12 @@ const Widget = (props: AllWidgetProps<any>) => {
     }
   }, [
     buildCurrentWhereClause,
+    canSearch,
     clearMapResults,
     drawAndCenterFeatures,
+    isCulturaFlowComplete,
     jimuMapView,
+    loadPanelInfo,
     selectedCategoria,
     selectedSubcategoria,
     subcategorias
@@ -892,8 +914,8 @@ const Widget = (props: AllWidgetProps<any>) => {
 
     setMunicipioField(null)
     setNombreField(null)
+    setShowPanelInformativo(false)
     setPanelInfoFeature(null)
-    panelInfoQueryKeyRef.current = ''
     setError('')
 
     clearMapResults()
@@ -920,7 +942,7 @@ const Widget = (props: AllWidgetProps<any>) => {
         />
       )}
 
-      {shouldShowPanelInformativo
+      {showPanelInformativo
         ? (
           <div className="consulta-widget">
             {panelInformativoData && (
@@ -939,14 +961,15 @@ const Widget = (props: AllWidgetProps<any>) => {
                 chipsIconoTextoIcono=""
                 chipsTextoTitulo=""
                 chipsTextoItems={[]}
+                informacionAdicionalItems={panelInformativoData.informacionAdicional}
                 botonOnClick={onBackToParameters}
                 botonLabel="Parámetros"
               />
             )}
 
-            {(panelInfoLoading || loading) && <OurLoading />}
+            {loading && <OurLoading />}
 
-            {!panelInfoLoading && !loading && !panelInformativoData && (
+            {!loading && !panelInformativoData && (
               <SearchActionBar
                 onSearch={onBuscar}
                 onClear={onBackToParameters}
@@ -1070,7 +1093,7 @@ const Widget = (props: AllWidgetProps<any>) => {
             onSearch={onBuscar}
             onClear={onLimpiar}
             loading={loading}
-            disableSearch={loading || !selectedMunicipio}
+            disableSearch={!canSearch}
             helpText="Seleccione temática, categoría y subcategoría. Puede filtrar por municipio y nombre para ubicar geometrías en el mapa."
             error={error}
           />

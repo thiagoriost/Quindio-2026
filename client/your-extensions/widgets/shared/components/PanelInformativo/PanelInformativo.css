@@ -71,6 +71,35 @@
     font-size: 14px;
 }
 
+.panel-informativo-campos-contenedor {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 8px;
+}
+
+.panel-informativo-campo {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: #f5f6f2;
+    border: 1px solid #d8ddd1;
+}
+
+.panel-informativo-campo-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: #55624c;
+    text-transform: uppercase;
+}
+
+.panel-informativo-campo-value {
+    font-size: 14px;
+    color: #1d2419;
+    word-break: break-word;
+}
+
 .panel-informativo-chip-contenedor {    
     display: flex;
     flex-wrap: wrap;
