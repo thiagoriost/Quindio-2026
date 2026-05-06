@@ -1,5 +1,7 @@
 import { React } from 'jimu-core'
 import { Button } from 'jimu-ui'
+
+// @ts-expect-error - Ignorar error de importación de imágenes
 import './PanelInformativo.css'
 import telefonoIcon from './assets/phone-solid-full.svg'
 import atIcon from './assets/at-solid-full.svg'
@@ -96,7 +98,8 @@ export default function PanelInformativo({
                 )}
 
                 <div className='panel-informativo-imagen-texto'>
-                    { titulo.toUpperCase() }
+
+                    { titulo ? titulo.toUpperCase() : '' }
                 </div>
             </div>
 
