@@ -263,7 +263,8 @@ const resolvePanelImageUrl = (rawImageUrl: string): string => {
  * @returns `true` cuando la etiqueta es Cultura (ignorando mayúsculas y acentos).
  */
 const isCulturaLabel = (value: string): boolean => {
-  return value.trim().localeCompare('Cultura', 'es', { sensitivity: 'base' }) === 0
+  const ALLOWED = new Set(['turismo', 'cultura']);
+  return ALLOWED.has(value.trim().toLowerCase())
 }
 
 const Widget = (props: AllWidgetProps<any>) => {
