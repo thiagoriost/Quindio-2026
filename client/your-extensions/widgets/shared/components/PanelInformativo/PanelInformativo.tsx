@@ -113,10 +113,19 @@ export default function PanelInformativo({
         })
     }, [informacionAdicionalItems]) */
 
-    /** Alterna el zoom de la imagen entre su tamaño original y 20% adicional. */
+    /**
+     * Determina si la imagen puede alternar su zoom.
+     * @remarks Evita cambios de `imagenAmpliada` cuando la imagen no ha cargado o falló (por ejemplo 404).
+     */
+    const puedeAlternarImagen = Boolean(imagenUrl && imagenUrl.trim() !== '' && imagenCargada === 'ok')
+
+    /**
+     * Alterna el zoom de la imagen entre su tamaño original y 20% adicional.
+     * @remarks Si la imagen falla (ejemplo: HTTP 404), no modifica `imagenAmpliada`.
+     */
     const handleImagenToggle = () => {
         console.log('toggle imagen ampliada', !imagenAmpliada, imagenUrl)
-        if ((imagenUrl && imagenUrl.trim() !== '')) {
+        if (puedeAlternarImagen) {
             setImagenAmpliada(!imagenAmpliada)
         }
     }
@@ -130,6 +139,7 @@ export default function PanelInformativo({
 
     /**
      * Marca la imagen como fallida para ocultarla cuando no se pueda cargar.
+     * @remarks Este flujo no altera `imagenAmpliada`.
      */
     const handleImagenError = () => {
         setImagenCargada('error')
@@ -180,7 +190,7 @@ export default function PanelInformativo({
                     display: 'flex',
                     justifyContent: 'center',
                     alignItems: 'center',
-                    cursor: (imagenUrl && imagenUrl.trim() !== '') ? (imagenAmpliada ? 'zoom-out' : 'zoom-in') : 'default',
+                    cursor: puedeAlternarImagen ? (imagenAmpliada ? 'zoom-out' : 'zoom-in') : 'default',
                 }}
                 onClick={handleImagenToggle}
             >
@@ -286,7 +296,7 @@ export default function PanelInformativo({
                     </div>
                     )}
 
-                    { chipsTextoItems.find(e => e.value !== "" && e.value !== undefined && e.value !== '0') && (
+                    { chipsTextoItems.find(e => e.value !== "" && e.value !== undefined && e.value !== '0' && e.value !== 'No disponible') && (
                     <div>
                         <div className='panel-informativo-seccion-titulo'>
                             {chipsTextoTitulo.toUpperCase()} ({chipsTextoItems.length})
