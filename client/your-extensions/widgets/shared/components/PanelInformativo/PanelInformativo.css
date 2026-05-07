@@ -11,7 +11,7 @@
      height:150px; 
      background:#8aa260; 
      flex:0 0 150px; 
-     position: relative;
+     /* position: relative; */
      overflow: hidden;
 }
 

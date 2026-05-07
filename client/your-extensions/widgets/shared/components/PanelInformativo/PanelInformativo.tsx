@@ -101,8 +101,8 @@ export default function PanelInformativo({
     }
     /** Estado que rastrea si la imagen está cargada ('cargando' | 'ok' | 'error'). */
     const [imagenCargada, setImagenCargada] = useState('cargando')
-    /** Estado que controla si la imagen está expandida a pantalla completa. */
-    const [imagenExpandida, setImagenExpandida] = useState(false)
+    /** Estado que controla si la imagen está ampliada en un 20%. */
+    const [imagenAmpliada, setImagenAmpliada] = useState(false)
 
     /**
      * Filtra los campos adicionales para mostrar solo pares etiqueta/valor con contenido.
@@ -113,14 +113,11 @@ export default function PanelInformativo({
         })
     }, [informacionAdicionalItems]) */
 
-    /**
-     * Alterna el estado de expansión de la imagen entre pantalla completa y tamaño original.
-     * @remarks Al expandir, oculta toda la información adicional. Al contraer, restaura el diseño original.
-     */
+    /** Alterna el zoom de la imagen entre su tamaño original y 20% adicional. */
     const handleImagenToggle = () => {
-        console.log('toggle imagen expandida', !imagenExpandida, imagenUrl)
+        console.log('toggle imagen ampliada', !imagenAmpliada, imagenUrl)
         if ((imagenUrl && imagenUrl.trim() !== '')) {
-            setImagenExpandida(!imagenExpandida)
+            setImagenAmpliada(!imagenAmpliada)
         }
     }
 
@@ -143,7 +140,7 @@ export default function PanelInformativo({
     console.log(
         {
             imagenCargada,
-            imagenExpandida,
+            imagenAmpliada,
             titulo,
             imagenUrl,
             listaIconoTextoTitulo,
@@ -159,16 +156,31 @@ export default function PanelInformativo({
         }
     )
 
-    }, [imagenCargada, imagenExpandida, titulo, imagenUrl, listaIconoTextoTitulo, listaIconoTextoItems, chipsIconoTextoTitulo, chipsIconoTextoItems, chipsIconoTextoIcono, chipsTextoTitulo, chipsTextoItems, informacionAdicionalTitulo, informacionAdicionalItems, botonLabel])
+    }, [imagenCargada, imagenAmpliada, titulo, imagenUrl, listaIconoTextoTitulo, listaIconoTextoItems, chipsIconoTextoTitulo, chipsIconoTextoItems, chipsIconoTextoIcono, chipsTextoTitulo, chipsTextoItems, informacionAdicionalTitulo, informacionAdicionalItems, botonLabel])
 
 
     return (
-        <div className='panel-informativo'>
+        <div className='panel-informativo'
+            style={{
+                width: imagenAmpliada ? '100%' : 'auto',
+                height: imagenAmpliada ? '100%' : 'auto'
+            }}
+        >
             <div
                 className='panel-informativo-imagen-contenedor'
                 style={{
-                    width: imagenExpandida ? '100%' : 'auto',
-                    height: imagenExpandida ? '100%' : 'auto'
+                    width: imagenAmpliada ? '100%' : 'auto',
+                    height: imagenAmpliada ? '100%' : 'auto',
+                    position: imagenAmpliada ? 'fixed' : 'relative',
+                    top: imagenAmpliada ? '50%' : '0',
+                    left: imagenAmpliada ? '50%' : '0',
+                    transform: imagenAmpliada ? 'translate(-50%, -50%)' : 'none',
+                    zIndex: imagenAmpliada ? 9999 : 'auto',
+                    backgroundColor: imagenAmpliada ? 'rgba(0, 0, 0, 0.8)' : 'transparent',
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    cursor: (imagenUrl && imagenUrl.trim() !== '') ? (imagenAmpliada ? 'zoom-out' : 'zoom-in') : 'default',
                 }}
                 onClick={handleImagenToggle}
             >
@@ -179,7 +191,10 @@ export default function PanelInformativo({
                             className='panel-informativo-imagen-imagen'
                             style={{
                                 display: imagenCargada === 'ok' ? 'block' : 'none',
-                                cursor: 'pointer'
+                                cursor: imagenAmpliada ? 'zoom-out' : 'zoom-in',
+                                transform: imagenAmpliada ? 'scale(1.2)' : 'scale(1)',
+                                transformOrigin: 'center center',
+                                transition: 'transform 0.2s ease-in-out'
                             }}
                             onLoad={handleImagenLoad}
                             onError={handleImagenError}
@@ -188,14 +203,14 @@ export default function PanelInformativo({
                     )
                 }
 
-                {!imagenExpandida && (
+                {!imagenAmpliada && (
                     <div className='panel-informativo-imagen-texto'>
                         { titulo ? titulo.toUpperCase() : '' }
                     </div>
                 )}
             </div>
 
-            {!imagenExpandida && (
+            {!imagenAmpliada && (
                 <>
                     <div>
                         <div className='panel-informativo-seccion-titulo'>
