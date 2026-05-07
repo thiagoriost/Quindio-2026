@@ -36,6 +36,8 @@ import SelectDesdeArray from './components/SelectDesdeArray'
 import DetalleLabelValueFoto from './components/DetalleLabelValueFoto'
 import { ResultTable } from '../../../shared/components/ResultTable'
 import PanelInformativo, { itemsInformacionContacto } from '../../../shared/components/PanelInformativo/PanelInformativo'
+import { JimuMapView, JimuMapViewComponent } from 'jimu-arcgis'
+import { drawAndCenterFeatures } from '../../../shared/utils/export.utils'
 
 const arcgisService = new ArcgisService()
 const httpService = new HttpService();
@@ -52,6 +54,17 @@ const Widget = (props: AllWidgetProps<IMConfig>) => {
     const [tipoConsulta, setTipoConsulta] = useState('general')    
     const [municipios, setMunicipios] = useState<SelectOption[]>([])
     const [idMunicipio, setIdMunicipio] = useState<string>('')
+
+    /** Vista activa del mapa para navegación y dibujo de resultados. */
+    const [jimuMapView, setJimuMapView] = React.useState<JimuMapView | null>(null)
+    /** Extensión inicial para restablecer la vista al limpiar. */
+    const initialExtentRef = React.useRef<__esri.Extent | null>(null)
+    /** Zoom inicial para restablecer la vista al limpiar. */
+    const initialZoomRef = React.useRef<number | null>(null)
+    /** Escala inicial para restablecer la vista al limpiar. */
+    const initialScaleRef = React.useRef<number | null>(null)
+    /** Capa gráfica temporal usada para pintar resultados de la consulta. */
+      const [graphicsLayer, setGraphicsLayer] = React.useState<GraphicsLayer | null>(null)
     
     const refs = {
         general: useRef<ConsultaComponentHandle>(null), 
@@ -90,6 +103,10 @@ const Widget = (props: AllWidgetProps<IMConfig>) => {
 
     const consultar = async ()=> {        
         const result = await refs[tipoConsulta].current.consultar();
+
+        const scale = {modifyScale: false, scale:0.1}        
+
+        drawAndCenterFeatures(scale, result.features, jimuMapView, graphicsLayer, setGraphicsLayer, 'consulta-salud-resultados')
 
         abrirTablaResultados(
             result.features,
@@ -131,8 +148,32 @@ const Widget = (props: AllWidgetProps<IMConfig>) => {
         })).sort((a: any, b: any) => a.value.localeCompare(b.value))
     : [];
 
+    /**
+       * Captura la vista activa y conserva el estado inicial de navegación del mapa.
+       */
+      const activeViewChangeHandler = ((view: JimuMapView) => {
+        if (!view) return
+    
+        setJimuMapView(view)
+    
+        if (!initialExtentRef.current) {
+          initialExtentRef.current = view.view.extent?.clone() ?? null
+          initialZoomRef.current = typeof view.view.zoom === 'number' ? view.view.zoom : null
+          initialScaleRef.current = typeof view.view.scale === 'number' ? view.view.scale : null
+        }
+      })
+
     return (
-        mostrarBusqueda ? (
+        <div style={{ height: '100%', padding: '5px', boxSizing: 'border-box' }}>              
+        
+              {props.useMapWidgetIds && props.useMapWidgetIds.length === 1 && (
+                <JimuMapViewComponent
+                  useMapWidgetId={props.useMapWidgetIds?.[0]}
+                  onActiveViewChange={activeViewChangeHandler}
+                />
+              )}
+
+        {mostrarBusqueda ? (
             <FormularioDeBusqueda
             tiposConsulta={tiposConsulta}
             tipoConsulta={tipoConsulta}
@@ -176,7 +217,8 @@ const Widget = (props: AllWidgetProps<IMConfig>) => {
                 chipsTextoItems={serviciosItems}              
                 botonOnClick={() => setMostrarBusqueda(true)} />
             </div>
-        )
+        )}
+        </div>
     )
 }
 

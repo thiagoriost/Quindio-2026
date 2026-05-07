@@ -1,15 +1,72 @@
 import { React } from 'jimu-core'
 import { Button } from 'jimu-ui'
+
+// @ts-expect-error - Ignorar error de importación de imágenes
 import './PanelInformativo.css'
 import telefonoIcon from './assets/phone-solid-full.svg'
 import atIcon from './assets/at-solid-full.svg'
 import mapIcon from './assets/map-solid-full.svg'
 import clockIcon from './assets/clock-solid-full.svg'
 import envelopeIcon from './assets/envelope-solid-full.svg'
+import nitIcon from './assets/nit-solid-full.svg'
+import registroMercantilIcon from './assets/registro-mercantil-solid-full.svg'
+import rntIcon from './assets/rnt-solid-full.svg'
+import ciiuIcon from './assets/ciiu-solid-full.svg'
 import { capitalizarPalabras } from '../../utils/text-utils'
+import { validaLoggerLocalStorage } from '../../../shared/utils/export.utils'
 
-const { useEffect, useState } = React
+const { /* useMemo, */ useState } = React
 
+export interface IconoTextoItem {
+    iconoSrc: string
+    iconoAlt: string
+    texto: string
+    valor?: string | number | null
+}
+
+export interface ChipItem {
+    label?: string
+    value?: string | number | null
+}
+
+export interface InformacionAdicionalItem {
+    label: string
+    value: string
+}
+
+interface InformacionContactoInput {
+    telefono?: string | number | null
+    direccion?: string | number | null
+    horario?: string | number | null
+    sitioWeb?: string | number | null
+    email?: string | number | null
+    nit?: string | number | null
+    registroMercantil?: string | number | null
+    rnt?: string | number | null
+    ciiu?: string | number | null
+}
+
+interface PanelInformativoProps {
+    titulo: string
+    imagenUrl: string
+    listaIconoTextoTitulo?: string
+    listaIconoTextoItems: IconoTextoItem[]
+    chipsIconoTextoTitulo?: string
+    chipsIconoTextoItems?: ChipItem[]
+    chipsIconoTextoIcono?: string
+    chipsTextoTitulo?: string
+    chipsTextoItems?: ChipItem[]
+    informacionAdicionalTitulo?: string
+    informacionAdicionalItems?: InformacionAdicionalItem[]
+    botonOnClick: () => void
+    botonLabel?: string
+}
+
+/**
+ * Renderiza un panel informativo reutilizable con imagen, contacto, chips y campos adicionales.
+ * @param props - Propiedades del panel informativo.
+ * @returns Componente visual de detalle.
+ */
 export default function PanelInformativo({
     titulo,
     imagenUrl,
@@ -20,26 +77,54 @@ export default function PanelInformativo({
     chipsIconoTextoIcono,
     chipsTextoTitulo,
     chipsTextoItems,
+    informacionAdicionalTitulo = 'información adicional',
+    informacionAdicionalItems,
     botonOnClick,
     botonLabel = 'Parámetros'
-}) {
-    const [imagenCargada, setImagenCargada] = useState("cargando");
+}: PanelInformativoProps) {
+    if (validaLoggerLocalStorage('logger')) {
+        console.log({
+            titulo,
+            imagenUrl,
+            listaIconoTextoTitulo,
+            listaIconoTextoItems,
+            chipsIconoTextoTitulo,
+            chipsIconoTextoItems,
+            chipsIconoTextoIcono,
+            chipsTextoTitulo,
+            chipsTextoItems,
+            informacionAdicionalTitulo,
+            informacionAdicionalItems,
+            botonLabel
+        })
+    }
+    const [imagenCargada, setImagenCargada] = useState('cargando')
+
+    /**
+     * Filtra los campos adicionales para mostrar solo pares etiqueta/valor con contenido.
+     */
+    /* const informacionAdicionalVisible = useMemo(() => {
+        return (informacionAdicionalItems ?? []).filter(item => {
+            return Boolean(item?.label?.trim()) && Boolean(item?.value?.trim())
+        })
+    }, [informacionAdicionalItems]) */
 
     return (
         <div className='panel-informativo'>
-            <div className='panel-informativo-imagen-contenedor'>               
-                { (imagenUrl && imagenUrl.trim() !== '') && (imagenCargada != "error") && (
+            <div className='panel-informativo-imagen-contenedor'>
+                { (imagenUrl && imagenUrl.trim() !== '') && (imagenCargada !== 'error') && (
                 <img
-                src={imagenUrl}   
-                className='panel-informativo-imagen-imagen'                 
-                style={{ display: imagenCargada === "ok" ? "block" : "none" }}
-                onLoad={() => setImagenCargada("ok")}
-                onError={() => setImagenCargada("error")}
+                src={imagenUrl}
+                className='panel-informativo-imagen-imagen'
+                style={{ display: imagenCargada === 'ok' ? 'block' : 'none' }}
+                onLoad={() => { setImagenCargada('ok') }}
+                onError={() => { setImagenCargada('error') }}
                 />
                 )}
 
                 <div className='panel-informativo-imagen-texto'>
-                    { titulo.toUpperCase() }
+
+                    { titulo ? titulo.toUpperCase() : '' }
                 </div>
             </div>
 
@@ -47,11 +132,11 @@ export default function PanelInformativo({
                 <div className='panel-informativo-seccion-titulo'>
                     {listaIconoTextoTitulo.toUpperCase()}
                 </div>
-                
+
                 <div className='panel-informativo-icono-texto-contenedor'>
                     {
-                    listaIconoTextoItems.map( (e, i)=>
-                    <>
+                    listaIconoTextoItems.map((e, i) =>
+                    <React.Fragment key={`${e.texto}-${e.iconoAlt}-${i}`}>
                         <div>
                             <img src={e.iconoSrc} alt={e.iconoAlt} className='panel-informativo-icono-texto-imagen' />
                         </div>
@@ -59,9 +144,28 @@ export default function PanelInformativo({
                             <div className='panel-informativo-icono-texto-texto'>{capitalizarPalabras(e.texto)}</div>
                             <div className='panel-informativo-icono-texto-valor'>{e.valor || 'No disponible'}</div>
                         </div>
-                    </>}
+                    </React.Fragment>)}
                 </div>
             </div>
+
+            {/* {informacionAdicionalVisible.length > 0 && (
+            <div>
+                <div className='panel-informativo-seccion-titulo'>
+                    {informacionAdicionalTitulo.toUpperCase()}
+                </div>
+
+                <div className='panel-informativo-campos-contenedor'>
+                    {informacionAdicionalVisible.map((item, index) => (
+                        <div
+                        key={`${item.label}-${index}`}
+                        className='panel-informativo-campo'>
+                            <span className='panel-informativo-campo-label'>{item.label}</span>
+                            <span className='panel-informativo-campo-value'>{item.value}</span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+            )} */}
 
             { chipsIconoTextoItems && chipsIconoTextoItems.length > 0 && (
             <div>
@@ -74,10 +178,14 @@ export default function PanelInformativo({
                         <div
                         key={`${item?.label || item?.value || 'capacidad'}-${index}`}
                         className='panel-informativo-chip'>
-                            <img
-                            src={chipsIconoTextoIcono}
-                            alt=""
-                            className='panel-informativo-chip-imagen' />
+                            {
+                                chipsIconoTextoIcono ? (
+                                    <img
+                                    src={chipsIconoTextoIcono}
+                                    alt=""
+                                    className='panel-informativo-chip-imagen' />
+                                ) : null
+                            }
                             <span>{item.value} {capitalizarPalabras(item.label)}</span>
                         </div>
                     ))}
@@ -108,18 +216,31 @@ export default function PanelInformativo({
     )
 }
 
+/**
+ * Construye la lista de items de contacto para el panel informativo.
+ * @param params - Valores de contacto obtenidos del servicio.
+ * @returns Arreglo tipado de items con icono y texto.
+ */
 export function itemsInformacionContacto({
     telefono,
     direccion,
     horario,
     sitioWeb,
-    email
-}) {
+    email,
+    nit,
+    registroMercantil,
+    rnt,
+    ciiu
+}: InformacionContactoInput): IconoTextoItem[] {
     return [
-        {iconoSrc: telefonoIcon, iconoAlt:"Teléfono", texto:"Teléfono", valor:telefono},
-        {iconoSrc: mapIcon, iconoAlt:"Dirección", texto:"Dirección", valor:direccion},
-        {iconoSrc: clockIcon, iconoAlt:"Horario", texto:"Horario", valor:horario},
-        {iconoSrc: atIcon, iconoAlt:"Sitio web", texto:"Sitio web", valor:sitioWeb},
-        {iconoSrc: envelopeIcon, iconoAlt:"Correo electrónico", texto:"Correo electrónico", valor:email}
+        { iconoSrc: telefonoIcon, iconoAlt: 'Teléfono', texto: 'Teléfono', valor: telefono },
+        { iconoSrc: mapIcon, iconoAlt: 'Dirección', texto: 'Dirección', valor: direccion },
+        { iconoSrc: clockIcon, iconoAlt: 'Horario', texto: 'Horario', valor: horario },
+        { iconoSrc: atIcon, iconoAlt: 'Sitio web', texto: 'Sitio web', valor: sitioWeb },
+        { iconoSrc: envelopeIcon, iconoAlt: 'Correo electrónico', texto: 'Correo electrónico', valor: email },
+        { iconoSrc: nitIcon, iconoAlt: 'NIT', texto: 'NIT', valor: nit },
+        { iconoSrc: registroMercantilIcon, iconoAlt: 'Registro mercantil', texto: 'Registro mercantil', valor: registroMercantil },
+        { iconoSrc: rntIcon, iconoAlt: 'RNT', texto: 'RNT', valor: rnt },
+        { iconoSrc: ciiuIcon, iconoAlt: 'CIIU', texto: 'CIIU', valor: ciiu }
     ]
 }

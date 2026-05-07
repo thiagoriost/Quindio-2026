@@ -674,3 +674,32 @@ export const drawAndCenterFeatures = (async (scale = {modifyScale: true, scale:0
       await view.goTo({ scale: newScale })
     }
   })
+
+/**
+ * Elimina del mapa la capa de gráficos usada por {@link drawAndCenterFeatures}.
+ *
+ * Esta función actúa como operación inversa de dibujo:
+ * 1. Limpia los gráficos de la capa temporal.
+ * 2. Remueve la capa del mapa si aún existe.
+ * 3. Restablece el estado local del componente (`graphicsLayer`) a `null`.
+ *
+ * @param jimuMapView - Vista activa del mapa.
+ * @param graphicsLayer - Referencia actual de la capa de gráficos temporal.
+ * @param setGraphicsLayer - Setter opcional para sincronizar estado React.
+ */
+export const removeDrawAndCenterFeatures = (
+  jimuMapView: JimuMapView | null | undefined,
+  graphicsLayer: GraphicsLayer | null | undefined,
+  setGraphicsLayer?: (layer: GraphicsLayer | null) => void
+): void => {
+  console.log(11111111111111)
+  const view = jimuMapView?.view
+  if (!view || !graphicsLayer) return
+
+  graphicsLayer.removeAll()
+  view.map.remove(graphicsLayer)
+
+  if (setGraphicsLayer) {
+    setGraphicsLayer(null)
+  }
+}
