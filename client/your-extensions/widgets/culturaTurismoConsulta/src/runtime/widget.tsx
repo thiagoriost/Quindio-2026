@@ -6,10 +6,10 @@ import GraphicsLayer from '@arcgis/core/layers/GraphicsLayer'
 
 import { SearchActionBar } from '../../../shared/components/search-action-bar'
 import { AlertContainer } from '../../../shared/components/alert-container'
-import PanelInformativo, { itemsInformacionContacto, type InformacionAdicionalItem } from '../../../shared/components/PanelInformativo/PanelInformativo'
+import PanelInformativo, { itemsInformacionContacto, type ChipItem, type InformacionAdicionalItem } from '../../../shared/components/PanelInformativo/PanelInformativo'
 import OurLoading from '../../../commonWidgets/our_loading/OurLoading'
 import { urls } from '../../../api/serviciosQuindio'
-import { drawAndCenterFeatures, ejecutarConsulta, validaLoggerLocalStorage } from '../../../shared/utils/export.utils'
+import { drawAndCenterFeatures, ejecutarConsulta, removeDrawAndCenterFeatures, validaLoggerLocalStorage } from '../../../shared/utils/export.utils'
 import { alertService } from '../../../shared/services/alert.service'
 import { limpiarYCerrarWidgetResultados } from '../../../widget-result/src/runtime/widget'
 import { WIDGET_IDS } from '../../../shared/constants/widget-ids'
@@ -66,6 +66,18 @@ interface CulturaTurismoFeature {
 
 interface QueryFeature extends __esri.Graphic {
   attributes: CulturaTurismoAttributes
+}
+
+interface TurismoServicioAttributes {
+  TIPO_SERVICIO?: string | null
+}
+
+interface TurismoServicioFeature {
+  attributes?: TurismoServicioAttributes
+}
+
+interface TurismoServicioQueryResponse {
+  features?: TurismoServicioFeature[]
 }
 
 const NOMBRE_FIELD_CANDIDATES = [
@@ -195,6 +207,7 @@ interface PanelInformativoData {
 }
 
 const PANEL_INFO_BASE_URL = String((urls as Record<string, unknown>).URL_ARCHIVOS_QUINDIO ?? '')
+const TURISMO_ALFANUMERICO_SERVICE_URL = `${String((urls as Record<string, unknown>).SERVICIO_CULTURA_TURISMO_ALFANUMERICO ?? '')}/query`
 
 /**
  * Construye un item de información adicional solo cuando el valor existe.
@@ -267,6 +280,13 @@ const isCulturaLabel = (value: string): boolean => {
   return ALLOWED.has(value.trim().toLowerCase())
 }
 
+/**
+ * Determina si la temática seleccionada corresponde a Turismo.
+ * @param value - Etiqueta de temática seleccionada.
+ * @returns `true` cuando la etiqueta es Turismo (ignorando mayúsculas).
+ */
+const isTurismoLabel = (value: string): boolean => value.trim().toLowerCase() === 'turismo'
+
 const Widget = (props: AllWidgetProps<any>) => {
   const widgetResultId = WIDGET_IDS.RESULT
 
@@ -310,6 +330,8 @@ const Widget = (props: AllWidgetProps<any>) => {
   const [panelInfoFeature, setPanelInfoFeature] = React.useState<CulturaTurismoFeature | null>(null)
   /** Controla si la vista de detalle (PanelInformativo) está activa. */
   const [showPanelInformativo, setShowPanelInformativo] = React.useState(false)
+  /** Chips derivados de la consulta alfanumérica de Turismo para el panel de detalle. */
+  const [turismoServiceChips, setTurismoServiceChips] = React.useState<ChipItem[]>([])
 
   /** Extensión inicial para restablecer la vista al limpiar. */
   const initialExtentRef = React.useRef<__esri.Extent | null>(null)
@@ -406,15 +428,36 @@ const Widget = (props: AllWidgetProps<any>) => {
     }
 
     const selectedSubcategoriaCategoria = getSubcategoriaCategoria(selectedSubcategoria)
+    const isTurismoTematica = isTurismoLabel(selectedTematicaLabel)
+    const selectedCategoriaLabel = categorias.find(option => option.value === selectedCategoria)?.label ?? ''
 
-    if (selectedSubcategoriaCategoria) {
-      whereParts.push(`CATEGORIA = '${escapeSqlValue(selectedSubcategoriaCategoria)}'`)
-    } else if (categorias && selectedCategoria) {
-      whereParts.push(`CATEGORIA = '${escapeSqlValue(categorias.find(option => option.value === selectedCategoria)?.label || '')}'`)
+    if (!isTurismoTematica) {
+      if (selectedSubcategoriaCategoria) {
+        whereParts.push(`CATEGORIA = '${escapeSqlValue(selectedSubcategoriaCategoria)}'`)
+      } else if (selectedCategoria && selectedCategoriaLabel) {
+        whereParts.push(`CATEGORIA = '${escapeSqlValue(selectedCategoriaLabel)}'`)
+      }
     }
-
-    return whereParts.length > 0 ? whereParts.join(' AND ') : '1=1'
-  }, [selectedMunicipio, municipioField, selectedNombre, nombreField, selectedSubcategoria, categorias, selectedCategoria])
+    const buildCurrentWhereClause = whereParts.length > 0 ? whereParts.join(' AND ') : '1=1'
+    if(validaLoggerLocalStorage('logger')) {
+      console.log({
+        isTurismoTematica,
+        selectedSubcategoriaCategoria,
+        selectedCategoriaLabel,
+        whereParts,
+        selectedMunicipio,
+        municipioField,
+        selectedNombre,
+        nombreField,
+        selectedSubcategoria,
+        categorias,
+        selectedCategoria,
+        selectedTematicaLabel,
+        buildCurrentWhereClause
+      })
+    }
+    return buildCurrentWhereClause
+  }, [selectedMunicipio, municipioField, selectedNombre, nombreField, selectedSubcategoria, categorias, selectedCategoria, selectedTematicaLabel])
 
   /**
    * Adapta atributos del feature seleccionado al contrato esperado por PanelInformativo.
@@ -465,11 +508,63 @@ const Widget = (props: AllWidgetProps<any>) => {
   }, [nombreField, selectedNombre])
 
   /**
+   * Consulta servicios alfanuméricos de Turismo por OBJECTID y los transforma en chips.
+   * @param objectId - OBJECTID obtenido de la consulta principal.
+   * @returns Lista de chips compatibles con `PanelInformativo`.
+   */
+  const fetchTurismoServiceChips = React.useCallback(async (objectId: number): Promise<ChipItem[]> => {
+    const whereClause = `OBJECTID = ${objectId}`
+    const response = await esriRequest(TURISMO_ALFANUMERICO_SERVICE_URL, {
+      query: {
+        f: 'json',
+        where: whereClause,
+        returnGeometry: false,
+        spatialRel: 'esriSpatialRelIntersects',
+        outFields: 'TIPO_SERVICIO',
+        outSR: 3115
+      },
+      responseType: 'json'
+    })
+
+    const data = (response.data ?? {}) as TurismoServicioQueryResponse
+    const features = Array.isArray(data.features) ? data.features : []
+
+    const uniqueTipos = Array.from(
+      new Set(
+        features
+          .map(feature => String(feature.attributes?.TIPO_SERVICIO ?? '').trim())
+          .filter(Boolean)
+      )
+    )
+
+    const chips = uniqueTipos.map(tipo => ({
+      value: tipo,
+      label: ''
+    }))
+
+    if(validaLoggerLocalStorage('logger')) {
+      console.log({
+        objectId,
+        requestUrl: TURISMO_ALFANUMERICO_SERVICE_URL,
+        whereClause,
+        responseData: data,
+        features,
+        uniqueTipos,
+        chips
+      })
+    }
+      
+
+    return chips
+  }, [])
+
+  /**
    * Regresa al formulario sin perder filtros principales, ocultando el panel de detalle.
    */
   const onBackToParameters = React.useCallback(() => {
     setShowPanelInformativo(false)
     setSelectedNombre('')
+    setTurismoServiceChips([])
     setError('')
   }, [])
 
@@ -480,6 +575,13 @@ const Widget = (props: AllWidgetProps<any>) => {
    
     limpiarYCerrarWidgetResultados(widgetResultId)
   }, [widgetResultId])
+
+  /**
+   * Remueve del mapa los gráficos creados por la consulta y resetea su referencia local.
+   */
+  const clearDrawnFeatures = React.useCallback(() => {
+    removeDrawAndCenterFeatures(jimuMapView, graphicsLayer, setGraphicsLayer)
+  }, [graphicsLayer, jimuMapView])
 
   /**
    * Restablece la vista de mapa a su extensión, zoom y escala iniciales.
@@ -790,7 +892,9 @@ const Widget = (props: AllWidgetProps<any>) => {
   }, [rawNames])
 
   /**
-   * Restablece la vista inicial del mapa y ejecuta la consulta principal con los filtros seleccionados.
+   * Restablece la vista inicial del mapa, ejecuta la consulta principal y,
+   * cuando la temática es Turismo, realiza una consulta alfanumérica adicional
+   * para poblar `chipsIconoTextoItems` del panel de detalle.
    */
   const onBuscar = React.useCallback(async () => {
     if (!canSearch) {
@@ -836,6 +940,16 @@ const Widget = (props: AllWidgetProps<any>) => {
 
       // Dibuja resultados en el mapa usando la función compartida y pasando el layerId para gestionar capas por subcategoría y evitar mezclas de resultados entre diferentes subcategorías
       await drawAndCenterFeatures(undefined, features, jimuMapView, graphicsLayer, setGraphicsLayer, `cultura-turismo-consulta-layer-${selectedSubcategoria}`)
+
+      // Ejecuta consulta alfanumérica adicional solo para Turismo y solo si existe OBJECTID.
+      setTurismoServiceChips([])
+      const objectIdRaw = features[0]?.attributes?.OBJECTID
+      const objectId = typeof objectIdRaw === 'number' ? objectIdRaw : Number(objectIdRaw)
+      const isTurismoQuery = isTurismoLabel(selectedTematicaLabel)
+      if (isTurismoQuery && Number.isFinite(objectId)) {
+        const turismoChips = await fetchTurismoServiceChips(objectId)
+        setTurismoServiceChips(turismoChips)
+      }
 
       if (isCulturaFlowComplete) {
         loadPanelInfo(features)
@@ -893,17 +1007,20 @@ const Widget = (props: AllWidgetProps<any>) => {
     canSearch,
     clearMapResults,
     drawAndCenterFeatures,
+    fetchTurismoServiceChips,
     isCulturaFlowComplete,
     jimuMapView,
     loadPanelInfo,
     resetToDefaultMapView,
     selectedCategoria,
     selectedSubcategoria,
+    selectedTematicaLabel,
     subcategorias
   ])
 
   /**
-   * Limpia todos los filtros del formulario y restablece estado visual del mapa.
+    * Limpia todos los filtros del formulario, elimina gráficos dibujados
+    * y restablece estado visual del mapa.
    */
   const onLimpiar = React.useCallback(() => {
     setSelectedTematica('')
@@ -920,16 +1037,19 @@ const Widget = (props: AllWidgetProps<any>) => {
     setNombreField(null)
     setShowPanelInformativo(false)
     setPanelInfoFeature(null)
+    setTurismoServiceChips([])
     setError('')
-
+    console.log(22222)
+    clearDrawnFeatures()
     clearMapResults()
     void resetToDefaultMapView()
 
     alertService.info('Formulario limpiado', 'Se limpiaron los filtros de Cultura y Turismo.')
-  }, [clearMapResults, resetToDefaultMapView])
+  }, [clearDrawnFeatures, clearMapResults, resetToDefaultMapView])
 
   /** Limpia automáticamente el formulario cuando el widget se cierra. */
   React.useEffect(() => {
+    console.log(444)
     if (props.state === 'CLOSED') {
       onLimpiar()
     }
@@ -958,10 +1078,14 @@ const Widget = (props: AllWidgetProps<any>) => {
                   direccion: panelInformativoData.direccion,
                   horario: panelInformativoData.horario,
                   sitioWeb: panelInformativoData.sitioWeb,
-                  email: panelInformativoData.email
+                  email: panelInformativoData.email,
+                  nit: panelInformativoData.informacionAdicional.find(item => item.label === 'NIT')?.value,
+                  registroMercantil: panelInformativoData.informacionAdicional.find(item => item.label === 'Registro mercantil')?.value,
+                  rnt: panelInformativoData.informacionAdicional.find(item => item.label === 'RNT')?.value,
+                  ciiu: panelInformativoData.informacionAdicional.find(item => item.label === 'CIIU')?.value,
                 })}
-                chipsIconoTextoTitulo=""
-                chipsIconoTextoItems={[]}
+                chipsIconoTextoTitulo="Tipos de servicio"
+                chipsIconoTextoItems={turismoServiceChips}
                 chipsIconoTextoIcono=""
                 chipsTextoTitulo=""
                 chipsTextoItems={[]}

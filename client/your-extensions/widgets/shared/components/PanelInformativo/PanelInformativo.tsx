@@ -8,9 +8,14 @@ import atIcon from './assets/at-solid-full.svg'
 import mapIcon from './assets/map-solid-full.svg'
 import clockIcon from './assets/clock-solid-full.svg'
 import envelopeIcon from './assets/envelope-solid-full.svg'
+import nitIcon from './assets/nit-solid-full.svg'
+import registroMercantilIcon from './assets/registro-mercantil-solid-full.svg'
+import rntIcon from './assets/rnt-solid-full.svg'
+import ciiuIcon from './assets/ciiu-solid-full.svg'
 import { capitalizarPalabras } from '../../utils/text-utils'
+import { validaLoggerLocalStorage } from '../../../shared/utils/export.utils'
 
-const { useMemo, useState } = React
+const { /* useMemo, */ useState } = React
 
 export interface IconoTextoItem {
     iconoSrc: string
@@ -35,6 +40,10 @@ interface InformacionContactoInput {
     horario?: string | number | null
     sitioWeb?: string | number | null
     email?: string | number | null
+    nit?: string | number | null
+    registroMercantil?: string | number | null
+    rnt?: string | number | null
+    ciiu?: string | number | null
 }
 
 interface PanelInformativoProps {
@@ -73,16 +82,32 @@ export default function PanelInformativo({
     botonOnClick,
     botonLabel = 'Parámetros'
 }: PanelInformativoProps) {
+    if (validaLoggerLocalStorage('logger')) {
+        console.log({
+            titulo,
+            imagenUrl,
+            listaIconoTextoTitulo,
+            listaIconoTextoItems,
+            chipsIconoTextoTitulo,
+            chipsIconoTextoItems,
+            chipsIconoTextoIcono,
+            chipsTextoTitulo,
+            chipsTextoItems,
+            informacionAdicionalTitulo,
+            informacionAdicionalItems,
+            botonLabel
+        })
+    }
     const [imagenCargada, setImagenCargada] = useState('cargando')
 
     /**
      * Filtra los campos adicionales para mostrar solo pares etiqueta/valor con contenido.
      */
-    const informacionAdicionalVisible = useMemo(() => {
+    /* const informacionAdicionalVisible = useMemo(() => {
         return (informacionAdicionalItems ?? []).filter(item => {
             return Boolean(item?.label?.trim()) && Boolean(item?.value?.trim())
         })
-    }, [informacionAdicionalItems])
+    }, [informacionAdicionalItems]) */
 
     return (
         <div className='panel-informativo'>
@@ -123,7 +148,7 @@ export default function PanelInformativo({
                 </div>
             </div>
 
-            {informacionAdicionalVisible.length > 0 && (
+            {/* {informacionAdicionalVisible.length > 0 && (
             <div>
                 <div className='panel-informativo-seccion-titulo'>
                     {informacionAdicionalTitulo.toUpperCase()}
@@ -140,7 +165,7 @@ export default function PanelInformativo({
                     ))}
                 </div>
             </div>
-            )}
+            )} */}
 
             { chipsIconoTextoItems && chipsIconoTextoItems.length > 0 && (
             <div>
@@ -197,13 +222,21 @@ export function itemsInformacionContacto({
     direccion,
     horario,
     sitioWeb,
-    email
+    email,
+    nit,
+    registroMercantil,
+    rnt,
+    ciiu
 }: InformacionContactoInput): IconoTextoItem[] {
     return [
         { iconoSrc: telefonoIcon, iconoAlt: 'Teléfono', texto: 'Teléfono', valor: telefono },
         { iconoSrc: mapIcon, iconoAlt: 'Dirección', texto: 'Dirección', valor: direccion },
         { iconoSrc: clockIcon, iconoAlt: 'Horario', texto: 'Horario', valor: horario },
         { iconoSrc: atIcon, iconoAlt: 'Sitio web', texto: 'Sitio web', valor: sitioWeb },
-        { iconoSrc: envelopeIcon, iconoAlt: 'Correo electrónico', texto: 'Correo electrónico', valor: email }
+        { iconoSrc: envelopeIcon, iconoAlt: 'Correo electrónico', texto: 'Correo electrónico', valor: email },
+        { iconoSrc: nitIcon, iconoAlt: 'NIT', texto: 'NIT', valor: nit },
+        { iconoSrc: registroMercantilIcon, iconoAlt: 'Registro mercantil', texto: 'Registro mercantil', valor: registroMercantil },
+        { iconoSrc: rntIcon, iconoAlt: 'RNT', texto: 'RNT', valor: rnt },
+        { iconoSrc: ciiuIcon, iconoAlt: 'CIIU', texto: 'CIIU', valor: ciiu }
     ]
 }

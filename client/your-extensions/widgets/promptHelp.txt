@@ -1,0 +1,34 @@
+You are a TypeScript and React developer working with ArcGIS Experience Builder.
+
+Task:
+Update the method #sym:onBuscar to conditionally execute an additional query when the selected category is "Turismo".
+
+Specifications:
+- After executing the main query:
+  - If the query corresponds to "Turismo", perform an additional request to the following service:
+    https://sigquindio.gov.co/arcgis/rest/services/QUINDIO_III/TurismoAlfanumerico/MapServer/0/query
+
+- Use the following parameters for the request:
+  - f: json
+  - where: OBJECTID = <value>
+  - returnGeometry: false
+  - spatialRel: esriSpatialRelIntersects
+  - outFields: TIPO_SERVICIO
+  - outSR: 3115
+
+- The OBJECTID value must be obtained from the attributes of the first query response (features[0].attributes).
+- If OBJECTID is null or undefined, do not execute the additional query.
+
+Data handling:
+- Process the response of the second query and transform it into a structure compatible with #sym:PanelInformativo.
+- Map the result into the property #sym:chipsIconoTextoItems.
+
+Constraints:
+- Do not break the existing logic of #sym:onBuscar.
+- Avoid duplicate or unnecessary requests.
+- Handle asynchronous operations properly (Promises / async-await).
+- Use strict TypeScript typing for responses.
+- Use JSDoc to document all added or modified code.
+
+Output:
+Return only the updated code.
