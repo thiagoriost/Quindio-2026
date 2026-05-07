@@ -14,6 +14,7 @@ import { alertService } from '../../../shared/services/alert.service'
 import { limpiarYCerrarWidgetResultados } from '../../../widget-result/src/runtime/widget'
 import { WIDGET_IDS } from '../../../shared/constants/widget-ids'
 import { MUNICIPIOS_QUINDIO } from '../../../shared/constants/municipiosQuindio'
+import tipoServicioIcon from '../../../shared/components/PanelInformativo/assets/tipo-servicio-solid-full.svg'
 
 // @ts-expect-error - No se encuentran los tipos de estas funciones, revisar exportaciones en widget-result
 import '../styles/styles.css'
@@ -41,6 +42,9 @@ interface CulturaTurismoAttributes {
   OBJECTID?: number
   IDINFRAINSTITUCIONAL?: number
   NUMEROPREDIAL?: string
+  NUMEROCAMAS?: string | number | null
+  NUMEROHABITACIONES?: string | number | null
+  SALONESEVENTOSCONFERENCIAS?: string | number | null
   IDMUNICIPIO?: string
   MUNICIPIO?: string
   NOMBRE?: string
@@ -79,6 +83,8 @@ interface TurismoServicioFeature {
 interface TurismoServicioQueryResponse {
   features?: TurismoServicioFeature[]
 }
+
+type CapacidadInstaladaField = 'NUMEROCAMAS' | 'NUMEROHABITACIONES' | 'SALONESEVENTOSCONFERENCIAS'
 
 const NOMBRE_FIELD_CANDIDATES = [
   'NOMBRE',
@@ -210,6 +216,42 @@ const PANEL_INFO_BASE_URL = String((urls as Record<string, unknown>).URL_ARCHIVO
 const TURISMO_ALFANUMERICO_SERVICE_URL = `${String((urls as Record<string, unknown>).SERVICIO_CULTURA_TURISMO_ALFANUMERICO ?? '')}/query`
 
 /**
+ * Campos de capacidad instalada que se muestran como chips de texto en el panel.
+ */
+const CAPACIDAD_INSTALADA_FIELDS: Array<{ key: CapacidadInstaladaField, label: string }> = [
+  { key: 'NUMEROCAMAS', label: 'camas' },
+  { key: 'NUMEROHABITACIONES', label: 'habitaciones' },
+  { key: 'SALONESEVENTOSCONFERENCIAS', label: 'salones de eventos y conferencias' }
+]
+
+/**
+ * Convierte un valor crudo del servicio en texto seguro para visualización.
+ * @param value - Valor del servicio que puede llegar nulo, vacío o numérico.
+ * @returns Texto amigable para UI, preservando `0` como valor válido.
+ */
+const toDisplayChipValue = (value: string | number | null | undefined): string => {
+  if (value === null || value === undefined) return 'No disponible'
+  const normalized = String(value).trim()
+  return normalized === '' ? 'No disponible' : normalized
+}
+
+/**
+ * Transforma atributos del feature en chips para la sección de capacidad instalada.
+ * @param attributes - Atributos del feature retornado por la consulta principal.
+ * @returns Arreglo de chips compatible con `chipsTextoItems` de `PanelInformativo`.
+ */
+const buildCapacidadInstaladaChips = (attributes: CulturaTurismoAttributes): ChipItem[] => {
+  return CAPACIDAD_INSTALADA_FIELDS.map(field => ({
+    value: toDisplayChipValue(attributes[field.key]),
+    label: field.label
+  }))
+}
+/**
+ * Icono usado por `chipsIconoTextoIcono` para representar tipos de servicio en el `PanelInformativo`.
+ */
+const TURISMO_SERVICE_CHIP_ICON_SRC = tipoServicioIcon
+
+/**
  * Construye un item de información adicional solo cuando el valor existe.
  * @param label - Etiqueta visible del campo.
  * @param value - Valor crudo del atributo del servicio.
@@ -332,6 +374,8 @@ const Widget = (props: AllWidgetProps<any>) => {
   const [showPanelInformativo, setShowPanelInformativo] = React.useState(false)
   /** Chips derivados de la consulta alfanumérica de Turismo para el panel de detalle. */
   const [turismoServiceChips, setTurismoServiceChips] = React.useState<ChipItem[]>([])
+  /** Chips de texto para capacidad instalada mostrados en `PanelInformativo`. */
+  const [capacidadInstaladaChips, setCapacidadInstaladaChips] = React.useState<ChipItem[]>([])
 
   /** Extensión inicial para restablecer la vista al limpiar. */
   const initialExtentRef = React.useRef<__esri.Extent | null>(null)
@@ -565,6 +609,7 @@ const Widget = (props: AllWidgetProps<any>) => {
     setShowPanelInformativo(false)
     setSelectedNombre('')
     setTurismoServiceChips([])
+    setCapacidadInstaladaChips([])
     setError('')
   }, [])
 
@@ -892,9 +937,11 @@ const Widget = (props: AllWidgetProps<any>) => {
   }, [rawNames])
 
   /**
-   * Restablece la vista inicial del mapa, ejecuta la consulta principal y,
-   * cuando la temática es Turismo, realiza una consulta alfanumérica adicional
-   * para poblar `chipsIconoTextoItems` del panel de detalle.
+   * Restablece la vista inicial del mapa, ejecuta la consulta principal y
+   * prepara los datos de chips para `PanelInformativo`.
+   *
+   * Además, cuando la temática es Turismo, realiza una consulta alfanumérica
+   * adicional para poblar `chipsIconoTextoItems`.
    */
   const onBuscar = React.useCallback(async () => {
     if (!canSearch) {
@@ -933,6 +980,7 @@ const Widget = (props: AllWidgetProps<any>) => {
       if (!features.length) {
         setShowPanelInformativo(false)
         setPanelInfoFeature(null)
+        setCapacidadInstaladaChips([])
         clearMapResults()
         alertService.warning('Sin resultados', 'No se encontraron resultados para los filtros seleccionados.')
         return
@@ -950,6 +998,12 @@ const Widget = (props: AllWidgetProps<any>) => {
         const turismoChips = await fetchTurismoServiceChips(objectId)
         setTurismoServiceChips(turismoChips)
       }
+
+      const featureForPanel = features.find(feature => {
+        const attrNombre = String(feature.attributes?.[nombreField || 'NOMBRE'] ?? feature.attributes?.NOMBRE ?? '').trim()
+        return attrNombre === selectedNombre
+      }) ?? features[0]
+      setCapacidadInstaladaChips(buildCapacidadInstaladaChips(featureForPanel.attributes))
 
       if (isCulturaFlowComplete) {
         loadPanelInfo(features)
@@ -1011,8 +1065,10 @@ const Widget = (props: AllWidgetProps<any>) => {
     isCulturaFlowComplete,
     jimuMapView,
     loadPanelInfo,
+    nombreField,
     resetToDefaultMapView,
     selectedCategoria,
+    selectedNombre,
     selectedSubcategoria,
     selectedTematicaLabel,
     subcategorias
@@ -1038,6 +1094,7 @@ const Widget = (props: AllWidgetProps<any>) => {
     setShowPanelInformativo(false)
     setPanelInfoFeature(null)
     setTurismoServiceChips([])
+    setCapacidadInstaladaChips([])
     setError('')
     console.log(22222)
     clearDrawnFeatures()
@@ -1087,8 +1144,8 @@ const Widget = (props: AllWidgetProps<any>) => {
                 chipsIconoTextoTitulo="Tipos de servicio"
                 chipsIconoTextoItems={turismoServiceChips}
                 chipsIconoTextoIcono=""
-                chipsTextoTitulo=""
-                chipsTextoItems={[]}
+                chipsTextoTitulo="Capacidad instalada"
+                chipsTextoItems={capacidadInstaladaChips}
                 informacionAdicionalItems={panelInformativoData.informacionAdicional}
                 botonOnClick={onBackToParameters}
                 botonLabel="Parámetros"

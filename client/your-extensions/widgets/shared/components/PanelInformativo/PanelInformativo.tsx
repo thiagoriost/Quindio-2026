@@ -178,10 +178,14 @@ export default function PanelInformativo({
                         <div
                         key={`${item?.label || item?.value || 'capacidad'}-${index}`}
                         className='panel-informativo-chip'>
-                            <img
-                            src={chipsIconoTextoIcono}
-                            alt=""
-                            className='panel-informativo-chip-imagen' />
+                            {
+                                chipsIconoTextoIcono ? (
+                                    <img
+                                    src={chipsIconoTextoIcono}
+                                    alt=""
+                                    className='panel-informativo-chip-imagen' />
+                                ) : null
+                            }
                             <span>{item.value} {capitalizarPalabras(item.label)}</span>
                         </div>
                     ))}
