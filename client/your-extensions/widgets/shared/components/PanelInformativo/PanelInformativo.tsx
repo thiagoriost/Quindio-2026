@@ -135,16 +135,25 @@ export default function PanelInformativo({
 
                 <div className='panel-informativo-icono-texto-contenedor'>
                     {
-                    listaIconoTextoItems.map((e, i) =>
-                    <React.Fragment key={`${e.texto}-${e.iconoAlt}-${i}`}>
-                        <div>
-                            <img src={e.iconoSrc} alt={e.iconoAlt} className='panel-informativo-icono-texto-imagen' />
-                        </div>
-                        <div className='panel-informativo-icono-texto-contenedor-texto'>
-                            <div className='panel-informativo-icono-texto-texto'>{capitalizarPalabras(e.texto)}</div>
-                            <div className='panel-informativo-icono-texto-valor'>{e.valor || 'No disponible'}</div>
-                        </div>
-                    </React.Fragment>)}
+                        listaIconoTextoItems.find(e => e.valor !== "" && e.valor !== undefined)
+                        ? listaIconoTextoItems.map((e, i) =>
+                            <React.Fragment key={`${e.texto}-${e.iconoAlt}-${i}`}>
+                                {
+                                    (e.valor !== "" && e.valor !== undefined) && (
+                                        <>
+                                            <div>
+                                                <img src={e.iconoSrc} alt={e.iconoAlt} className='panel-informativo-icono-texto-imagen' />
+                                            </div>
+                                            <div className='panel-informativo-icono-texto-contenedor-texto'>
+                                                <div className='panel-informativo-icono-texto-texto'>{capitalizarPalabras(e.texto)}</div>
+                                                <div className='panel-informativo-icono-texto-valor'>{e.valor || 'No disponible'}</div>
+                                            </div>
+                                        </>
+                                    )
+                                }
+                            </React.Fragment>)
+                        : <div style={{width:'max-content'}}>Sin información disponible</div>
+                    }
                 </div>
             </div>
 
@@ -193,7 +202,7 @@ export default function PanelInformativo({
             </div>
             )}
 
-            { chipsTextoItems && chipsTextoItems.length > 0 && (
+            { chipsTextoItems.find(e => e.value !== "" && e.value !== undefined && e.value !== '0') && (
             <div>
                 <div className='panel-informativo-seccion-titulo'>
                     {chipsTextoTitulo.toUpperCase()} ({chipsTextoItems.length})
