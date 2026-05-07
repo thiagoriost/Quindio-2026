@@ -32,3 +32,35 @@ Constraints:
 
 Output:
 Return only the updated code.
+
+///////////////////////////////////////
+You are a TypeScript and React developer working with ArcGIS Experience Builder.
+
+Task:
+Modify #sym:onBuscar to transform and prepare the response data to be displayed in #sym:PanelInformativo through the property #sym:chipsTextoItems.
+
+Specifications:
+- Extract the following attributes from #sym:features:
+  - NUMEROCAMAS
+  - NUMEROHABITACIONES
+  - SALONESEVENTOSCONFERENCIAS
+
+- Example values from the service response:
+  - NUMEROCAMAS: "138"
+  - NUMEROHABITACIONES: 49
+  - SALONESEVENTOSCONFERENCIAS: 0
+
+- Transform these attributes into the structure required by #sym:chipsTextoItems.
+- Ensure the displayed values are clear and user-friendly.
+- Handle null, undefined, or empty values safely.
+- Do not break the existing logic inside #sym:onBuscar.
+- Keep the implementation clean, reusable, and maintainable.
+- Use strict TypeScript typing for all transformed data structures.
+- Use JSDoc to document all new or modified code.
+
+Constraints:
+- Avoid unnecessary re-renders.
+- Follow React and Experience Builder best practices.
+
+Output:
+Return only the updated code.
