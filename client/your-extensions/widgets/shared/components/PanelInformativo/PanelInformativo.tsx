@@ -83,22 +83,6 @@ export default function PanelInformativo({
     botonOnClick,
     botonLabel = 'Parámetros'
 }: PanelInformativoProps) {
-    if (validaLoggerLocalStorage('logger')) {
-        console.log({
-            titulo,
-            imagenUrl,
-            listaIconoTextoTitulo,
-            listaIconoTextoItems,
-            chipsIconoTextoTitulo,
-            chipsIconoTextoItems,
-            chipsIconoTextoIcono,
-            chipsTextoTitulo,
-            chipsTextoItems,
-            informacionAdicionalTitulo,
-            informacionAdicionalItems,
-            botonLabel
-        })
-    }
     /** Estado que rastrea si la imagen está cargada ('cargando' | 'ok' | 'error'). */
     const [imagenCargada, setImagenCargada] = useState('cargando')
     /** Estado que controla si la imagen está ampliada en un 20%. */
@@ -124,7 +108,6 @@ export default function PanelInformativo({
      * @remarks Si la imagen falla (ejemplo: HTTP 404), no modifica `imagenAmpliada`.
      */
     const handleImagenToggle = () => {
-        console.log('toggle imagen ampliada', !imagenAmpliada, imagenUrl)
         if (puedeAlternarImagen) {
             setImagenAmpliada(!imagenAmpliada)
         }
@@ -146,25 +129,26 @@ export default function PanelInformativo({
     }
 
     useEffect(() => {
-
-    console.log(
-        {
-            imagenCargada,
-            imagenAmpliada,
-            titulo,
-            imagenUrl,
-            listaIconoTextoTitulo,
-            listaIconoTextoItems,
-            chipsIconoTextoTitulo,
-            chipsIconoTextoItems,
-            chipsIconoTextoIcono,
-            chipsTextoTitulo,
-            chipsTextoItems,
-            informacionAdicionalTitulo,
-            informacionAdicionalItems,
-            botonLabel
+        if (validaLoggerLocalStorage('logger')) {
+            console.log(
+                {
+                    imagenCargada,
+                    imagenAmpliada,
+                    titulo,
+                    imagenUrl,
+                    listaIconoTextoTitulo,
+                    listaIconoTextoItems,
+                    chipsIconoTextoTitulo,
+                    chipsIconoTextoItems,
+                    chipsIconoTextoIcono,
+                    chipsTextoTitulo,
+                    chipsTextoItems,
+                    informacionAdicionalTitulo,
+                    informacionAdicionalItems,
+                    botonLabel
+                }
+            )
         }
-    )
 
     }, [imagenCargada, imagenAmpliada, titulo, imagenUrl, listaIconoTextoTitulo, listaIconoTextoItems, chipsIconoTextoTitulo, chipsIconoTextoItems, chipsIconoTextoIcono, chipsTextoTitulo, chipsTextoItems, informacionAdicionalTitulo, informacionAdicionalItems, botonLabel])
 

@@ -1105,7 +1105,6 @@ const Widget = (props: AllWidgetProps<any>) => {
     setTurismoServiceChips([])
     setCapacidadInstaladaChips([])
     setError('')
-    console.log(22222)
     clearDrawnFeatures()
     clearMapResults()
     void resetToDefaultMapView()
@@ -1115,7 +1114,6 @@ const Widget = (props: AllWidgetProps<any>) => {
 
   /** Limpia automáticamente el formulario cuando el widget se cierra. */
   React.useEffect(() => {
-    console.log(444)
     if (props.state === 'CLOSED') {
       onLimpiar()
     }
