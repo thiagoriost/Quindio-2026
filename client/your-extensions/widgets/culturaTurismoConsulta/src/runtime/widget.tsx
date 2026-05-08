@@ -607,7 +607,7 @@ const Widget = (props: AllWidgetProps<any>) => {
    */
   const onBackToParameters = React.useCallback(() => {
     setShowPanelInformativo(false)
-    setSelectedNombre('')
+    // setSelectedNombre('')
     setTurismoServiceChips([])
     setCapacidadInstaladaChips([])
     setError('')
@@ -1003,7 +1003,16 @@ const Widget = (props: AllWidgetProps<any>) => {
         const attrNombre = String(feature.attributes?.[nombreField || 'NOMBRE'] ?? feature.attributes?.NOMBRE ?? '').trim()
         return attrNombre === selectedNombre
       }) ?? features[0]
-      setCapacidadInstaladaChips(buildCapacidadInstaladaChips(featureForPanel.attributes))
+
+      /**
+       * Actualiza chips de capacidad instalada solo para la temática Turismo.
+       * @remarks Si la temática actual no es Turismo, limpia los chips para evitar datos residuales.
+       */
+      if (isTurismoQuery) {
+        setCapacidadInstaladaChips(buildCapacidadInstaladaChips(featureForPanel.attributes))
+      } else {
+        setCapacidadInstaladaChips([])
+      }
 
       if (isCulturaFlowComplete) {
         loadPanelInfo(features)
@@ -1096,7 +1105,6 @@ const Widget = (props: AllWidgetProps<any>) => {
     setTurismoServiceChips([])
     setCapacidadInstaladaChips([])
     setError('')
-    console.log(22222)
     clearDrawnFeatures()
     clearMapResults()
     void resetToDefaultMapView()
@@ -1106,7 +1114,6 @@ const Widget = (props: AllWidgetProps<any>) => {
 
   /** Limpia automáticamente el formulario cuando el widget se cierra. */
   React.useEffect(() => {
-    console.log(444)
     if (props.state === 'CLOSED') {
       onLimpiar()
     }

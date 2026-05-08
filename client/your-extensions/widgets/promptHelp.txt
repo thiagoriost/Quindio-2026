@@ -64,3 +64,6 @@ Constraints:
 
 Output:
 Return only the updated code.
+
+////////////////////////////////////////
+The image needs to resize in width and height as its container changes; currently, the image remains static in terms of its dimensions regardless of whether the container changes. Or better yet, make it so that when the user clicks on the image, it enlarges by 20%.

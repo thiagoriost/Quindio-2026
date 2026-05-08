@@ -14,6 +14,7 @@ import rntIcon from './assets/rnt-solid-full.svg'
 import ciiuIcon from './assets/ciiu-solid-full.svg'
 import { capitalizarPalabras } from '../../utils/text-utils'
 import { validaLoggerLocalStorage } from '../../../shared/utils/export.utils'
+import { useEffect } from 'react'
 
 const { /* useMemo, */ useState } = React
 
@@ -82,23 +83,10 @@ export default function PanelInformativo({
     botonOnClick,
     botonLabel = 'Parámetros'
 }: PanelInformativoProps) {
-    if (validaLoggerLocalStorage('logger')) {
-        console.log({
-            titulo,
-            imagenUrl,
-            listaIconoTextoTitulo,
-            listaIconoTextoItems,
-            chipsIconoTextoTitulo,
-            chipsIconoTextoItems,
-            chipsIconoTextoIcono,
-            chipsTextoTitulo,
-            chipsTextoItems,
-            informacionAdicionalTitulo,
-            informacionAdicionalItems,
-            botonLabel
-        })
-    }
+    /** Estado que rastrea si la imagen está cargada ('cargando' | 'ok' | 'error'). */
     const [imagenCargada, setImagenCargada] = useState('cargando')
+    /** Estado que controla si la imagen está ampliada en un 20%. */
+    const [imagenAmpliada, setImagenAmpliada] = useState(false)
 
     /**
      * Filtra los campos adicionales para mostrar solo pares etiqueta/valor con contenido.
@@ -109,109 +97,210 @@ export default function PanelInformativo({
         })
     }, [informacionAdicionalItems]) */
 
+    /**
+     * Determina si la imagen puede alternar su zoom.
+     * @remarks Evita cambios de `imagenAmpliada` cuando la imagen no ha cargado o falló (por ejemplo 404).
+     */
+    const puedeAlternarImagen = Boolean(imagenUrl && imagenUrl.trim() !== '' && imagenCargada === 'ok')
+
+    /**
+     * Alterna el zoom de la imagen entre su tamaño original y 20% adicional.
+     * @remarks Si la imagen falla (ejemplo: HTTP 404), no modifica `imagenAmpliada`.
+     */
+    const handleImagenToggle = () => {
+        if (puedeAlternarImagen) {
+            setImagenAmpliada(!imagenAmpliada)
+        }
+    }
+
+    /**
+     * Marca la imagen como cargada exitosamente para mostrarla en el panel.
+     */
+    const handleImagenLoad = () => {
+        setImagenCargada('ok')
+    }
+
+    /**
+     * Marca la imagen como fallida para ocultarla cuando no se pueda cargar.
+     * @remarks Este flujo no altera `imagenAmpliada`.
+     */
+    const handleImagenError = () => {
+        setImagenCargada('error')
+    }
+
+    useEffect(() => {
+        if (validaLoggerLocalStorage('logger')) {
+            console.log(
+                {
+                    imagenCargada,
+                    imagenAmpliada,
+                    titulo,
+                    imagenUrl,
+                    listaIconoTextoTitulo,
+                    listaIconoTextoItems,
+                    chipsIconoTextoTitulo,
+                    chipsIconoTextoItems,
+                    chipsIconoTextoIcono,
+                    chipsTextoTitulo,
+                    chipsTextoItems,
+                    informacionAdicionalTitulo,
+                    informacionAdicionalItems,
+                    botonLabel
+                }
+            )
+        }
+
+    }, [imagenCargada, imagenAmpliada, titulo, imagenUrl, listaIconoTextoTitulo, listaIconoTextoItems, chipsIconoTextoTitulo, chipsIconoTextoItems, chipsIconoTextoIcono, chipsTextoTitulo, chipsTextoItems, informacionAdicionalTitulo, informacionAdicionalItems, botonLabel])
+
+
     return (
-        <div className='panel-informativo'>
-            <div className='panel-informativo-imagen-contenedor'>
-                { (imagenUrl && imagenUrl.trim() !== '') && (imagenCargada !== 'error') && (
-                <img
-                src={imagenUrl}
-                className='panel-informativo-imagen-imagen'
-                style={{ display: imagenCargada === 'ok' ? 'block' : 'none' }}
-                onLoad={() => { setImagenCargada('ok') }}
-                onError={() => { setImagenCargada('error') }}
-                />
+        <div className='panel-informativo'
+            style={{
+                width: imagenAmpliada ? '100%' : 'auto',
+                height: imagenAmpliada ? '100%' : 'auto'
+            }}
+        >
+            <div
+                className='panel-informativo-imagen-contenedor'
+                style={{
+                    width: imagenAmpliada ? '100%' : 'auto',
+                    height: imagenAmpliada ? '100%' : 'auto',
+                    position: imagenAmpliada ? 'fixed' : 'relative',
+                    top: imagenAmpliada ? '50%' : '0',
+                    left: imagenAmpliada ? '50%' : '0',
+                    transform: imagenAmpliada ? 'translate(-50%, -50%)' : 'none',
+                    zIndex: imagenAmpliada ? 9999 : 'auto',
+                    backgroundColor: imagenAmpliada ? 'rgba(0, 0, 0, 0.8)' : 'transparent',
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    cursor: puedeAlternarImagen ? (imagenAmpliada ? 'zoom-out' : 'zoom-in') : 'default',
+                }}
+                onClick={handleImagenToggle}
+            >
+                {
+                    (imagenUrl && imagenUrl.trim() !== '') && (imagenCargada !== 'error') && (
+                        <img
+                            src={imagenUrl}
+                            className='panel-informativo-imagen-imagen'
+                            style={{
+                                display: imagenCargada === 'ok' ? 'block' : 'none',
+                                cursor: imagenAmpliada ? 'zoom-out' : 'zoom-in',
+                                transform: imagenAmpliada ? 'scale(1.2)' : 'scale(1)',
+                                transformOrigin: 'center center',
+                                transition: 'transform 0.2s ease-in-out'
+                            }}
+                            onLoad={handleImagenLoad}
+                            onError={handleImagenError}
+
+                        />
+                    )
+                }
+
+                {!imagenAmpliada && (
+                    <div className='panel-informativo-imagen-texto'>
+                        { titulo ? titulo.toUpperCase() : '' }
+                    </div>
                 )}
-
-                <div className='panel-informativo-imagen-texto'>
-
-                    { titulo ? titulo.toUpperCase() : '' }
-                </div>
             </div>
 
-            <div>
-                <div className='panel-informativo-seccion-titulo'>
-                    {listaIconoTextoTitulo.toUpperCase()}
-                </div>
-
-                <div className='panel-informativo-icono-texto-contenedor'>
-                    {
-                    listaIconoTextoItems.map((e, i) =>
-                    <React.Fragment key={`${e.texto}-${e.iconoAlt}-${i}`}>
-                        <div>
-                            <img src={e.iconoSrc} alt={e.iconoAlt} className='panel-informativo-icono-texto-imagen' />
+            {!imagenAmpliada && (
+                <>
+                    <div>
+                        <div className='panel-informativo-seccion-titulo'>
+                            {listaIconoTextoTitulo.toUpperCase()}
                         </div>
-                        <div className='panel-informativo-icono-texto-contenedor-texto'>
-                            <div className='panel-informativo-icono-texto-texto'>{capitalizarPalabras(e.texto)}</div>
-                            <div className='panel-informativo-icono-texto-valor'>{e.valor || 'No disponible'}</div>
-                        </div>
-                    </React.Fragment>)}
-                </div>
-            </div>
 
-            {/* {informacionAdicionalVisible.length > 0 && (
-            <div>
-                <div className='panel-informativo-seccion-titulo'>
-                    {informacionAdicionalTitulo.toUpperCase()}
-                </div>
-
-                <div className='panel-informativo-campos-contenedor'>
-                    {informacionAdicionalVisible.map((item, index) => (
-                        <div
-                        key={`${item.label}-${index}`}
-                        className='panel-informativo-campo'>
-                            <span className='panel-informativo-campo-label'>{item.label}</span>
-                            <span className='panel-informativo-campo-value'>{item.value}</span>
-                        </div>
-                    ))}
-                </div>
-            </div>
-            )} */}
-
-            { chipsIconoTextoItems && chipsIconoTextoItems.length > 0 && (
-            <div>
-                <div className='panel-informativo-seccion-titulo'>
-                    {chipsIconoTextoTitulo.toUpperCase()} ({chipsIconoTextoItems.length})
-                </div>
-
-                <div className='panel-informativo-chip-contenedor'>
-                    {chipsIconoTextoItems?.map((item, index) => (
-                        <div
-                        key={`${item?.label || item?.value || 'capacidad'}-${index}`}
-                        className='panel-informativo-chip'>
+                        <div className='panel-informativo-icono-texto-contenedor'>
                             {
-                                chipsIconoTextoIcono ? (
-                                    <img
-                                    src={chipsIconoTextoIcono}
-                                    alt=""
-                                    className='panel-informativo-chip-imagen' />
-                                ) : null
+                                listaIconoTextoItems.find(e => e.valor !== "" && e.valor !== undefined)
+                                ? listaIconoTextoItems.map((e, i) =>
+                                    <React.Fragment key={`${e.texto}-${e.iconoAlt}-${i}`}>
+                                        {
+                                            (e.valor !== "" && e.valor !== undefined) && (
+                                                <>
+                                                    <div>
+                                                        <img src={e.iconoSrc} alt={e.iconoAlt} className='panel-informativo-icono-texto-imagen' />
+                                                    </div>
+                                                    <div className='panel-informativo-icono-texto-contenedor-texto'>
+                                                        <div className='panel-informativo-icono-texto-texto'>{capitalizarPalabras(e.texto)}</div>
+                                                        <div className='panel-informativo-icono-texto-valor'>{e.valor || 'No disponible'}</div>
+                                                    </div>
+                                                </>
+                                            )
+                                        }
+                                    </React.Fragment>)
+                                : <div style={{width:'max-content'}}>Sin información disponible</div>
                             }
-                            <span>{item.value} {capitalizarPalabras(item.label)}</span>
                         </div>
-                    ))}
-                </div>
-            </div>
-            )}
+                    </div>
 
-            { chipsTextoItems && chipsTextoItems.length > 0 && (
-            <div>
-                <div className='panel-informativo-seccion-titulo'>
-                    {chipsTextoTitulo.toUpperCase()} ({chipsTextoItems.length})
-                </div>
-
-                <div className='panel-informativo-chip-contenedor'>
-                    {chipsTextoItems?.map((item, index) => (
-                        <div
-                        key={`${item?.label || item?.value || 'capacidad'}-${index}`}
-                        className="panel-informativo-chip">
-                            <span>{item.value} {item.label}</span>
+                    {/* {informacionAdicionalVisible.length > 0 && (
+                    <div>
+                        <div className='panel-informativo-seccion-titulo'>
+                            {informacionAdicionalTitulo.toUpperCase()}
                         </div>
-                    ))}
-                </div>
-            </div>
-            )}
 
-            <Button type="primary" className="panel-informativo-boton" onClick={botonOnClick}>{botonLabel}</Button>
+                        <div className='panel-informativo-campos-contenedor'>
+                            {informacionAdicionalVisible.map((item, index) => (
+                                <div
+                                key={`${item.label}-${index}`}
+                                className='panel-informativo-campo'>
+                                    <span className='panel-informativo-campo-label'>{item.label}</span>
+                                    <span className='panel-informativo-campo-value'>{item.value}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                    )} */}
+
+                    { chipsIconoTextoItems && chipsIconoTextoItems.length > 0 && (
+                    <div>
+                        <div className='panel-informativo-seccion-titulo'>
+                            {chipsIconoTextoTitulo.toUpperCase()} ({chipsIconoTextoItems.length})
+                        </div>
+
+                        <div className='panel-informativo-chip-contenedor'>
+                            {chipsIconoTextoItems?.map((item, index) => (
+                                <div
+                                key={`${item?.label || item?.value || 'capacidad'}-${index}`}
+                                className='panel-informativo-chip'>
+                                    {
+                                        chipsIconoTextoIcono ? (
+                                            <img
+                                            src={chipsIconoTextoIcono}
+                                            alt=""
+                                            className='panel-informativo-chip-imagen' />
+                                        ) : null
+                                    }
+                                    <span>{item.value} {capitalizarPalabras(item.label)}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                    )}
+
+                    { chipsTextoItems.find(e => e.value !== "" && e.value !== undefined && e.value !== '0' && e.value !== 'No disponible') && (
+                    <div>
+                        <div className='panel-informativo-seccion-titulo'>
+                            {chipsTextoTitulo.toUpperCase()} ({chipsTextoItems.length})
+                        </div>
+
+                        <div className='panel-informativo-chip-contenedor'>
+                            {chipsTextoItems?.map((item, index) => (
+                                <div
+                                key={`${item?.label || item?.value || 'capacidad'}-${index}`}
+                                className="panel-informativo-chip">
+                                    <span>{item.value} {item.label}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                    )}
+
+                    <Button type="primary" className="panel-informativo-boton" onClick={botonOnClick}>{botonLabel}</Button>
+                </>
+            )}
         </div>
     )
 }

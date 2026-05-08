@@ -577,7 +577,9 @@ const Widget = (props: AllWidgetProps<any>) => {
         return
       }
 
+      const scale = {modifyScale: true, scale:0.1}
       await drawAndCenterFeatures(
+        scale,
         features,
         jimuMapView,
         graphicsLayer,
