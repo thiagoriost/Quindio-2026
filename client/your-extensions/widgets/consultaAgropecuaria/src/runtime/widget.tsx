@@ -16,7 +16,7 @@ import { JimuMapViewComponent, type JimuMapView } from "jimu-arcgis"
 import { MUNICIPIOS_QUINDIO } from "../../../shared/constants/municipiosQuindio"
 import { SearchActionBar } from "../../../shared/components/search-action-bar"
 import { urls } from "../../../api/serviciosQuindio"
-import { drawAndCenterFeatures, ejecutarConsulta, validaLoggerLocalStorage } from "../../../shared/utils/export.utils"
+import { adjustFieldsForResultsWidget, drawAndCenterFeatures, ejecutarConsulta, featuresFixed, validaLoggerLocalStorage } from "../../../shared/utils/export.utils"
 import { WIDGET_IDS } from "../../../shared/constants/widget-ids"
 import { abrirTablaResultados, limpiarYCerrarWidgetResultados } from "../../../widget-result/src/runtime/widget"
 import OurLoading from '../../../commonWidgets/our_loading/OurLoading'
@@ -366,22 +366,14 @@ const Widget = (props: AllWidgetProps<any>) => {
       const DrawJustOneGeometries = [features[0]]
       const scale = {
         modifyScale: false,
-        scale: 0.1
+        scale: 0.1,
+        modifyZoom: true,
+        zoom: 5
       }
       await drawAndCenterFeatures(scale, DrawJustOneGeometries, jimuMapView, graphicsLayer, setGraphicsLayer, `consulta-agropecuaria-layer-${selectedTipo.toLowerCase()}`)
 
-      const fields = Object.keys(features[0].attributes || {}).map((name) => ({
-        name,
-        alias: name,
-        type: "string"
-      }))
-
-      const featuresFixed = features
-        .filter(f => !!f.geometry)
-        .map(f => ({
-          attributes: f.attributes,
-          geometry: f.geometry.toJSON()
-        }))
+      const fields = adjustFieldsForResultsWidget(features)
+      const fixedFeatures = featuresFixed(features)
 
       const graphicData = buildPieData(features)
       const municipioNombre = municipiosOrdenados.find(m => m.IDMUNICIPI === selectedMunicipio)?.NOMBRE ?? selectedMunicipio
@@ -389,7 +381,7 @@ const Widget = (props: AllWidgetProps<any>) => {
       if(validaLoggerLocalStorage('logger')) console.log("Resultados procesados para tabla y gráfico:", { layerSuffix, features, featuresFixed, fields, graphicData, municipioNombre, tipoTitulo })
       abrirTablaResultados(
         false,
-        featuresFixed,
+        fixedFeatures,
         fields,
         props,
         widgetResultId,

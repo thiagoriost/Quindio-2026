@@ -8,7 +8,7 @@ import { SearchActionBar } from '../../../shared/components/search-action-bar'
 import { AlertContainer } from '../../../shared/components/alert-container'
 import OurLoading from '../../../commonWidgets/our_loading/OurLoading'
 import { urls } from '../../../api/serviciosQuindio'
-import { drawAndCenterFeatures, ejecutarConsulta, validaLoggerLocalStorage } from '../../../shared/utils/export.utils'
+import { drawAndCenterFeatures, ejecutarConsulta, validaLoggerLocalStorage, featuresFixed, adjustFieldsForResultsWidget } from '../../../shared/utils/export.utils'
 import { alertService } from '../../../shared/services/alert.service'
 import { abrirTablaResultados, limpiarYCerrarWidgetResultados } from '../../../widget-result/src/runtime/widget'
 import { WIDGET_IDS } from '../../../shared/constants/widget-ids'
@@ -137,24 +137,6 @@ const municipioById = new Map(
 const resolveMunicipioName = (municipioId: string) => municipioById.get(municipioId.trim()) ?? ''
 
 /**
- * Construye la definición de campos para la tabla de resultados a partir de los features devueltos.
- * Solo incluye los campos de {@link FINAL_OUT_FIELDS} que estén presentes en el primer feature.
- * @param {__esri.Graphic[]} features - Arreglo de features con atributos.
- * @returns {{ name: string; alias: string; type: string }[]} Definición de campos compatible con la tabla de resultados.
- */
-const buildFields = (features: __esri.Graphic[]) => {
-  if (!features.length) return []
-
-  return FINAL_OUT_FIELDS
-    .filter(field => field in (features[0].attributes ?? {}))
-    .map(field => ({
-      name: field,
-      alias: field,
-      type: typeof features[0].attributes?.[field] === 'number' ? 'number' : 'string'
-    }))
-}
-
-/**
  * Widget de consulta de Industria y Comercio para ArcGIS Experience Builder.
  *
  * Permite filtrar establecimientos por capa de servicio, municipio, tipo de establecimiento
@@ -233,15 +215,17 @@ const Widget = (props: AllWidgetProps<any>) => {
 
   /**
    * Restablece la vista del mapa a la extensión, zoom y escala capturados al montar el widget.
-   * @returns {Promise<void>}
+   * @returns {void}
    */
-  const resetToDefaultMapView = React.useCallback(async () => {
+  const resetToDefaultMapView = React.useCallback(() => {
     const view = jimuMapView?.view
     const initialExtent = initialExtentRef.current
 
     if (!view || !initialExtent) return
 
-    await view.goTo({ target: initialExtent })
+    setTimeout(async () => {
+      await view.goTo({ target: initialExtent })
+    }, 2000)
 
     if (typeof initialZoomRef.current === 'number') {
       view.zoom = initialZoomRef.current
@@ -577,20 +561,25 @@ const Widget = (props: AllWidgetProps<any>) => {
         return
       }
 
-      const scale = {modifyScale: true, scale:0.1}
-      await drawAndCenterFeatures(
-        scale,
-        features,
-        jimuMapView,
-        graphicsLayer,
-        setGraphicsLayer,
-        `industria-comercio-layer-${selectedConsultaPor}`
-      )
+      if (selectedNombre !== "") { // Solo dibuja en el mapa cuando se consulta por un establecimiento específico, para evitar saturar la vista con muchos resultados
+        const scale = {modifyScale: true, scale:5, modifyZoom: false, zoom:20}
+        await drawAndCenterFeatures(
+          scale,
+          features,
+          jimuMapView,
+          graphicsLayer,
+          setGraphicsLayer,
+          `industria-comercio-layer-${selectedConsultaPor}`
+        )
+      }
+
+      const fields = adjustFieldsForResultsWidget(features)
+      const fixedFeatures = featuresFixed(features)
 
       abrirTablaResultados(
         false,
-        features,
-        buildFields(features),
+        fixedFeatures,
+        fields,
         props,
         widgetResultId,
         features[0]?.geometry?.spatialReference || jimuMapView?.view?.spatialReference,
@@ -600,6 +589,7 @@ const Widget = (props: AllWidgetProps<any>) => {
 
       if (validaLoggerLocalStorage('logger')) {
         console.log({
+          fields,
           selectedLayerUrl,
           where,
           totalResults: features.length,
@@ -647,7 +637,7 @@ const Widget = (props: AllWidgetProps<any>) => {
     setError('')
 
     clearResults()
-    void resetToDefaultMapView()
+    resetToDefaultMapView()
   }, [clearResults, resetToDefaultMapView])
 
   /** Limpia automáticamente el formulario y el mapa cuando el widget es cerrado por el usuario. */
