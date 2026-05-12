@@ -81,3 +81,12 @@ send it to the widget with id = “widget_103” using the #sym:sendDataExternal
 - hide the form fields currently displayed on the front end to render the image received in data.IMG
 - A button should allow you to return to the form while hiding the rendered IMG
 
+///////////////////////////////////////////
+
+Create a widget called “buffer,” which must have access to the map since it will manage layers and draw different types of geometries on the map. Use the #file:ConsultaIndustriaComercio widget as a guide to follow the structure of the new widget.
+- The widget's appearance should match the attached image.
+- The Topics, Subtopics, and Layers fields must be populated based on the information already obtained in #sym:tematicas
+- Use JSDoc to document all the code you create
+
+Translated with DeepL.com (free version)
+
