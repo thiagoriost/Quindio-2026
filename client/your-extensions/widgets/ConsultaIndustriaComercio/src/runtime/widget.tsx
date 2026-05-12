@@ -1,6 +1,6 @@
-import { React, type AllWidgetProps } from 'jimu-core'
+import { type IMState, React, type AllWidgetProps, getAppStore, appActions } from 'jimu-core'
 import { JimuMapViewComponent, type JimuMapView } from 'jimu-arcgis'
-import { Checkbox, Label, Option, Select } from 'jimu-ui'
+import { Button, Checkbox, Label, Option, Select } from 'jimu-ui'
 import esriRequest from '@arcgis/core/request'
 import type GraphicsLayer from '@arcgis/core/layers/GraphicsLayer'
 
@@ -8,7 +8,7 @@ import { SearchActionBar } from '../../../shared/components/search-action-bar'
 import { AlertContainer } from '../../../shared/components/alert-container'
 import OurLoading from '../../../commonWidgets/our_loading/OurLoading'
 import { urls } from '../../../api/serviciosQuindio'
-import { drawAndCenterFeatures, ejecutarConsulta, validaLoggerLocalStorage } from '../../../shared/utils/export.utils'
+import { drawAndCenterFeatures, ejecutarConsulta, validaLoggerLocalStorage, featuresFixed, adjustFieldsForResultsWidget } from '../../../shared/utils/export.utils'
 import { alertService } from '../../../shared/services/alert.service'
 import { abrirTablaResultados, limpiarYCerrarWidgetResultados } from '../../../widget-result/src/runtime/widget'
 import { WIDGET_IDS } from '../../../shared/constants/widget-ids'
@@ -16,6 +16,7 @@ import { MUNICIPIOS_QUINDIO } from '../../../shared/constants/municipiosQuindio'
 
 // @ts-expect-error - No se encuentran los tipos de estas funciones, revisar exportaciones del build CSS
 import '../styles/styles.css'
+import { useSelector } from 'react-redux'
 
 /** Opción genérica para controles {@link Select}/{@link Option} de jimu-ui. */
 interface SelectOption {
@@ -50,6 +51,19 @@ interface IndustriaComercioAttributes {
   TIPOESTABLECIMIENTO?: string
   /** Campos adicionales presentes en el servicio. */
   [key: string]: string | number | null | undefined
+}
+
+/**
+ * Carga útil recibida desde el widget-result cuando un feature seleccionado
+ * contiene una ruta de imagen en el atributo `IMAGEN`.
+ * Es despachada a este widget vía Redux por {@link sendDataExternalWidget}.
+ */
+interface ImagePayload {
+  /**
+   * Ruta relativa de la imagen respecto a {@link urls.URL_ARCHIVOS_QUINDIO}.
+   * Ejemplo: `'SIG_QUINDIO/IMAGENES/INDUSTRIA Y COMERCIO/CIRCASIA/IMG_0071.JPG'`
+   */
+  IMG: string
 }
 
 /** Feature del servicio de Industria y Comercio que combina atributos y geometría opcional. */
@@ -137,24 +151,6 @@ const municipioById = new Map(
 const resolveMunicipioName = (municipioId: string) => municipioById.get(municipioId.trim()) ?? ''
 
 /**
- * Construye la definición de campos para la tabla de resultados a partir de los features devueltos.
- * Solo incluye los campos de {@link FINAL_OUT_FIELDS} que estén presentes en el primer feature.
- * @param {__esri.Graphic[]} features - Arreglo de features con atributos.
- * @returns {{ name: string; alias: string; type: string }[]} Definición de campos compatible con la tabla de resultados.
- */
-const buildFields = (features: __esri.Graphic[]) => {
-  if (!features.length) return []
-
-  return FINAL_OUT_FIELDS
-    .filter(field => field in (features[0].attributes ?? {}))
-    .map(field => ({
-      name: field,
-      alias: field,
-      type: typeof features[0].attributes?.[field] === 'number' ? 'number' : 'string'
-    }))
-}
-
-/**
  * Widget de consulta de Industria y Comercio para ArcGIS Experience Builder.
  *
  * Permite filtrar establecimientos por capa de servicio, municipio, tipo de establecimiento
@@ -205,6 +201,36 @@ const Widget = (props: AllWidgetProps<any>) => {
   const initialScaleRef = React.useRef<number | null>(null)
 
   /**
+   * Carga útil recibida desde el widget-result.
+   * Contiene la ruta de imagen (`IMG`) cuando el feature seleccionado tiene el atributo `IMAGEN`.
+   * Es `null` cuando no hay imagen pendiente de mostrar.
+   *
+   * @type {ImagePayload | null}
+   */
+  const data: ImagePayload | null = useSelector(
+      (state: IMState) =>
+          state.widgetsState?.[props.id]?.results ?? null
+  )
+
+  /**
+   * Controla si se muestra la vista de imagen (`true`) o el formulario de consulta (`false`).
+   * Se activa automáticamente al recibir un `ImagePayload` con campo `IMG`.
+   */
+  const [showImage, setShowImage] = React.useState(false)
+
+  /**
+   * Limpia la imagen recibida desde el widget-result y regresa a la vista del formulario.
+   * Descarta el payload del estado Redux de este widget y oculta la imagen.
+   * @returns {void}
+   */
+  const handleVolverAlFormulario = React.useCallback(() => {
+    getAppStore().dispatch(
+      appActions.widgetStatePropChange(props.id, 'results', null)
+    )
+    setShowImage(false)
+  }, [props.id])
+
+  /**
    * URL completa de la capa seleccionada en «Consulta por».
    * Devuelve cadena vacía cuando no hay capa seleccionada.
    * @type {string}
@@ -233,15 +259,17 @@ const Widget = (props: AllWidgetProps<any>) => {
 
   /**
    * Restablece la vista del mapa a la extensión, zoom y escala capturados al montar el widget.
-   * @returns {Promise<void>}
+   * @returns {void}
    */
-  const resetToDefaultMapView = React.useCallback(async () => {
+  const resetToDefaultMapView = React.useCallback(() => {
     const view = jimuMapView?.view
     const initialExtent = initialExtentRef.current
 
     if (!view || !initialExtent) return
 
-    await view.goTo({ target: initialExtent })
+    setTimeout(async () => {
+      await view.goTo({ target: initialExtent })
+    }, 2000)
 
     if (typeof initialZoomRef.current === 'number') {
       view.zoom = initialZoomRef.current
@@ -577,20 +605,25 @@ const Widget = (props: AllWidgetProps<any>) => {
         return
       }
 
-      const scale = {modifyScale: true, scale:0.1}
-      await drawAndCenterFeatures(
-        scale,
-        features,
-        jimuMapView,
-        graphicsLayer,
-        setGraphicsLayer,
-        `industria-comercio-layer-${selectedConsultaPor}`
-      )
+      if (selectedNombre !== "") { // Solo dibuja en el mapa cuando se consulta por un establecimiento específico, para evitar saturar la vista con muchos resultados
+        const scale = {modifyScale: true, scale:5, modifyZoom: false, zoom:20}
+        await drawAndCenterFeatures(
+          scale,
+          features,
+          jimuMapView,
+          graphicsLayer,
+          setGraphicsLayer,
+          `industria-comercio-layer-${selectedConsultaPor}`
+        )
+      }
+
+      const fields = adjustFieldsForResultsWidget(features)
+      const fixedFeatures = featuresFixed(features)
 
       abrirTablaResultados(
         false,
-        features,
-        buildFields(features),
+        fixedFeatures,
+        fields,
         props,
         widgetResultId,
         features[0]?.geometry?.spatialReference || jimuMapView?.view?.spatialReference,
@@ -598,8 +631,17 @@ const Widget = (props: AllWidgetProps<any>) => {
         { showGraphic: false }
       )
 
+      // Si solo hay un resultado y tiene el campo IMAGEN, envía la ruta para mostrar la imagen
+      if (features.length === 1 && features[0].attributes.IMAGEN) {
+        getAppStore().dispatch(
+          appActions.widgetStatePropChange(props.id, 'results', { IMG: features[0].attributes.IMAGEN })
+        )
+        setShowImage(true)
+      }
+
       if (validaLoggerLocalStorage('logger')) {
         console.log({
+          fields,
           selectedLayerUrl,
           where,
           totalResults: features.length,
@@ -647,7 +689,8 @@ const Widget = (props: AllWidgetProps<any>) => {
     setError('')
 
     clearResults()
-    void resetToDefaultMapView()
+    resetToDefaultMapView()
+    setShowImage(false)
   }, [clearResults, resetToDefaultMapView])
 
   /** Limpia automáticamente el formulario y el mapa cuando el widget es cerrado por el usuario. */
@@ -656,6 +699,27 @@ const Widget = (props: AllWidgetProps<any>) => {
       onLimpiar()
     }
   }, [props.state, onLimpiar])
+
+  /**
+   * Reacciona a cambios en el payload recibido desde el widget-result.
+   * Cuando `data.IMG` contiene una ruta válida, activa la vista de imagen
+   * y oculta el formulario. Cuando `data` es `null`, restaura la vista del formulario.
+   */
+  React.useEffect(() => {
+    if (!data) {
+      setShowImage(false)
+      return
+    }
+    if (data.IMG) {
+      setShowImage(true)
+      if (validaLoggerLocalStorage('logger')) {
+        console.log('Imagen recibida en el widget de Industria y Comercio:', data.IMG)
+      }
+    }else{
+      setShowImage(false)
+    }
+  }, [data])
+
 
   return (
     <div style={{ height: '100%', padding: '5px', boxSizing: 'border-box' }}>
@@ -668,116 +732,155 @@ const Widget = (props: AllWidgetProps<any>) => {
         />
       )}
 
-      <div className="consulta-widget consulta-scroll loading-host">
-        <div>
-          <Label>Consulta por:</Label>
-          <Select
-            value={selectedConsultaPor}
-            disabled={loading || consultaOptions.length === 0}
-            onChange={(e) => {
-              clearResults()
-              setSelectedConsultaPor(e.target.value)
-              setError('')
-            }}
-          >
-            <Option value="">Seleccione...</Option>
-            {consultaOptions.map(option => (
-              <Option key={option.value} value={option.value}>
-                {option.label}
-              </Option>
-            ))}
-          </Select>
+      {/* Vista de imagen: se muestra cuando se recibe un payload IMG desde el widget-result */}
+      {showImage && data?.IMG ? (
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+          {/**
+           * Botón para abandonar la vista de imagen y regresar al formulario de consulta.
+           * Limpia el payload Redux y restaura la vista del formulario.
+           */}
+          <div style={{display:'flex', flexDirection:'row', justifyContent:'space-around', alignItems:'center', marginBottom:'10px'}}>
+            <Button
+              size="sm" type="primary"
+              onClick={handleVolverAlFormulario}
+              style={{ marginBottom: '8px', alignSelf: 'flex-start', cursor: 'pointer' }}
+              title="Volver al formulario de consulta"
+            >
+              ←
+            </Button>
+            <Label>{selectedTipoEstablecimiento} - {MUNICIPIOS_QUINDIO.find(m => m.IDMUNICIPI === selectedMunicipio)?.NOMBRE}</Label>
+          </div>
+          {/**
+           * Imagen del establecimiento comercial.
+           * La URL se construye concatenando la base {@link urls.URL_ARCHIVOS_QUINDIO}
+           * con la ruta relativa recibida en {@link ImagePayload.IMG}.
+           */}
+          <div style={{ flex: 1, overflow: 'auto', display: 'flex' }}>
+            <img
+              src={`${urls.URL_ARCHIVOS_QUINDIO}${data.IMG}`}
+              alt="Imagen del establecimiento"
+              style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', marginRight: '20px' }}
+              onError={() => {
+                if (validaLoggerLocalStorage('logger')) {
+                  console.warn('No se pudo cargar la imagen:', data.IMG)
+                }
+              }}
+            />
+          </div>
+        </div>
+      ) : (
+        /* Vista del formulario: campos de filtro y barra de acciones */
+        <div className="consulta-widget consulta-scroll loading-host">
+          <div>
+            <Label>Consulta por:</Label>
+            <Select
+              value={selectedConsultaPor}
+              disabled={loading || consultaOptions.length === 0}
+              onChange={(e) => {
+                clearResults()
+                setSelectedConsultaPor(e.target.value)
+                setError('')
+              }}
+            >
+              <Option value="">Seleccione...</Option>
+              {consultaOptions.map(option => (
+                <Option key={option.value} value={option.value}>
+                  {option.label}
+                </Option>
+              ))}
+            </Select>
 
-          <Label>Municipio:</Label>
-          <Select
-            value={selectedMunicipio}
-            disabled={loading || !selectedConsultaPor || municipioOptions.length === 0}
-            onChange={(e) => {
-              clearResults()
-              setSelectedMunicipio(e.target.value)
-              setError('')
-            }}
-          >
-            <Option value="">Seleccione...</Option>
-            {municipioOptions.map(option => (
-              <Option key={option.value} value={option.value}>
-                {option.label}
-              </Option>
-            ))}
-          </Select>
+            <Label>Municipio:</Label>
+            <Select
+              value={selectedMunicipio}
+              disabled={loading || !selectedConsultaPor || municipioOptions.length === 0}
+              onChange={(e) => {
+                clearResults()
+                setSelectedMunicipio(e.target.value)
+                setError('')
+              }}
+            >
+              <Option value="">Seleccione...</Option>
+              {municipioOptions.map(option => (
+                <Option key={option.value} value={option.value}>
+                  {option.label}
+                </Option>
+              ))}
+            </Select>
 
-          <Label>Tipo establecimiento:</Label>
-          <Select
-            value={selectedTipoEstablecimiento}
-            disabled={loading || !selectedMunicipio || tipoEstablecimientoOptions.length === 0}
-            onChange={(e) => {
-              clearResults()
-              setSelectedTipoEstablecimiento(e.target.value)
-              setError('')
-            }}
-          >
-            <Option value="">Seleccione...</Option>
-            {tipoEstablecimientoOptions.map(option => (
-              <Option key={option.value} value={option.value}>
-                {option.label}
-              </Option>
-            ))}
-          </Select>
+            <Label>Tipo establecimiento:</Label>
+            <Select
+              value={selectedTipoEstablecimiento}
+              disabled={loading || !selectedMunicipio || tipoEstablecimientoOptions.length === 0}
+              onChange={(e) => {
+                clearResults()
+                setSelectedTipoEstablecimiento(e.target.value)
+                setError('')
+              }}
+            >
+              <Option value="">Seleccione...</Option>
+              {tipoEstablecimientoOptions.map(option => (
+                <Option key={option.value} value={option.value}>
+                  {option.label}
+                </Option>
+              ))}
+            </Select>
 
-          <div className="consulta-widget__checkbox-row">
-            <Label style={{ display: 'flex', alignItems: 'center', marginBottom: 0 }}>
-              <Checkbox
-                checked={consultarPorNombre}
-                disabled={loading || !selectedTipoEstablecimiento || nombreOptions.length === 0}
-                onChange={(e, checked) => {
-                  clearResults()
-                  setConsultarPorNombre(checked)
-                  if (!checked) {
-                    setSelectedNombre('')
-                  }
-                  setError('')
-                }}
-              />
-              <span>Consultar por nombre establecimiento</span>
-            </Label>
+            <div className="consulta-widget__checkbox-row">
+              <Label style={{ display: 'flex', alignItems: 'center', marginBottom: 0 }}>
+                <Checkbox
+                  checked={consultarPorNombre}
+                  disabled={loading || !selectedTipoEstablecimiento || nombreOptions.length === 0}
+                  onChange={(e, checked) => {
+                    clearResults()
+                    setConsultarPorNombre(checked)
+                    if (!checked) {
+                      setSelectedNombre('')
+                    }
+                    setError('')
+                  }}
+                />
+                <span>Consultar por nombre establecimiento</span>
+              </Label>
+            </div>
+
+            {consultarPorNombre && (
+              <>
+                <Label>
+                  <span className="consulta-widget__inline-label">Nombre establecimiento:</span>
+                </Label>
+                <Select
+                  value={selectedNombre}
+                  disabled={loading || nombreOptions.length === 0}
+                  onChange={(e) => {
+                    clearResults()
+                    setSelectedNombre(e.target.value)
+                    setError('')
+                  }}
+                >
+                  <Option value="">Seleccione...</Option>
+                  {nombreOptions.map(option => (
+                    <Option key={option.value} value={option.value}>
+                      {option.label}
+                    </Option>
+                  ))}
+                </Select>
+              </>
+            )}
+
+            <SearchActionBar
+              onSearch={onBuscar}
+              onClear={onLimpiar}
+              loading={loading}
+              disableSearch={loading || !canSearch}
+              helpText="Seleccione consulta, municipio y tipo de establecimiento. Active la consulta por nombre para filtrar un establecimiento puntual."
+              error={error}
+            />
           </div>
 
-          {consultarPorNombre && (
-            <>
-              <Label>
-                <span className="consulta-widget__inline-label">Nombre establecimiento:</span>
-              </Label>
-              <Select
-                value={selectedNombre}
-                disabled={loading || nombreOptions.length === 0}
-                onChange={(e) => {
-                  clearResults()
-                  setSelectedNombre(e.target.value)
-                  setError('')
-                }}
-              >
-                <Option value="">Seleccione...</Option>
-                {nombreOptions.map(option => (
-                  <Option key={option.value} value={option.value}>
-                    {option.label}
-                  </Option>
-                ))}
-              </Select>
-            </>
-          )}
-
-          <SearchActionBar
-            onSearch={onBuscar}
-            onClear={onLimpiar}
-            loading={loading}
-            disableSearch={loading || !canSearch}
-            helpText="Seleccione consulta, municipio y tipo de establecimiento. Active la consulta por nombre para filtrar un establecimiento puntual."
-            error={error}
-          />
+          {loading && <OurLoading />}
         </div>
-
-        {loading && <OurLoading />}
-      </div>
+      )}
     </div>
   )
 }

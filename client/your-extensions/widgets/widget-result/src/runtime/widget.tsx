@@ -598,6 +598,9 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
     const handleSelectFeature = async (feature: any, zoomLevel = 20) => {
         if(validaLoggerLocalStorage('logger')) console.log('feature seleccionada:', feature)
 
+        
+        sendDataExternalWidget(feature.attributes.IMAGEN)
+
         if (data?.temporalLayer) {
             await crearCapaTemporal(feature)
             return
@@ -789,6 +792,18 @@ export default function Widget(props: AllWidgetProps<IMConfig>) {
             const nextFieldInfo = `Total de estudiantes ${fieldsToFilter[nextIndex].label || nextField} en el año ${data.valorBusqueda || ''}`
             setOverrideGraphicTitle(nextFieldInfo)
         }
+    }
+
+    const sendDataExternalWidget = (IMG: string) => {
+        getAppStore().dispatch(
+            appActions.widgetStatePropChange(
+                data.props.widgetId, // ID del widget destino, debe ser un widget que esté abierto en el layout para recibir los datos
+                'results',
+                {
+                   IMG
+                }
+            )
+        )
     }
     
     return (

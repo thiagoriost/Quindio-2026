@@ -369,6 +369,13 @@ export const ejecutarConsulta = async ({
     }
   }
 
+  /**
+   * Valida si el valor almacenado en localStorage bajo la clave especificada es `true`.
+   *
+   * Esta función intenta parsear el valor almacenado como JSON para obtener la propiedad `logger`.
+   * Si el parseo falla (por ejemplo, si el valor no es un JSON válido), se asume que el valor es un string y se compara directamente con "true".
+   * para activarlo debe almacenar en el localStorage un valor con la clave "logger" y el valor '{"logger": true}' o simplemente "true". ejemplo localStorage.setItem('logger', 'true')
+   */
   export const validaLoggerLocalStorage = (key: string): boolean => {
     let loggerParsed = null
     try {
@@ -419,9 +426,13 @@ export const clearMapAndResetExtent = (jimuMapView: any, initialExtent: any, ini
  *   - Rangos de clasificación con sus colores de fondo y línea (formato "r,g,b,a").
  */
 export interface CoroplethConfig {
-  field: string
-  leyenda: Array<{ minimo: number; maximo: number; colorFondo: string; colorLine: string }>
+  field?: string
+  leyenda?: Array<{ minimo?: number; maximo?: number; colorFondo?: string; colorLine?: string }>
   titleCoropletico?: string
+  minimo?: number
+  maximo?: number
+  colorFondo?: string
+  colorLine?: string
 }
 
 export const limpiarFeaturesDibujados = (jimuMapView: JimuMapView, features: __esri.Graphic[]) => {
@@ -611,44 +622,44 @@ export const transformToCamelCase = (str: string) => {
     .join("")
 }
 
-export const drawAndCenterFeatures = (async (scale = {modifyScale: true, scale:0.1}, features: __esri.Graphic[], jimuMapView: { view: any }, graphicsLayer: any, setGraphicsLayer: (arg0: any) => void, nameLayer: string, ) => {
-    if (!jimuMapView || !features?.length) return
+export const drawAndCenterFeatures = (async (scale = {modifyScale: true, scale:0.1, modifyZoom: true, zoom:5}, features: __esri.Graphic[], jimuMapView: { view: any }, graphicsLayer: any, setGraphicsLayer: (arg0: any) => void, nameLayer: string) => {
+  if (!jimuMapView || !features?.length) return
 
-    const view = jimuMapView.view
-     let layer = graphicsLayer
+  const view = jimuMapView.view
+    let layer = graphicsLayer
 
-    if (!layer) {
-      layer = new GraphicsLayer({ id: nameLayer })
-      view.map.add(layer)
-      setGraphicsLayer(layer)
-    }
+  if (!layer) {
+    layer = new GraphicsLayer({ id: nameLayer })
+    view.map.add(layer)
+    setGraphicsLayer(layer)
+  }
 
-    layer.removeAll()
+  layer.removeAll()
 
-    const graphics = features
-      .filter(feature => !!feature.geometry)
-      .map(feature => {
-        const geometryType = feature.geometry.type
-        if (validaLoggerLocalStorage('logger')) console.log("Tipo de geometría para dibujar =>", {feature})
-        const symbol = geometryType === 'polygon'
+  const graphics = features
+    .filter(feature => !!feature.geometry)
+    .map(feature => {
+      const geometryType = feature.geometry.type
+      if (validaLoggerLocalStorage('logger')) console.log("Tipo de geometría para dibujar =>", {feature})
+      const symbol = geometryType === 'polygon'
+        ? {
+            type: 'simple-fill',
+            color: [255, 165, 0, 0.2],
+            outline: { color: [255, 69, 0], width: 2 }
+          }
+        : geometryType === 'polyline'
           ? {
-              type: 'simple-fill',
-              color: [255, 165, 0, 0.2],
-              outline: { color: [255, 69, 0], width: 2 }
+              type: 'simple-line',
+              color: [255, 69, 0, 0.9],
+              width: 2
             }
-          : geometryType === 'polyline'
-            ? {
-                type: 'simple-line',
-                color: [255, 69, 0, 0.9],
-                width: 2
-              }
-            : {
-                type: 'simple-marker',
-                style: 'circle',
-                size: '8px',
-                color: [255, 69, 0, 0.9],
-                outline: { color: [255, 255, 255, 0.9], width: 1 }
-              }
+          : {
+              type: 'simple-marker',
+              style: 'circle',
+              size: '8px',
+              color: [255, 69, 0, 0.9],
+              outline: { color: [255, 255, 255, 0.9], width: 1 }
+            }
 
         return new Graphic({
           geometry: feature.geometry,
@@ -667,13 +678,31 @@ export const drawAndCenterFeatures = (async (scale = {modifyScale: true, scale:0
     await view.goTo(graphics.map(graphic => graphic.geometry))
 
     // Acercamiento adicional después de centrar las geometrías.
-    const newZoom = view.zoom + 5
-    await view.goTo({ zoom: newZoom })
+    let newZoom = view.zoom
+    let newScale = view.scale
+    if (scale.modifyZoom) {
+      newZoom = view.zoom + (scale.zoom !== 5 ? scale.zoom : 5)
+      await view.goTo({ zoom: newZoom })
+    }
     if (scale.modifyScale) {
-      const newScale = view.scale * scale.scale / 2
+      newScale =( view.scale * scale.scale) / 2 // entre más pequeño el valor de scale.scale, más cerca se acerca
       await view.goTo({ scale: newScale })
     }
-  })
+
+    if(validaLoggerLocalStorage('logger')) {
+      console.log(
+        {
+          scale,
+          features,
+          jimuMapView,
+          graphicsLayer,
+          nameLayer,
+          newZoom,
+          newScale
+        }
+      )
+    }
+})
 
 /**
  * Elimina del mapa la capa de gráficos usada por {@link drawAndCenterFeatures}.
@@ -702,4 +731,35 @@ export const removeDrawAndCenterFeatures = (
   if (setGraphicsLayer) {
     setGraphicsLayer(null)
   }
+}
+
+/**
+ * Filtra un arreglo de features para eliminar aquellos sin geometría válida y transforma la geometría restante a formato JSON. Pra ser enviada al widget de resultados, ya que este no acepta geometrías en formato ArcGIS y requiere un formato JSON para renderizarlas correctamente en la tabla de resultados y el mapa.
+ *
+ * Esta función es útil para preparar los datos antes de exportarlos o procesarlos,
+ */
+export const featuresFixed = (features: any[]) =>{
+  return features
+    .filter(f => !!f.geometry)
+    .map(f => ({
+      attributes: f.attributes,
+      geometry: f.geometry.toJSON()
+    }))
+
+}
+
+/**
+ * Ajusta los campos de un arreglo de features para ser compatibles con el widget de resultados.
+ *
+ * Toma el primer feature del arreglo y extrae sus atributos para construir un nuevo arreglo de campos con la estructura requerida por el widget de resultados (name, alias, type). Esto es necesario porque el widget de resultados espera un formato específico para los campos, y esta función garantiza que los datos se ajusten a ese formato antes de ser enviados al widget.
+ * @param features
+ * @returns
+ */
+export const adjustFieldsForResultsWidget = (features: any[]) => {
+  const fields = Object.keys(features[0].attributes || {}).map((name) => ({
+        name,
+        alias: name,
+        type: "string"
+      }))
+  return fields
 }
