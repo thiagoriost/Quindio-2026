@@ -217,16 +217,31 @@ const ConsultaIndicadores = forwardRef((
             const leyendaCoropletica = coroplethField
                 ? construirLeyendaCoropletica(features, coroplethField)
                 : []
+            ;
+
+            let datosGrafico = null;
+            //let featuresEnvio = null;
+            let fieldsEnvio = null;
+            
+            if ( indicador === INDICADOR_AFILIACIONES ) {
+                datosGrafico = construirDatosGrafico(features, AFILIACIONES_FIELD);                
+                fieldsEnvio = [{ name: 'NOMBRE', alias: 'Municipio' }, { name: "COBERTURATOTAL", alias: 'Cobertura total' }]
+            } else {                
+                fieldsEnvio=response.data.fields;
+            }
+
             return {
+                //features: featuresEnvio,
                 features,
-                fields: response.data.fields,
+                fields: fieldsEnvio,
+                //fields:response.data.fields,
                 spatialReference,
                 withGraphic: (()=>{
                     if ( indicador === INDICADOR_AFILIACIONES ) {
                         return (
                         {
                             showGraphic: true,
-                            graphicData: construirDatosGrafico(features, AFILIACIONES_FIELD),
+                            graphicData: datosGrafico,
                             graphicType: 'bar',
                             graphicTitle: `Población cubierta por municipio${anio ? `, año ${anio}` : ''}${idCategoria ? `, ${categoriaAfiliacion}` : ''}`,
                             dataCoropletico: leyendaCoropletica.length > 0

@@ -2,9 +2,9 @@ import type { ImmutableObject } from 'seamless-immutable'
 
 export interface Config {
     urlSalud: string,
-    urlSaludAlfanumerico: string,
+    urlSaludAlfanumerico: string,    
     layerSaludAlfanumericoCategoriaIndicadores: number,
-    tipoEstablecimientos: { [key: string]: string }
+    tipoEstablecimientos: Record<string, string>
 }
 
-export type IMConfig = ImmutableObject<Config>
+export type IMConfig = ImmutableObject<Config> 

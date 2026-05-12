@@ -2,7 +2,7 @@
 import { jsx } from 'jimu-core'
 import { Select, Label, Option } from 'jimu-ui'
 import SelectDesdeArray from './SelectDesdeArray'
-import { urls } from '../../../../api/servicios';
+import { urls } from '../../../../api/serviciosQuindio';
 import { queryCapa } from '../util';
 
 export default function SelectMunicipio({loading, municipios, idMunicipio, setIdMunicipio}) {
