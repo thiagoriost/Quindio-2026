@@ -18,6 +18,7 @@ export interface ChartDataItem {// cef 20260320
 }
 
 export interface ResultPayload {
+  [x: string]: any;
   /** Widget que envía los resultados */
   sourceWidgetId: string
 

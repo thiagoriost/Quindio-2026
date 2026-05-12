@@ -67,3 +67,17 @@ Return only the updated code.
 
 ////////////////////////////////////////
 The image needs to resize in width and height as its container changes; currently, the image remains static in terms of its dimensions regardless of whether the container changes. Or better yet, make it so that when the user clicks on the image, it enlarges by 20%.
+**********************************************
+
+- si el feature.attributes.IMAGEN tiene información valida del path de una imagen, ejemplo "feature.attributes.IMAGEN
+'SIG_QUINDIO/IMAGENES/INDUSTRIA Y COMERCIO/CIRCASIA/IMG_0071.JPG'"
+enviarlo al widget con id = "widget_103" por medio del metodo #sym:sendDataExternalWidget .
+- ocultar los campos del formulario que actualmente se muestran en el front, para renderizar la IMG que llega en data.IMG
+- por medio de un boton se debe poder volver a retornar al formulario ocultando la IMG renderizada
+
+- if feature.attributes.IMAGEN contains valid information about an image path, for example "feature.attributes.IMAGEN
+'SIG_QUINDIO/IMAGES/INDUSTRY AND COMMERCE/CIRCASIA/IMG_0071.JPG'"
+send it to the widget with id = “widget_103” using the #sym:sendDataExternalWidget method.
+- hide the form fields currently displayed on the front end to render the image received in data.IMG
+- A button should allow you to return to the form while hiding the rendered IMG
+
