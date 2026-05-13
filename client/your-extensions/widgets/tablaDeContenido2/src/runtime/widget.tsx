@@ -1,11 +1,14 @@
-import type { AllWidgetProps } from 'jimu-core'
+import { appActions, getAppStore, type AllWidgetProps } from 'jimu-core'
 import React, { useState, useEffect } from 'react'
 import { JimuMapViewComponent, type JimuMapView } from 'jimu-arcgis' // The map object can be accessed using the JimuMapViewComponent
+// @ts-expect-error - No se encuentran tipos de la API de ArcGIS, se asume que están disponibles globalmente en runtime.
 import '../styles/style.css'
 import type { CapasTematicas, ItemResponseTablaContenido, TablaDeContenidoInterface, datosBasicosInterface, interfaceCapasNietos } from '../types/interfaces'
 import WidgetTree from './components/widgetTree'
 import * as projection from "@arcgis/core/geometry/projection"
 import { validaLoggerLocalStorage } from '../../../shared/utils/export.utils'
+import { useSelector } from 'react-redux'
+import { WIDGET_IDS } from '../../../shared/constants/widget-ids'
 
 interface ServiciosModule {
   //  urls: { tablaContenido: string }
@@ -19,12 +22,39 @@ interface ServiciosModule {
  * @returns Widget
  */
 const Widget = (props: AllWidgetProps<any>) => {
+
+  if(validaLoggerLocalStorage('logger')) console.log('WidgetTablaDeContenido ID:', {id:props.id, props})
+
+
   const [varJimuMapView, setJimuMapView] = useState<JimuMapView>() // To add the layer to the Map, a reference to the Map must be saved into the component state.
   const [groupedLayers, setGroupedLayers] = useState<CapasTematicas[]>([]) // arreglo donde se almacenara la tabla de contenido ordenada
   const [servicios, setServicios] = useState<ServiciosModule | null>(null)
   const [utilsModule, setUtilsModule] = useState<any>(null)
   const [isCollapsed, setIsCollapsed] = useState<boolean>(false) // Estado para controlar si el widget está colapsado
   const initialExtentRef = React.useRef<__esri.Extent | null>(null) // cef 20260310 Extent inicial del mapa.
+
+  const dataFromBuffer: { task: string } | null = useSelector(
+      (state: any) =>
+          state.widgetsState?.[WIDGET_IDS.BUFFER]?.fromBuffer ?? null
+  )
+
+  React.useEffect(() => {
+    if (dataFromBuffer) {
+      if(validaLoggerLocalStorage('logger')) console.log('Data recibida en TOC desde Buffer:', {dataFromBuffer, BUFFERWIDGET_IDS:WIDGET_IDS.BUFFER})
+      if (dataFromBuffer.task === 'backToTemas') {
+        getAppStore().dispatch(
+              appActions.widgetStatePropChange(
+                  WIDGET_IDS.BUFFER, // ID del widget destino, debe ser un widget que esté abierto en el layout para recibir los datos
+                  'fromTablaDeContenido2', // Nombre de la propiedad que se va a crear/actualizar en el estado del widget
+                  {
+                      task: 'returnToTemas',
+                      temas: groupedLayers
+                  }
+              )
+          )      
+      }
+    }
+  }, [dataFromBuffer])
 
   /**
    * En este metodo se referencia el mapa base

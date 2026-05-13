@@ -1,4 +1,4 @@
-import Layer from "@arcgis/core/layers/Layer";
+import type Layer from "@arcgis/core/layers/Layer"
 
 export interface TablaDeContenidoInterface {
     [key: string]: any; // Para manejar cualquier otra propiedad dinámica
@@ -44,14 +44,14 @@ export enum Estado {
 
 export interface interfaceCapasNietos {
     capas: interfCapa[];
-    tematicasNietas: {
+    tematicasNietas: Array<{
         capasBisnietos: TablaDeContenidoInterface[];
         IDTEMATICAPADRE: number;
         IDTEMATICA: number;
         NOMBRETEMATICA: string;
         TITULOCAPA?: string;
 
-    }[];
+    }>;
 }
 export interface interfCapa {
     IDCAPA: number;
@@ -92,6 +92,7 @@ export interface Tematicas {
     capasNietas?: CapasTematicas[];
 }
 export interface CapasTematicas {
+    capasNietas: (capasNietas: any) => unknown;
     ATRIBUTO?: string;
     capasBisnietos?: CapasTematicas[];
     capasHijas?: any[];
@@ -164,7 +165,7 @@ export interface UniqueValueInfo {
     description: string;
     label: string;
     symbol: Symbol;
-    values?: Array<string[]>;
+    values?: string[][];
     value?: string;
 }
 
@@ -177,6 +178,6 @@ export interface Symbol {
 }
 
 export interface InterfaceFeaturesLayersDeployed {
-    capa:  ItemResponseTablaContenido;
+    capa: ItemResponseTablaContenido;
     layer: Layer;
 }

@@ -1,6 +1,6 @@
 /** @jsx jsx */
 import { React, jsx, AllWidgetProps } from 'jimu-core'
-
+import { JimuMapViewComponent, type JimuMapView } from 'jimu-arcgis'
 // @ts-ignore
 import '../styles/styles.scss'
 const { useEffect, useState, useRef } = React
@@ -23,8 +23,8 @@ import ConsultaGeneral  from './components/ConsultaGeneral'
 import ConsultaIndicadores from './components/ConsultaIndicadores'
 import ConsultaTematicas from './components/ConsultaTematicas'
 import { SearchActionBar } from '../../../shared/components/search-action-bar'
+import { useDibujarFeatures } from '../../../shared/hooks/useDibujarFeatures'
 
-import type { IMConfig } from '../config'
 import type { ConsultaComponentHandle } from './consulta-general-types'
 import type {
     ArcGisFeature,
@@ -33,16 +33,13 @@ import type {
 } from './types'
 import { listaMunicipios } from './components/SelectMunicipio'
 import SelectDesdeArray from './components/SelectDesdeArray'
-import DetalleLabelValueFoto from './components/DetalleLabelValueFoto'
 import { ResultTable } from '../../../shared/components/ResultTable'
 import PanelInformativo, { itemsInformacionContacto } from '../../../shared/components/PanelInformativo/PanelInformativo'
-import { JimuMapView, JimuMapViewComponent } from 'jimu-arcgis'
-import { drawAndCenterFeatures } from '../../../shared/utils/export.utils'
 
 const arcgisService = new ArcgisService()
 const httpService = new HttpService();
 
-const Widget = (props: AllWidgetProps<IMConfig>) => {
+const Widget = (props: AllWidgetProps<any>) => {
     const [loading, setLoading] = useState(false)
     const [message, setMessage] = useState('');
     const [mostrarBusqueda, setMostrarBusqueda] = useState(true);
@@ -54,17 +51,22 @@ const Widget = (props: AllWidgetProps<IMConfig>) => {
     const [tipoConsulta, setTipoConsulta] = useState('general')    
     const [municipios, setMunicipios] = useState<SelectOption[]>([])
     const [idMunicipio, setIdMunicipio] = useState<string>('')
+    const [jimuMapView, setJimuMapView] = useState<JimuMapView>();
+    const [resultadoGeneralDibujar, setResultadoGeneralDibujar] = useState<{
+        features: ArcGisFeature[]
+        fields: ArcGisField[]
+        spatialReference?: __esri.SpatialReference
+    }>({
+        features: [],
+        fields: [],
+        spatialReference: undefined
+    })
 
-    /** Vista activa del mapa para navegación y dibujo de resultados. */
-    const [jimuMapView, setJimuMapView] = React.useState<JimuMapView | null>(null)
-    /** Extensión inicial para restablecer la vista al limpiar. */
-    const initialExtentRef = React.useRef<__esri.Extent | null>(null)
-    /** Zoom inicial para restablecer la vista al limpiar. */
-    const initialZoomRef = React.useRef<number | null>(null)
-    /** Escala inicial para restablecer la vista al limpiar. */
-    const initialScaleRef = React.useRef<number | null>(null)
-    /** Capa gráfica temporal usada para pintar resultados de la consulta. */
-      const [graphicsLayer, setGraphicsLayer] = React.useState<GraphicsLayer | null>(null)
+    const activeViewChangeHandler = (jmv: JimuMapView) => {
+        if (jmv) {
+            setJimuMapView(jmv)
+        }
+    }
     
     const refs = {
         general: useRef<ConsultaComponentHandle>(null), 
@@ -73,6 +75,17 @@ const Widget = (props: AllWidgetProps<IMConfig>) => {
     };
 
     const refDatos = useRef({});
+
+    useDibujarFeatures({
+        jimuMapView,
+        features: resultadoGeneralDibujar.features,
+        fields: resultadoGeneralDibujar.fields,
+        spatialReference: resultadoGeneralDibujar.spatialReference,
+        layerId: 'consulta-salud-general-feature',
+        title: 'Consulta salud',
+        enabled: tipoConsulta === 'general' && resultadoGeneralDibujar.features.length > 0,
+        zoom:20
+    })
 
     useEffect(() => {
         const cargarMunicipios = async () => {
@@ -104,22 +117,28 @@ const Widget = (props: AllWidgetProps<IMConfig>) => {
     const consultar = async ()=> {        
         const result = await refs[tipoConsulta].current.consultar();
 
-        const scale = {modifyScale: false, scale:0.1}        
-
-        drawAndCenterFeatures(scale, result.features, jimuMapView, graphicsLayer, setGraphicsLayer, 'consulta-salud-resultados')
-
-        abrirTablaResultados(
-            result.features,
-            result.fields,
-            props,
-            widgetResultId,
-            result.spatialReference,
-            result.withGraphic
-        )
-        
         if (tipoConsulta === 'general') {
+            setResultadoGeneralDibujar({
+                features: result.features,
+                fields: result.fields,
+                spatialReference: result.spatialReference
+            })
             setMostrarBusqueda(false);
             refDatos.current = {...result};
+        } else {
+            setMessage( JSON.stringify(result) );
+
+            abrirTablaResultados(
+                tipoConsulta === 'indicadores',
+                result.features,
+                result.fields,
+                props,
+                widgetResultId,
+                result.spatialReference,
+                "tabla",
+                result.withGraphic
+            )
+            
         }
     }
 
@@ -148,76 +167,59 @@ const Widget = (props: AllWidgetProps<IMConfig>) => {
         })).sort((a: any, b: any) => a.value.localeCompare(b.value))
     : [];
 
-    /**
-       * Captura la vista activa y conserva el estado inicial de navegación del mapa.
-       */
-      const activeViewChangeHandler = ((view: JimuMapView) => {
-        if (!view) return
-    
-        setJimuMapView(view)
-    
-        if (!initialExtentRef.current) {
-          initialExtentRef.current = view.view.extent?.clone() ?? null
-          initialZoomRef.current = typeof view.view.zoom === 'number' ? view.view.zoom : null
-          initialScaleRef.current = typeof view.view.scale === 'number' ? view.view.scale : null
-        }
-      })
-
     return (
-        <div style={{ height: '100%', padding: '5px', boxSizing: 'border-box' }}>              
-        
-              {props.useMapWidgetIds && props.useMapWidgetIds.length === 1 && (
+        <div className="consulta-salud-root">
+            <div style={{ position: 'absolute', width: 0, height: 0 }}>
                 <JimuMapViewComponent
-                  useMapWidgetId={props.useMapWidgetIds?.[0]}
-                  onActiveViewChange={activeViewChangeHandler}
+                    useMapWidgetId={props.useMapWidgetIds?.[0]}
+                    onActiveViewChange={activeViewChangeHandler}
                 />
-              )}
-
-        {mostrarBusqueda ? (
-            <FormularioDeBusqueda
-            tiposConsulta={tiposConsulta}
-            tipoConsulta={tipoConsulta}
-            setTipoConsulta={setTipoConsulta}
-            refs={refs}
-            loading={loading}
-            setLoading={setLoading}
-            execute={execute}
-            props={props}
-            idMunicipio={idMunicipio}
-            setIdMunicipio={setIdMunicipio}
-            municipios={municipios}
-            message={message}
-            setMessage={setMessage}
-            consultar={consultar}
-            limpiar={limpiar}/>
-        ) : (
-            <div className="consulta-salud">                
-                <PanelInformativo
-                imagenUrl={refs.general.current?.getFeatures()?.[0]?.attributes?.['FOTOS']
-                    ? `${urls.URL_ARCHIVOS_QUINDIO}${refs.general.current.getFeatures()[0].attributes['FOTOS']}`
-                    : ''
-                }
-                titulo={ refs.general.current?.getFeatures()?.[0]?.attributes["NOMBREEQUIPAMIENTO"]}
-                listaIconoTextoItems={
-                     /*
-                     [ {iconoSrc: starIcon, iconoAlt:"Estrella", texto:"Item importante", valor:refs.general.current?.getFeatures()?.[0]?.attributes["HORARIOS"]}]    
-                    */
-                    itemsInformacionContacto({
-                        horario: refs.general.current?.getFeatures()?.[0]?.attributes["HORARIOS"],
-                        direccion: refs.general.current?.getFeatures()?.[0]?.attributes["DIRECCION"],
-                        telefono: refs.general.current?.getFeatures()?.[0]?.attributes["TELEFONO"],
-                        sitioWeb: refs.general.current?.getFeatures()?.[0]?.attributes["SITIOWEB"],
-                        email: refs.general.current?.getFeatures()?.[0]?.attributes["EMAIL"]
-                    })
-                }
-                chipsIconoTextoTitulo={"capacidades"}
-                chipsIconoTextoItems={capacidadesItems}
-                chipsIconoTextoIcono={stethoscopeIcon}                              
-                chipsTextoTitulo={"servicios"}
-                chipsTextoItems={serviciosItems}              
-                botonOnClick={() => setMostrarBusqueda(true)} />
             </div>
-        )}
+            {mostrarBusqueda ? (
+                <FormularioDeBusqueda
+                tiposConsulta={tiposConsulta}
+                tipoConsulta={tipoConsulta}
+                setTipoConsulta={setTipoConsulta}
+                refs={refs}
+                loading={loading}
+                setLoading={setLoading}
+                execute={execute}
+                props={props}
+                idMunicipio={idMunicipio}
+                setIdMunicipio={setIdMunicipio}
+                municipios={municipios}
+                message={message}
+                setMessage={setMessage}
+                consultar={consultar}
+                limpiar={limpiar}/>
+            ) : (
+                <div className="consulta-salud">                
+                    <PanelInformativo
+                    imagenUrl={refs.general.current?.getFeatures()?.[0]?.attributes?.['FOTOS']
+                        ? `https://sigquindio.gov.co/ArchivosQuindioIII/${refs.general.current.getFeatures()[0].attributes['FOTOS']}`
+                        : ''
+                    }
+                    titulo={ refs.general.current?.getFeatures()?.[0]?.attributes["NOMBREEQUIPAMIENTO"]}
+                    listaIconoTextoItems={
+                        /*
+                        [ {iconoSrc: starIcon, iconoAlt:"Estrella", texto:"Item importante", valor:refs.general.current?.getFeatures()?.[0]?.attributes["HORARIOS"]}]    
+                        */
+                        itemsInformacionContacto({
+                            horario: refs.general.current?.getFeatures()?.[0]?.attributes["HORARIOS"],
+                            direccion: refs.general.current?.getFeatures()?.[0]?.attributes["DIRECCION"],
+                            telefono: refs.general.current?.getFeatures()?.[0]?.attributes["TELEFONO"],
+                            sitioWeb: refs.general.current?.getFeatures()?.[0]?.attributes["SITIOWEB"],
+                            email: refs.general.current?.getFeatures()?.[0]?.attributes["EMAIL"]
+                        })
+                    }
+                    chipsIconoTextoTitulo={"capacidades"}
+                    chipsIconoTextoItems={capacidadesItems}
+                    chipsIconoTextoIcono={stethoscopeIcon}                              
+                    chipsTextoTitulo={"servicios"}
+                    chipsTextoItems={serviciosItems}              
+                    botonOnClick={() => setMostrarBusqueda(true)} />
+                </div>
+            )}
         </div>
     )
 }
@@ -237,8 +239,8 @@ function FormularioDeBusqueda({tiposConsulta, tipoConsulta, setTipoConsulta, ref
                 loading={loading}
                 setLoading={setLoading}
                 execute={execute}
-                url={props.config.urlSalud}
-                urlAlfanumerico={props.config.urlSaludAlfanumerico}
+                url={urls.SERVICIO_SALUD}
+                urlAlfanumerico={urls.SERVICIO_SALUD_ALFANUMERICO}
                 idMunicipio={idMunicipio}
                 setIdMunicipio={setIdMunicipio}
                 municipios={municipios}
@@ -253,7 +255,7 @@ function FormularioDeBusqueda({tiposConsulta, tipoConsulta, setTipoConsulta, ref
                 ref={refs.indicadores}
                 loading={loading}
                 execute={execute}
-                url={props.config.urlSaludAlfanumerico}
+                url={urls.SERVICIO_SALUD_ALFANUMERICO}
                 setMessage={setMessage} />
             )}
 
@@ -267,7 +269,7 @@ function FormularioDeBusqueda({tiposConsulta, tipoConsulta, setTipoConsulta, ref
                 setIdMunicipio={setIdMunicipio}
                 municipios={municipios}
                 execute={execute}
-                url={props.config.urlSaludAlfanumerico}
+                url={urls.SERVICIO_SALUD_ALFANUMERICO}
                 setMessage={setMessage} />
             )}
 
