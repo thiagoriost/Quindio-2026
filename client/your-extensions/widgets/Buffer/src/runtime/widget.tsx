@@ -1,6 +1,7 @@
-import type { AllWidgetProps } from 'jimu-core'
+import { appActions, getAppStore, type AllWidgetProps } from 'jimu-core'
 import React from 'react'
 import { JimuMapViewComponent, type JimuMapView } from 'jimu-arcgis'
+import { Label, Option, Select, TextInput } from 'jimu-ui'
 import Graphic from '@arcgis/core/Graphic'
 import GraphicsLayer from '@arcgis/core/layers/GraphicsLayer'
 import FeatureLayer from '@arcgis/core/layers/FeatureLayer'
@@ -9,9 +10,13 @@ import * as geometryEngine from '@arcgis/core/geometry/geometryEngine'
 import { urls } from '../../../api/serviciosQuindio'
 import { getDataTablaContenido } from '../../../tablaDeContenido2/src/runtime/widget'
 import type { CapasTematicas } from '../../../tablaDeContenido2/src/types/interfaces'
+import { SearchActionBar } from '../../../shared/components/search-action-bar'
 
 // @ts-expect-error - No se encuentran tipos de la API de ArcGIS, se asume que están disponibles globalmente en runtime.
 import '../styles/styles.css'
+import { validaLoggerLocalStorage } from '../../../shared/utils/export.utils'
+import { WIDGET_IDS } from '../../../shared/constants/widget-ids'
+import { useSelector } from 'react-redux'
 
 /**
  * Opcion renderizada en controles tipo select.
@@ -88,6 +93,14 @@ const toPositiveDistance = (value: string) => {
  * @returns Vista del widget.
  */
 const Widget = (props: AllWidgetProps<any>) => {
+
+  if(validaLoggerLocalStorage('logger')) console.log('WidgetBuffer ID:', {id:props.id, props, TABLA_DE_CONTENIDO:WIDGET_IDS.TABLA_DE_CONTENIDO})
+
+  const dataFromTablaDeContenido: { task: string, temas?: CapasTematicas[] } | null = useSelector(
+      (state: any) =>
+          state.widgetsState?.[props.id]?.fromTablaDeContenido2 ?? null
+  )
+
   /** Vista activa del mapa seleccionada en el builder. */
   const [jimuMapView, setJimuMapView] = React.useState<JimuMapView | null>(null)
   /** Estructura completa de tematicas obtenida desde tabla de contenido. */
@@ -107,6 +120,8 @@ const Widget = (props: AllWidgetProps<any>) => {
 
   /** Modo de dibujo activo sobre el mapa. */
   const [drawMode, setDrawMode] = React.useState<'point' | 'line' | null>(null)
+  /** Mensaje de error para la barra de acciones. */
+  const [actionError, setActionError] = React.useState('')
 
   /** Referencia al GraphicsLayer temporal de dibujo y buffer. */
   const graphicsLayerRef = React.useRef<GraphicsLayer | null>(null)
@@ -115,11 +130,30 @@ const Widget = (props: AllWidgetProps<any>) => {
   /** Primer punto capturado para dibujo de linea. */
   const lineStartPointRef = React.useRef<__esri.Point | null>(null)
 
+  React.useEffect(() => {
+    if (dataFromTablaDeContenido?.task === 'returnToTemas') {
+      if(validaLoggerLocalStorage('logger')) console.log('Data recibida en Buffer:', {dataFromTablaDeContenido, TABLA_DE_CONTENIDO_WIDGET_ID: WIDGET_IDS.TABLA_DE_CONTENIDO})
+      console.log(dataFromTablaDeContenido.temas)
+
+    }
+  }, [dataFromTablaDeContenido])
+
   /**
    * Carga tematicas usando el mismo mecanismo del widget tablaDeContenido2.
    */
   React.useEffect(() => {
-    const loadTematicas = async () => {
+
+    getAppStore().dispatch(
+        appActions.widgetStatePropChange(
+            WIDGET_IDS.BUFFER, // ID del widget destino, debe ser un widget que esté abierto en el layout para recibir los datos
+            'fromBuffer', // Nombre de la propiedad que se va a crear/actualizar en el estado del widget
+            {
+                task: 'backToTemas',
+            }
+        )
+    )
+
+    /* const loadTematicas = async () => {
       const result = await getDataTablaContenido({
         urls: {
           SERVICIO_TABLA_CONTENIDO: urls.SERVICIO_TABLA_CONTENIDO
@@ -131,7 +165,7 @@ const Widget = (props: AllWidgetProps<any>) => {
       }
     }
 
-    void loadTematicas()
+    void loadTematicas() */
   }, [])
 
   /**
@@ -292,6 +326,15 @@ const Widget = (props: AllWidgetProps<any>) => {
   }
 
   /**
+   * Cambia el modo de dibujo seleccionado desde el formulario.
+   */
+  const onDrawModeChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    const nextMode = event.target.value as 'point' | 'line' | ''
+    setDrawMode(nextMode || null)
+    setActionError('')
+  }
+
+  /**
    * Limpia geometrias dibujadas y estado temporal de interaccion.
    */
   const clearDrawings = React.useCallback(() => {
@@ -406,7 +449,7 @@ const Widget = (props: AllWidgetProps<any>) => {
   }
 
   return (
-    <div className='buffer-widget'>
+    <div style={{ height: '100%', padding: '5px', boxSizing: 'border-box' }}>
       {props.useMapWidgetIds && props.useMapWidgetIds.length === 1 && (
         <JimuMapViewComponent
           useMapWidgetId={props.useMapWidgetIds?.[0]}
@@ -414,88 +457,77 @@ const Widget = (props: AllWidgetProps<any>) => {
         />
       )}
 
-      <div className='buffer-widget__form'>
-        <div className='buffer-widget__row'>
-          <p className='buffer-widget__label'>Temas:</p>
-          <select className='buffer-widget__field' value={temaValue} onChange={onTemaChange}>
-            <option value=''>Seleccione</option>
+      <div className='consulta-widget loading-host'>
+        <div>
+          <Label>Temas:</Label>
+          <Select value={temaValue} onChange={onTemaChange}>
+            <Option value=''>Seleccione...</Option>
             {temaOptions.map(option => (
-              <option key={option.value} value={option.value}>{option.label}</option>
+              <Option key={option.value} value={option.value}>{option.label}</Option>
             ))}
-          </select>
-        </div>
+          </Select>
 
-        <div className='buffer-widget__row'>
-          <p className='buffer-widget__label'>Subtemas:</p>
-          <select className='buffer-widget__field' value={subtemaValue} onChange={onSubtemaChange}>
-            <option value=''>Seleccione</option>
+          <Label>Subtemas:</Label>
+          <Select value={subtemaValue} onChange={onSubtemaChange}>
+            <Option value=''>Seleccione...</Option>
             {subtemaOptions.map(option => (
-              <option key={option.value} value={option.value}>{option.label}</option>
+              <Option key={option.value} value={option.value}>{option.label}</Option>
             ))}
-          </select>
-        </div>
+          </Select>
 
-        <div className='buffer-widget__row'>
-          <p className='buffer-widget__label'>Capas:</p>
-          <select className='buffer-widget__field' value={capaValue} onChange={onCapaChange}>
-            <option value=''>Seleccione</option>
+          <Label>Capas:</Label>
+          <Select value={capaValue} onChange={onCapaChange}>
+            <Option value=''>Seleccione...</Option>
             {capaOptions.map(option => (
-              <option key={`${option.value}-${option.layerUrl}`} value={option.value}>{option.label}</option>
+              <Option key={`${option.value}-${option.layerUrl}`} value={option.value}>{option.label}</Option>
             ))}
-          </select>
-        </div>
+          </Select>
 
-        <div className='buffer-widget__row'>
-          <p className='buffer-widget__label'>Distancia:</p>
-          <input
-            className='buffer-widget__field'
-            type='number'
+          <Label>Distancia:</Label>
+          <TextInput
+            type='text'
             min='1'
             value={distancia}
             onChange={event => { setDistancia(event.target.value) }}
           />
-        </div>
 
-        <div className='buffer-widget__row'>
-          <p className='buffer-widget__label'>Unidad:</p>
-          <select className='buffer-widget__field' value={unidad} onChange={event => { setUnidad(event.target.value) }}>
-            <option value='Metros'>Metros</option>
-            <option value='Kilometros'>Kilometros</option>
-          </select>
-        </div>
+          <Label>Unidad:</Label>
+          <Select value={unidad} onChange={event => { setUnidad(event.target.value) }}>
+            <Option value='Metros'>Metros</Option>
+            <Option value='Kilometros'>Kilometros</Option>
+          </Select>
 
-        <div className='buffer-widget__buttons'>
-          <button
-            className={`buffer-widget__btn ${drawMode === 'point' ? 'buffer-widget__btn--active' : ''}`}
-            onClick={() => { setDrawMode('point') }}
-            title='Dibujar punto'
-          >
-            Punto
-          </button>
+          <Label>Modo de dibujo:</Label>
+          <Select value={drawMode ?? ''} onChange={onDrawModeChange}>
+            <Option value=''>Seleccione...</Option>
+            <Option value='point'>Punto</Option>
+            <Option value='line'>Linea</Option>
+          </Select>
 
-          <button
-            className={`buffer-widget__btn ${drawMode === 'line' ? 'buffer-widget__btn--active' : ''}`}
-            onClick={() => { setDrawMode('line') }}
-            title='Dibujar linea'
-          >
-            Linea
-          </button>
-
-          <button
-            className='buffer-widget__btn'
-            onClick={() => {
+          <SearchActionBar
+            onSearch={() => {
+              if (!drawMode) {
+                setActionError('Seleccione un modo de dibujo antes de activar.')
+                return
+              }
+              setActionError('')
+            }}
+            onClear={() => {
               setDrawMode(null)
+              setActionError('')
               clearDrawings()
             }}
-            title='Limpiar geometria y buffer'
-          >
-            Limpiar
-          </button>
-        </div>
+            disableSearch={!drawMode}
+            helpText='Seleccione modo de dibujo y haga clic en Buscar para habilitar la captura en el mapa.'
+            error={actionError}
+            searchLabel='Buscar'
+            clearLabel='Limpiar'
+          />
 
-        {drawMode === 'line' && (
-          <p className='buffer-widget__hint'>Para linea: haga clic en dos puntos del mapa.</p>
-        )}
+          {drawMode === 'line' && (
+            <p className='buffer-widget__hint'>Para linea: haga clic en dos puntos del mapa.</p>
+          )}
+        </div>
       </div>
     </div>
   )
