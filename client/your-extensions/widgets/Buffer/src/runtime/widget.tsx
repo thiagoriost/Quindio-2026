@@ -7,9 +7,6 @@ import GraphicsLayer from '@arcgis/core/layers/GraphicsLayer'
 import FeatureLayer from '@arcgis/core/layers/FeatureLayer'
 import Polyline from '@arcgis/core/geometry/Polyline'
 import * as geometryEngine from '@arcgis/core/geometry/geometryEngine'
-import { urls } from '../../../api/serviciosQuindio'
-import { getDataTablaContenido } from '../../../tablaDeContenido2/src/runtime/widget'
-import type { CapasTematicas } from '../../../tablaDeContenido2/src/types/interfaces'
 import { SearchActionBar } from '../../../shared/components/search-action-bar'
 
 // @ts-expect-error - No se encuentran tipos de la API de ArcGIS, se asume que están disponibles globalmente en runtime.
@@ -29,9 +26,77 @@ interface SelectOption {
 }
 
 /**
+ * Campos de texto usados para construir etiquetas legibles.
+ */
+interface LabelSource {
+  /** Nombre del tema o subtema. */
+  NOMBRETEMATICA?: string
+  /** Nombre de la capa. */
+  NOMBRECAPA?: string
+  /** Titulo alterno de la capa. */
+  TITULOCAPA?: string
+}
+
+/**
+ * Nodo de capa final del árbol de contenido.
+ */
+interface BufferCapaNode {
+  /** Nombre de la capa. */
+  NOMBRECAPA?: string
+  /** Nombre legible alterno. */
+  TITULOCAPA?: string
+  /** URL del servicio/capa. */
+  URL?: string
+
+}
+
+/**
+ * Nodo de subtema del árbol de contenido.
+ */
+interface BufferSubtemaNode {
+  /** Nombre del subtema. */
+  NOMBRETEMATICA?: string
+  /** Nombre legible alterno. */
+  TITULOCAPA?: string
+  /** Capa hija asociada al subtema. */
+  capasNietas?: BufferCapaNode[]
+
+}
+
+/**
+ * Nodo de tema del árbol de contenido.
+ */
+interface BufferTemaNode {
+  /** Nombre del tema. */
+  NOMBRETEMATICA?: string
+  /** Nombre legible alterno. */
+  TITULOCAPA?: string
+  /** Subtemas asociados al tema. */
+  capasHijas?: BufferSubtemaNode[]
+}
+
+/**
+ * Carga útil recibida desde el widget de tabla de contenido.
+ */
+interface TablaDeContenidoPayload {
+  /** Identifica la acción emitida por el widget origen. */
+  task: string
+  /** Árbol de temas, subtemas y capas disponible para llenar el formulario. */
+  temas?: BufferTemaNode[]
+}
+
+/**
+ * Opción de select que conserva el nodo original para resolver dependencias.
+ */
+interface NodeOption<T> extends SelectOption {
+  /** Nodo asociado a la opción. */
+  node: T
+}
+
+/**
  * Item de capa listo para usarse en UI y manejo de mapa.
  */
-interface CapaOption extends SelectOption {
+interface CapaOption extends NodeOption<BufferCapaNode> {
   /** URL final de FeatureLayer (MapServer/<layerId>). */
   layerUrl: string
 }
@@ -51,8 +116,11 @@ const UNIT_TO_ARCGIS: { [key: string]: __esri.LinearUnits } = {
  * @param fallback Texto por defecto cuando no exista nombre.
  * @returns Etiqueta normalizada para mostrar en un select.
  */
-const getNodeLabel = (item: CapasTematicas, fallback: string) => {
-  return String(item.TITULOCAPA || item.NOMBRETEMATICA || item.NOMBRECAPA || fallback)
+const getNodeLabel = (
+  item: LabelSource,
+  fallback: string
+) => {
+  return String(item.NOMBRETEMATICA ?? item.TITULOCAPA ?? item.NOMBRECAPA ?? fallback).trim()
 }
 
 /**
@@ -61,9 +129,9 @@ const getNodeLabel = (item: CapasTematicas, fallback: string) => {
  * @param item Nodo de capa proveniente de la tabla de contenido.
  * @returns URL de layer para FeatureLayer o cadena vacia si no se puede construir.
  */
-const buildLayerUrl = (item: CapasTematicas) => {
+const buildLayerUrl = (item: BufferCapaNode) => {
   const baseUrl = String(item.URL || '').trim()
-  const serviceLayerId = String(item.NOMBRECAPA || item.IDCAPA || '').trim()
+  const serviceLayerId = String(item.NOMBRECAPA || '').trim()
 
   if (!baseUrl) return ''
   if (!serviceLayerId) return baseUrl
@@ -95,16 +163,17 @@ const toPositiveDistance = (value: string) => {
 const Widget = (props: AllWidgetProps<any>) => {
 
   if(validaLoggerLocalStorage('logger')) console.log('WidgetBuffer ID:', {id:props.id, props, TABLA_DE_CONTENIDO:WIDGET_IDS.TABLA_DE_CONTENIDO})
-
-  const dataFromTablaDeContenido: { task: string, temas?: CapasTematicas[] } | null = useSelector(
-      (state: any) =>
+  const dataFromTablaDeContenido: TablaDeContenidoPayload | null = useSelector(
+      (state: {
+        widgetsState?: { [key: string]: {
+          fromTablaDeContenido2?: TablaDeContenidoPayload | null
+        } | undefined }
+      }) =>
           state.widgetsState?.[props.id]?.fromTablaDeContenido2 ?? null
   )
 
   /** Vista activa del mapa seleccionada en el builder. */
   const [jimuMapView, setJimuMapView] = React.useState<JimuMapView | null>(null)
-  /** Estructura completa de tematicas obtenida desde tabla de contenido. */
-  const [tematicas, setTematicas] = React.useState<CapasTematicas[]>([])
 
   /** Identificador de tema seleccionado. */
   const [temaValue, setTemaValue] = React.useState('')
@@ -130,18 +199,106 @@ const Widget = (props: AllWidgetProps<any>) => {
   /** Primer punto capturado para dibujo de linea. */
   const lineStartPointRef = React.useRef<__esri.Point | null>(null)
 
+  /**
+   * Registra la carga útil recibida desde tabla de contenido para depuración local.
+   * @returns {void}
+   */
   React.useEffect(() => {
-    if (dataFromTablaDeContenido?.task === 'returnToTemas') {
-      if(validaLoggerLocalStorage('logger')) console.log('Data recibida en Buffer:', {dataFromTablaDeContenido, TABLA_DE_CONTENIDO_WIDGET_ID: WIDGET_IDS.TABLA_DE_CONTENIDO})
-      console.log(dataFromTablaDeContenido.temas)
-
+    if (validaLoggerLocalStorage('logger')) {
+      console.log('Data recibida en Buffer:', dataFromTablaDeContenido)
     }
   }, [dataFromTablaDeContenido])
 
   /**
-   * Carga tematicas usando el mismo mecanismo del widget tablaDeContenido2.
+   * Temas disponibles en el formulario a partir de la carga útil del widget origen.
+   */
+  const temaOptions = React.useMemo<Array<NodeOption<BufferTemaNode>>>(() => {
+    if (!dataFromTablaDeContenido) return []
+    const temas = dataFromTablaDeContenido?.temas ?? []
+    const TEMA = temas
+      .map((item, index) => ({
+        value:  item.NOMBRETEMATICA,
+        label:  item.NOMBRETEMATICA,
+        node: item
+      }))
+      .filter(option => Boolean(option.label))
+    return TEMA
+  }, [dataFromTablaDeContenido])
+
+  /**
+   * Tema actualmente seleccionado.
+   */
+  const selectedTema = React.useMemo(() => {
+    const TEMAOPTION = temaOptions.find(option => option.value === temaValue)?.node
+    return TEMAOPTION ?? null
+  }, [temaOptions, temaValue])
+
+  /**
+   * Subtemas del tema seleccionado para poblar el control Subtemas.
+   */
+  const subtemaOptions = React.useMemo<Array<NodeOption<BufferSubtemaNode>>>(() => {
+    if (!selectedTema) return []
+    const subtemas = selectedTema?.capasHijas ?? []
+    const SUBTEMA = subtemas
+      .map((item, index) => ({
+        value: item.NOMBRETEMATICA,
+        label: item.NOMBRETEMATICA,
+        node: item
+      }))
+      .filter(option => Boolean(option.label))
+    return SUBTEMA
+  }, [selectedTema, temaValue])
+
+  /**
+   * Nodo de subtema seleccionado.
+   */
+  const selectedSubtema = React.useMemo(() => {
+    if (subtemaOptions.length === 0) return null
+    const SUBTEMAOPTION = subtemaOptions.find(option => option.value === subtemaValue)
+    return SUBTEMAOPTION
+  }, [subtemaOptions, subtemaValue])
+
+  /**
+   * Opciones del campo Capas derivadas del subtema seleccionado.
+   */
+  const capaOptions = React.useMemo<CapaOption[]>(() => {
+    if (!selectedSubtema) return []
+    const capaNodes: BufferCapaNode[] = selectedSubtema.node.capasNietas ?? []
+
+    return capaNodes
+      .map((item, index) => {
+        const layerUrl = buildLayerUrl(item)
+        return {
+          value: item.TITULOCAPA,
+          label: item.TITULOCAPA,
+          node: item,
+          layerUrl
+        }
+      })
+      .filter(option => Boolean(option.layerUrl))
+  }, [selectedSubtema, subtemaValue])
+
+  /**
+   * Opcion de capa seleccionada.
+   */
+  const selectedCapa = React.useMemo(() => {
+    if (capaOptions.length === 0) return null
+    const CAPAOPTION = capaOptions.find(option => option.value === capaValue)
+    return CAPAOPTION ?? null
+  }, [capaValue, capaOptions])
+
+  /**
+   * Crea (si es necesario) la capa temporal donde se dibujan geometria y buffer.
    */
   React.useEffect(() => {
+    const view = jimuMapView?.view
+    if (!view) return
+
+    const existing = view.map.findLayerById('buffer-graphics-layer') as GraphicsLayer | null
+    if (existing) {
+      graphicsLayerRef.current = existing
+      return
+    }
 
     getAppStore().dispatch(
         appActions.widgetStatePropChange(
@@ -152,34 +309,6 @@ const Widget = (props: AllWidgetProps<any>) => {
             }
         )
     )
-
-    /* const loadTematicas = async () => {
-      const result = await getDataTablaContenido({
-        urls: {
-          SERVICIO_TABLA_CONTENIDO: urls.SERVICIO_TABLA_CONTENIDO
-        }
-      })
-
-      if (Array.isArray(result)) {
-        setTematicas(result)
-      }
-    }
-
-    void loadTematicas() */
-  }, [])
-
-  /**
-   * Crea (si es necesario) la capa temporal donde se dibujan geometria y buffer.
-   */
-  React.useEffect(() => {
-    const view = jimuMapView?.view
-    if (!view) return
-
-    const existing = view.map.findLayerById('buffer-graphics-layer') as GraphicsLayer
-    if (existing) {
-      graphicsLayerRef.current = existing
-      return
-    }
 
     const graphicsLayer = new GraphicsLayer({
       id: 'buffer-graphics-layer',
@@ -196,74 +325,6 @@ const Widget = (props: AllWidgetProps<any>) => {
       graphicsLayerRef.current = null
     }
   }, [jimuMapView])
-
-  /**
-   * Opciones del campo Temas construidas desde la data de tematicas.
-   */
-  const temaOptions = React.useMemo<SelectOption[]>(() => {
-    return tematicas.map((item, index) => ({
-      value: String(item.IDTEMATICA ?? index),
-      label: getNodeLabel(item, `Tema ${index + 1}`)
-    }))
-  }, [tematicas])
-
-  /**
-   * Nodo de tema actualmente seleccionado.
-   */
-  const selectedTema = React.useMemo(() => {
-    const index = temaOptions.findIndex(option => option.value === temaValue)
-    return index > -1 ? tematicas[index] : null
-  }, [temaOptions, temaValue, tematicas])
-
-  /**
-   * Subtemas del tema seleccionado para poblar el control Subtemas.
-   */
-  const subtemaNodes = React.useMemo<CapasTematicas[]>(() => {
-    return Array.isArray(selectedTema?.capasHijas) ? selectedTema.capasHijas : []
-  }, [selectedTema])
-
-  /**
-   * Opciones del campo Subtemas.
-   */
-  const subtemaOptions = React.useMemo<SelectOption[]>(() => {
-    return subtemaNodes.map((item, index) => ({
-      value: String(item.IDTEMATICA ?? index),
-      label: getNodeLabel(item, `Subtema ${index + 1}`)
-    }))
-  }, [subtemaNodes])
-
-  /**
-   * Nodo de subtema seleccionado.
-   */
-  const selectedSubtema = React.useMemo(() => {
-    const index = subtemaOptions.findIndex(option => option.value === subtemaValue)
-    return index > -1 ? subtemaNodes[index] : null
-  }, [subtemaOptions, subtemaValue, subtemaNodes])
-
-  /**
-   * Opciones del campo Capas derivadas del subtema seleccionado.
-   */
-  const capaOptions = React.useMemo<CapaOption[]>(() => {
-    const capaNodes = Array.isArray(selectedSubtema?.capasNietas) ? selectedSubtema.capasNietas : []
-
-    return capaNodes
-      .map((item: CapasTematicas, index: number) => {
-        const layerUrl = buildLayerUrl(item)
-        return {
-          value: String(item.IDCAPA ?? item.NOMBRECAPA ?? index),
-          label: getNodeLabel(item, `Capa ${index + 1}`),
-          layerUrl
-        }
-      })
-      .filter((item: { layerUrl: any }) => Boolean(item.layerUrl))
-  }, [selectedSubtema])
-
-  /**
-   * Opcion de capa seleccionada.
-   */
-  const selectedCapa = React.useMemo(() => {
-    return capaOptions.find(item => item.value === capaValue) ?? null
-  }, [capaValue, capaOptions])
 
   /**
    * Agrega/remueve la capa seleccionada al mapa para gestion visual del usuario.
@@ -308,6 +369,7 @@ const Widget = (props: AllWidgetProps<any>) => {
     setTemaValue(event.target.value)
     setSubtemaValue('')
     setCapaValue('')
+    setActionError('')
   }
 
   /**
@@ -316,6 +378,7 @@ const Widget = (props: AllWidgetProps<any>) => {
   const onSubtemaChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     setSubtemaValue(event.target.value)
     setCapaValue('')
+    setActionError('')
   }
 
   /**
@@ -323,6 +386,7 @@ const Widget = (props: AllWidgetProps<any>) => {
    */
   const onCapaChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     setCapaValue(event.target.value)
+    setActionError('')
   }
 
   /**
@@ -347,7 +411,7 @@ const Widget = (props: AllWidgetProps<any>) => {
    *
    * @param geometry Geometria base (punto o linea) capturada sobre el mapa.
    */
-  const drawBuffer = React.useCallback((geometry: __esri.Geometry) => {
+  const drawBuffer = React.useCallback((geometry: __esri.GeometryUnion) => {
     const view = jimuMapView?.view
     const graphicsLayer = graphicsLayerRef.current
     const distanceValue = toPositiveDistance(distancia)
@@ -355,7 +419,7 @@ const Widget = (props: AllWidgetProps<any>) => {
 
     if (!view || !graphicsLayer || distanceValue <= 0) return
 
-    const bufferGeometry = geometryEngine.buffer(geometry, distanceValue, unitCode) as __esri.Geometry
+    const bufferGeometry = geometryEngine.buffer(geometry, distanceValue, unitCode) as __esri.Polygon | null
 
     if (!bufferGeometry) return
 
@@ -406,7 +470,7 @@ const Widget = (props: AllWidgetProps<any>) => {
 
     view.container.style.cursor = 'crosshair'
 
-    const handle = view.on('click', (event: { mapPoint: __esri.Geometry }) => {
+    const handle = view.on('click', (event: { mapPoint: __esri.Point }) => {
       if (drawMode === 'point') {
         drawBuffer(event.mapPoint)
         return
@@ -488,11 +552,11 @@ const Widget = (props: AllWidgetProps<any>) => {
             type='text'
             min='1'
             value={distancia}
-            onChange={event => { setDistancia(event.target.value) }}
+            onChange={(event: React.ChangeEvent<HTMLInputElement>) => { setDistancia(event.target.value) }}
           />
 
           <Label>Unidad:</Label>
-          <Select value={unidad} onChange={event => { setUnidad(event.target.value) }}>
+          <Select value={unidad} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => { setUnidad(event.target.value) }}>
             <Option value='Metros'>Metros</Option>
             <Option value='Kilometros'>Kilometros</Option>
           </Select>
