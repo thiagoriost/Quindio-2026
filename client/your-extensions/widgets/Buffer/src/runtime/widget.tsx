@@ -41,6 +41,8 @@ interface LabelSource {
  * Nodo de capa final del árbol de contenido.
  */
 interface BufferCapaNode {
+  /** Nombre del tema o subtema si la fuente lo reutiliza. */
+  NOMBRETEMATICA?: string
   /** Nombre de la capa. */
   NOMBRECAPA?: string
   /** Nombre legible alterno. */
@@ -48,6 +50,22 @@ interface BufferCapaNode {
   /** URL del servicio/capa. */
   URL?: string
 
+}
+
+/**
+ * Nodo de grupo cuando un subtema organiza capas en un nivel intermedio.
+ */
+interface BufferGrupoNode {
+  /** Nombre del grupo. */
+  NOMBRETEMATICA?: string
+  /** Título legible del grupo. */
+  TITULOCAPA?: string
+  /** Nombre alterno del grupo/capa. */
+  NOMBRECAPA?: string
+  /** URL opcional cuando el grupo también representa una capa. */
+  URL?: string
+  /** Capas de tercer nivel (bisnietos) asociadas al grupo. */
+  capasBisnietos?: BufferCapaNode[]
 }
 
 /**
@@ -59,7 +77,7 @@ interface BufferSubtemaNode {
   /** Nombre legible alterno. */
   TITULOCAPA?: string
   /** Capa hija asociada al subtema. */
-  capasNietas?: BufferCapaNode[]
+  capasNietas?: BufferGrupoNode[]
 
 }
 
@@ -124,6 +142,20 @@ const getNodeLabel = (
 }
 
 /**
+ * Normaliza texto para comparaciones de UI sin sensibilidad a acentos/mayúsculas.
+ *
+ * @param {string} value Texto de entrada.
+ * @returns {string} Texto normalizado en minúsculas y sin diacríticos.
+ */
+const normalizeUiText = (value: string) => {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
+}
+
+/**
  * Construye la URL final de una capa usando la estructura de tematicas.
  *
  * @param item Nodo de capa proveniente de la tabla de contenido.
@@ -181,6 +213,8 @@ const Widget = (props: AllWidgetProps<any>) => {
   const [subtemaValue, setSubtemaValue] = React.useState('')
   /** Identificador de capa seleccionada. */
   const [capaValue, setCapaValue] = React.useState('')
+  /** Identificador del grupo seleccionado (solo para Cuenca Río la Vieja). */
+  const [grupoValue, setGrupoValue] = React.useState('')
 
   /** Distancia del buffer en unidad de usuario. */
   const [distancia, setDistancia] = React.useState('500')
@@ -254,18 +288,55 @@ const Widget = (props: AllWidgetProps<any>) => {
    */
   const selectedSubtema = React.useMemo(() => {
     if (subtemaOptions.length === 0) return null
-    const SUBTEMAOPTION = subtemaOptions.find(option => option.value === subtemaValue)
-    return SUBTEMAOPTION
+    const subtemaOption = subtemaOptions.find(option => option.value === subtemaValue)
+    return subtemaOption ?? null
   }, [subtemaOptions, subtemaValue])
+
+  /**
+   * Indica si el subtema actual requiere mostrar el campo adicional de grupos.
+   */
+  const shouldShowGrupos = React.useMemo(() => {
+    if (!selectedSubtema?.label) return false
+    const validacion = normalizeUiText(selectedSubtema.label) === normalizeUiText('Cuenca Río la Vieja')
+    return validacion
+  }, [selectedSubtema])
+
+  /**
+   * Opciones del campo Grupos derivadas del subtema seleccionado.
+   */
+  const grupoOptions = React.useMemo<Array<NodeOption<BufferGrupoNode>>>(() => {
+    if (!selectedSubtema?.node || !shouldShowGrupos) return []
+
+    const grupoNodes = selectedSubtema.node.capasNietas ?? []
+    const GRUPO = grupoNodes
+      .map((item, index) => ({
+        value: item.NOMBRETEMATICA,
+        label: item.NOMBRETEMATICA,
+        node: item
+      }))
+      .filter(option => Boolean(option.label))
+    return GRUPO
+  }, [selectedSubtema, shouldShowGrupos, subtemaValue])
+
+  /**
+   * Grupo seleccionado en el formulario cuando aplica Cuenca Río la Vieja.
+   */
+  const selectedGrupo = React.useMemo(() => {
+    if (grupoOptions.length === 0 || grupoValue==='') return null
+    const GRUPO = grupoOptions.find(option => option.value === grupoValue)?.node ?? null
+    return GRUPO
+  }, [grupoOptions, grupoValue])
 
   /**
    * Opciones del campo Capas derivadas del subtema seleccionado.
    */
   const capaOptions = React.useMemo<CapaOption[]>(() => {
-    if (!selectedSubtema) return []
-    const capaNodes: BufferCapaNode[] = selectedSubtema.node.capasNietas ?? []
+    if (!selectedSubtema || (shouldShowGrupos && !selectedGrupo)) return []
+    const capaNodes: BufferCapaNode[] = shouldShowGrupos
+      ? selectedGrupo?.capasBisnietos ?? []
+      : (selectedSubtema.node.capasNietas ?? [])
 
-    return capaNodes
+    const CAPAS = capaNodes
       .map((item, index) => {
         const layerUrl = buildLayerUrl(item)
         return {
@@ -276,7 +347,9 @@ const Widget = (props: AllWidgetProps<any>) => {
         }
       })
       .filter(option => Boolean(option.layerUrl))
-  }, [selectedSubtema, subtemaValue])
+
+    return CAPAS
+  }, [selectedSubtema, shouldShowGrupos, selectedGrupo, grupoValue, subtemaValue])
 
   /**
    * Opcion de capa seleccionada.
@@ -300,12 +373,13 @@ const Widget = (props: AllWidgetProps<any>) => {
       return
     }
 
+    // Envia mensaje al widget de tabla de contenido para solicitar datos de la TOC.
     getAppStore().dispatch(
         appActions.widgetStatePropChange(
             WIDGET_IDS.BUFFER, // ID del widget destino, debe ser un widget que esté abierto en el layout para recibir los datos
             'fromBuffer', // Nombre de la propiedad que se va a crear/actualizar en el estado del widget
             {
-                task: 'backToTemas',
+                task: 'TOC_DATA_REQUEST', // Identificador de la tarea o acción que se va a realizar, para que el widget destino sepa cómo manejar los datos
             }
         )
     )
@@ -339,7 +413,7 @@ const Widget = (props: AllWidgetProps<any>) => {
     }
 
     if (!selectedCapa?.layerUrl) return
-
+    // Crea un nuevo FeatureLayer para la capa seleccionada y lo agrega al mapa.
     try {
       const layer = new FeatureLayer({
         id: 'buffer-active-layer',
@@ -368,6 +442,7 @@ const Widget = (props: AllWidgetProps<any>) => {
   const onTemaChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     setTemaValue(event.target.value)
     setSubtemaValue('')
+    setGrupoValue('')
     setCapaValue('')
     setActionError('')
   }
@@ -377,6 +452,19 @@ const Widget = (props: AllWidgetProps<any>) => {
    */
   const onSubtemaChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     setSubtemaValue(event.target.value)
+    setGrupoValue('')
+    setCapaValue('')
+    setActionError('')
+  }
+
+  /**
+   * Almacena el grupo seleccionado y reinicia la capa para evitar inconsistencias.
+   *
+   * @param {React.ChangeEvent<HTMLSelectElement>} event Evento de cambio del select de grupos.
+   * @returns {void}
+   */
+  const onGrupoChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    setGrupoValue(event.target.value)
     setCapaValue('')
     setActionError('')
   }
@@ -419,8 +507,12 @@ const Widget = (props: AllWidgetProps<any>) => {
 
     if (!view || !graphicsLayer || distanceValue <= 0) return
 
-    const bufferGeometry = geometryEngine.buffer(geometry, distanceValue, unitCode) as __esri.Polygon | null
-
+    // Calcula el buffer usando la API de ArcGIS. El resultado se tipa como Polygon porque el buffer de cualquier geometria siempre es un polígono, aunque la firma de la función permita otros tipos.
+    const bufferGeometry = geometryEngine.buffer(geometry, distanceValue, unitCode) as __esri.Polygon | null // El resultado del buffer siempre es un polígono, pero se tipa como GeometryUnion por la firma de la función.
+    if (validaLoggerLocalStorage('logger')) {
+      console.log('Geometría base para buffer:', geometry)
+      console.log(`Buffer generado con distancia ${distanceValue} ${unitCode}:`, bufferGeometry)
+    }
     if (!bufferGeometry) return
 
     graphicsLayer.removeAll()
@@ -539,8 +631,20 @@ const Widget = (props: AllWidgetProps<any>) => {
             ))}
           </Select>
 
+          {shouldShowGrupos && (
+            <>
+              <Label>Grupos:</Label>
+              <Select value={grupoValue} onChange={onGrupoChange}>
+                <Option value=''>Seleccione...</Option>
+                {grupoOptions.map(option => (
+                  <Option key={option.value} value={option.value}>{option.label}</Option>
+                ))}
+              </Select>
+            </>
+          )}
+
           <Label>Capas:</Label>
-          <Select value={capaValue} onChange={onCapaChange}>
+          <Select value={capaValue} onChange={onCapaChange} disabled={shouldShowGrupos && !grupoValue}>
             <Option value=''>Seleccione...</Option>
             {capaOptions.map(option => (
               <Option key={`${option.value}-${option.layerUrl}`} value={option.value}>{option.label}</Option>

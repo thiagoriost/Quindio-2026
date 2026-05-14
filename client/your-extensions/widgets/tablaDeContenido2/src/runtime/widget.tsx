@@ -41,7 +41,7 @@ const Widget = (props: AllWidgetProps<any>) => {
   React.useEffect(() => {
     if (dataFromBuffer) {
       if(validaLoggerLocalStorage('logger')) console.log('Data recibida en TOC desde Buffer:', {dataFromBuffer, BUFFERWIDGET_IDS:WIDGET_IDS.BUFFER})
-      if (dataFromBuffer.task === 'backToTemas') {
+      if (dataFromBuffer.task === 'TOC_DATA_REQUEST') {
         getAppStore().dispatch(
               appActions.widgetStatePropChange(
                   WIDGET_IDS.BUFFER, // ID del widget destino, debe ser un widget que esté abierto en el layout para recibir los datos
