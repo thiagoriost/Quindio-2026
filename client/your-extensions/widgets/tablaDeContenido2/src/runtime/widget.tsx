@@ -9,6 +9,8 @@ import * as projection from "@arcgis/core/geometry/projection"
 import { validaLoggerLocalStorage } from '../../../shared/utils/export.utils'
 import { useSelector } from 'react-redux'
 import { WIDGET_IDS } from '../../../shared/constants/widget-ids'
+// @ts-expect-error - Tipos para imports de .png no definidos en este workspace.
+import iconoTablaContenido from '../../../shared/assets/icons/Tabla de contenidoPNG.png'
 
 interface ServiciosModule {
   //  urls: { tablaContenido: string }
@@ -41,7 +43,7 @@ const Widget = (props: AllWidgetProps<any>) => {
   React.useEffect(() => {
     if (dataFromBuffer) {
       if(validaLoggerLocalStorage('logger')) console.log('Data recibida en TOC desde Buffer:', {dataFromBuffer, BUFFERWIDGET_IDS:WIDGET_IDS.BUFFER})
-      if (dataFromBuffer.task === 'backToTemas') {
+      if (dataFromBuffer.task === 'TOC_DATA_REQUEST') {
         getAppStore().dispatch(
               appActions.widgetStatePropChange(
                   WIDGET_IDS.BUFFER, // ID del widget destino, debe ser un widget que esté abierto en el layout para recibir los datos
@@ -318,7 +320,13 @@ const Widget = (props: AllWidgetProps<any>) => {
             onClick={() => { setIsCollapsed(!isCollapsed) }}
             title={isCollapsed ? 'Expandir tabla de contenido' : 'Minimizar tabla de contenido'}
           >
-            {isCollapsed ? '☰' : '▲'}
+            {isCollapsed ? (
+              <img
+                src={iconoTablaContenido}
+                alt="Tabla de contenido"
+                style={{ width: 40, height: 40 }}
+              />
+            ) : '▲'}
           </button>
           {!isCollapsed && (
             <div className="w-100 p-3 contenedorTablaContenido" style={{ backgroundColor: 'var(--sys-color-primary)', color: 'var(--sys-color-on-primary)' }}>

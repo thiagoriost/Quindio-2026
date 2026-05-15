@@ -1,17 +1,23 @@
-import { appActions, getAppStore, type AllWidgetProps } from 'jimu-core'
+import { appActions, getAppStore, type AllWidgetProps, WidgetState } from 'jimu-core'
 import React from 'react'
 import { JimuMapViewComponent, type JimuMapView } from 'jimu-arcgis'
 import { Label, Option, Select, TextInput } from 'jimu-ui'
+import esriConfig from '@arcgis/core/config'
 import Graphic from '@arcgis/core/Graphic'
 import GraphicsLayer from '@arcgis/core/layers/GraphicsLayer'
 import FeatureLayer from '@arcgis/core/layers/FeatureLayer'
 import Polyline from '@arcgis/core/geometry/Polyline'
 import * as geometryEngine from '@arcgis/core/geometry/geometryEngine'
+import * as normalizeUtils from '@arcgis/core/geometry/support/normalizeUtils'
+import * as geometryServiceRest from '@arcgis/core/rest/geometryService'
+import BufferParameters from '@arcgis/core/rest/support/BufferParameters'
 import { SearchActionBar } from '../../../shared/components/search-action-bar'
+import { urls } from '../../../api/serviciosQuindio'
+import { abrirTablaResultados, limpiarYCerrarWidgetResultados } from '../../../widget-result/src/runtime/widget'
 
 // @ts-expect-error - No se encuentran tipos de la API de ArcGIS, se asume que están disponibles globalmente en runtime.
 import '../styles/styles.css'
-import { validaLoggerLocalStorage } from '../../../shared/utils/export.utils'
+import { goToInitialExtent, validaLoggerLocalStorage } from '../../../shared/utils/export.utils'
 import { WIDGET_IDS } from '../../../shared/constants/widget-ids'
 import { useSelector } from 'react-redux'
 
@@ -41,6 +47,8 @@ interface LabelSource {
  * Nodo de capa final del árbol de contenido.
  */
 interface BufferCapaNode {
+  /** Nombre del tema o subtema si la fuente lo reutiliza. */
+  NOMBRETEMATICA?: string
   /** Nombre de la capa. */
   NOMBRECAPA?: string
   /** Nombre legible alterno. */
@@ -48,6 +56,26 @@ interface BufferCapaNode {
   /** URL del servicio/capa. */
   URL?: string
 
+  capasBisnietos?: BufferCapaNode[]
+
+  capasNietas?: BufferCapaNode[]
+
+}
+
+/**
+ * Nodo de grupo cuando un subtema organiza capas en un nivel intermedio.
+ */
+interface BufferGrupoNode {
+  /** Nombre del grupo. */
+  NOMBRETEMATICA?: string
+  /** Título legible del grupo. */
+  TITULOCAPA?: string
+  /** Nombre alterno del grupo/capa. */
+  NOMBRECAPA?: string
+  /** URL opcional cuando el grupo también representa una capa. */
+  URL?: string
+  /** Capas de tercer nivel (bisnietos) asociadas al grupo. */
+  capasBisnietos?: BufferCapaNode[]
 }
 
 /**
@@ -59,7 +87,9 @@ interface BufferSubtemaNode {
   /** Nombre legible alterno. */
   TITULOCAPA?: string
   /** Capa hija asociada al subtema. */
-  capasNietas?: BufferCapaNode[]
+  capasNietas?: BufferGrupoNode[]
+
+  IDTEMATICAPADRE?: number
 
 }
 
@@ -102,11 +132,115 @@ interface CapaOption extends NodeOption<BufferCapaNode> {
 }
 
 /**
+ * Valor permitido para atributos mostrados en la tabla de resultados.
+ */
+type ResultCell = string | number | boolean | null
+
+/**
+ * Fila normalizada para renderizado de tabla y publicación en widget-result.
+ */
+interface BufferResultRow {
+  /** Identificador local para render estable en React. */
+  rowId: number
+  /** Atributos limpios para visualización y exportación. */
+  attributes: Record<string, ResultCell>
+  /** Geometría JSON opcional para navegación y visualización externa. */
+  geometry?: __esri.GeometryProperties
+}
+
+/**
+ * Definición de columna para tabla local de resultados.
+ */
+interface BufferResultField {
+  /** Nombre interno del campo. */
+  name: string
+  /** Etiqueta visible. */
+  alias: string
+  /** Tipo de dato ArcGIS para exportación/tabla. */
+  type: __esri.FieldProperties['type']
+}
+
+/**
+ * Adaptador de GeometryService para SDK 4.x basado en API REST.
+ *
+ * Mantiene la firma esperada por el flujo del widget:
+ * - constructor(url)
+ * - buffer(BufferParameters)
+ */
+class GeometryService {
+  /** URL base del GeometryServer. */
+  url: string
+
+  /**
+   * @param url URL del servicio de geometría.
+   */
+  constructor (url: string) {
+    this.url = url
+  }
+
+  /**
+   * Ejecuta el proceso de buffer en el GeometryServer.
+   *
+   * @param params Parámetros del buffer.
+   * @returns Geometrías resultantes del servicio.
+   */
+  buffer (params: BufferParameters) {
+    return geometryServiceRest.buffer(this.url, params)
+  }
+}
+
+/**
+ * Configuración mínima de esriConfig con compatibilidad de defaults.
+ */
+type EsriConfigWithDefaults = typeof esriConfig & {
+  defaults?: {
+    geometryService?: GeometryService
+  }
+  geometryServiceUrl?: string
+}
+
+/**
+ * Servicio de geometría único reutilizado por todo el ciclo de vida del widget.
+ */
+let geometryServiceSingleton: GeometryService | null = null
+
+/**
+ * Unidades lineales aceptadas por BufferParameters (REST GeometryService).
+ */
+type BufferLinearUnit = 'meters' | 'feet' | 'kilometers' | 'miles' | 'nautical-miles' | 'yards'
+
+/**
  * Diccionario de conversion de unidad UI a unidad ArcGIS.
  */
-const UNIT_TO_ARCGIS: { [key: string]: __esri.LinearUnits } = {
+const UNIT_TO_ARCGIS: { [key: string]: BufferLinearUnit } = {
   Metros: 'meters',
   Kilometros: 'kilometers'
+}
+
+/**
+ * URL del GeometryServer oficial usado por el widget Buffer.
+ */
+const BUFFER_GEOMETRY_SERVICE_URL = urls.SERVICIO_GEOMETRIA
+
+/**
+ * Inicializa (una sola vez) y retorna el GeometryService compartido.
+ *
+ * Además deja configurado esriConfig.defaults.geometryService para compatibilidad
+ * con implementaciones existentes y publica geometryServiceUrl para 4.x.
+ *
+ * @returns Instancia única de GeometryService.
+ */
+const getOrCreateGeometryService = () => {
+  if (!geometryServiceSingleton) {
+    geometryServiceSingleton = new GeometryService(BUFFER_GEOMETRY_SERVICE_URL)
+  }
+
+  const config = esriConfig as EsriConfigWithDefaults
+  config.defaults = config.defaults ?? {}
+  config.defaults.geometryService = geometryServiceSingleton
+  config.geometryServiceUrl = BUFFER_GEOMETRY_SERVICE_URL
+
+  return geometryServiceSingleton
 }
 
 /**
@@ -121,6 +255,20 @@ const getNodeLabel = (
   fallback: string
 ) => {
   return String(item.NOMBRETEMATICA ?? item.TITULOCAPA ?? item.NOMBRECAPA ?? fallback).trim()
+}
+
+/**
+ * Normaliza texto para comparaciones de UI sin sensibilidad a acentos/mayúsculas.
+ *
+ * @param {string} value Texto de entrada.
+ * @returns {string} Texto normalizado en minúsculas y sin diacríticos.
+ */
+const normalizeUiText = (value: string) => {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
 }
 
 /**
@@ -148,6 +296,68 @@ const buildLayerUrl = (item: BufferCapaNode) => {
 const toPositiveDistance = (value: string) => {
   const parsed = Number(value)
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 0
+}
+
+/**
+ * Convierte un atributo crudo a tipo visualizable en tabla.
+ *
+ * @param value Valor del atributo en el feature original.
+ * @returns Valor normalizado para UI/exportación.
+ */
+const toResultCell = (value: unknown): ResultCell => {
+  if (value == null) return null
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+    return value
+  }
+  return String(value)
+}
+
+/**
+ * Obtiene un subconjunto relevante de atributos para visualización.
+ *
+ * Se excluyen campos de geometría binaria y metadatos internos no útiles.
+ *
+ * @param attributes Atributos crudos de un feature.
+ * @returns Diccionario limpio de atributos para tabla.
+ */
+const extractRelevantAttributes = (attributes: Record<string, unknown>) => {
+  const excludedPattern = /^(shape|shape_length|shape_area|globalid)$/i
+  const entries = Object.entries(attributes)
+    .filter(([key]) => !excludedPattern.test(key))
+    .map(([key, value]) => [key, toResultCell(value)] as const)
+
+  return Object.fromEntries(entries) as Record<string, ResultCell>
+}
+
+/**
+ * Deduce tipo de campo ArcGIS para la tabla de resultados.
+ *
+ * @param value Valor representativo del campo.
+ * @returns Tipo de campo compatible con ArcGIS.
+ */
+const inferFieldType = (value: ResultCell): __esri.FieldProperties['type'] => {
+  if (typeof value === 'number') return 'double'
+  if (typeof value === 'boolean') return 'small-integer'
+  return 'string'
+}
+
+/**
+ * Construye firma determinística para evitar consultas espaciales duplicadas.
+ *
+ * @param geometry Geometría base capturada.
+ * @param layerUrl URL de capa objetivo.
+ * @param distance Distancia usada en el buffer.
+ * @param unit Unidad del buffer.
+ * @returns Hash de parámetros de consulta.
+ */
+const buildSpatialRequestKey = (
+  geometry: __esri.GeometryUnion,
+  layerUrl: string,
+  distance: number,
+  unit: BufferLinearUnit
+) => {
+  const geometryJson = typeof geometry.toJSON === 'function' ? geometry.toJSON() : geometry
+  return JSON.stringify({ geometry: geometryJson, layerUrl, distance, unit })
 }
 
 /**
@@ -181,6 +391,8 @@ const Widget = (props: AllWidgetProps<any>) => {
   const [subtemaValue, setSubtemaValue] = React.useState('')
   /** Identificador de capa seleccionada. */
   const [capaValue, setCapaValue] = React.useState('')
+  /** Identificador del grupo seleccionado (solo para Cuenca Río la Vieja). */
+  const [grupoValue, setGrupoValue] = React.useState('')
 
   /** Distancia del buffer en unidad de usuario. */
   const [distancia, setDistancia] = React.useState('500')
@@ -191,6 +403,15 @@ const Widget = (props: AllWidgetProps<any>) => {
   const [drawMode, setDrawMode] = React.useState<'point' | 'line' | null>(null)
   /** Mensaje de error para la barra de acciones. */
   const [actionError, setActionError] = React.useState('')
+  /** Estado de ejecución de buffer + intersección. */
+  const [isProcessing, setIsProcessing] = React.useState(false)
+
+  /** Filas normalizadas para tabla local de resultados. */
+  const [resultRows, setResultRows] = React.useState<BufferResultRow[]>([])
+  /** Definición de columnas para la tabla local. */
+  const [resultFields, setResultFields] = React.useState<BufferResultField[]>([])
+  /** Mensaje informativo del resultado espacial. */
+  const [resultMessage, setResultMessage] = React.useState('')
 
   /** Referencia al GraphicsLayer temporal de dibujo y buffer. */
   const graphicsLayerRef = React.useRef<GraphicsLayer | null>(null)
@@ -198,6 +419,18 @@ const Widget = (props: AllWidgetProps<any>) => {
   const activeLayerRef = React.useRef<FeatureLayer | null>(null)
   /** Primer punto capturado para dibujo de linea. */
   const lineStartPointRef = React.useRef<__esri.Point | null>(null)
+  /** Instancia estable del GeometryService. */
+  const geometryServiceRef = React.useRef<GeometryService | null>(null)
+  /** Control de concurrencia para descartar respuestas obsoletas. */
+  const executionIdRef = React.useRef(0)
+  /** Firma de la última consulta espacial para evitar duplicados. */
+  const lastSpatialRequestKeyRef = React.useRef('')
+  /** Extent inicial de la vista para restaurarlo al cerrar el widget. */
+  const initialExtentRef = React.useRef<__esri.Extent | null>(null)
+  // /** Zoom inicial del mapa para restablecer la vista al limpiar. */
+  // const initialZoomRef = React.useRef<number | null>(null)
+  // /** Escala inicial del mapa para restablecer la vista al limpiar. */
+  // const initialScaleRef = React.useRef<number | null>(null)
 
   /**
    * Registra la carga útil recibida desde tabla de contenido para depuración local.
@@ -208,6 +441,25 @@ const Widget = (props: AllWidgetProps<any>) => {
       console.log('Data recibida en Buffer:', dataFromTablaDeContenido)
     }
   }, [dataFromTablaDeContenido])
+
+  /**
+   * Inicializa una sola vez el GeometryService compartido del widget.
+   */
+  React.useEffect(() => {
+    geometryServiceRef.current = getOrCreateGeometryService()
+  }, [])
+
+  /**
+   * Captura una única vez el extent inicial cuando la vista de mapa está disponible.
+   *
+   * @returns {void}
+   */
+  React.useEffect(() => {
+    const view = jimuMapView?.view
+    if (!view || initialExtentRef.current) return
+
+    initialExtentRef.current = view.extent?.clone() ?? null
+  }, [jimuMapView])
 
   /**
    * Temas disponibles en el formulario a partir de la carga útil del widget origen.
@@ -241,8 +493,9 @@ const Widget = (props: AllWidgetProps<any>) => {
     const subtemas = selectedTema?.capasHijas ?? []
     const SUBTEMA = subtemas
       .map((item, index) => ({
-        value: item.NOMBRETEMATICA,
-        label: item.NOMBRETEMATICA,
+        value: item.NOMBRETEMATICA === temaValue ? item.TITULOCAPA : item.NOMBRETEMATICA,
+        // label: (selectedTema.NOMBRETEMATICA === 'Educación'|| selectedTema.NOMBRETEMATICA === 'Gestión del riesgo') ? item.TITULOCAPA : item.NOMBRETEMATICA,
+        label: item.NOMBRETEMATICA === temaValue ? item.TITULOCAPA : item.NOMBRETEMATICA,
         node: item
       }))
       .filter(option => Boolean(option.label))
@@ -254,18 +507,55 @@ const Widget = (props: AllWidgetProps<any>) => {
    */
   const selectedSubtema = React.useMemo(() => {
     if (subtemaOptions.length === 0) return null
-    const SUBTEMAOPTION = subtemaOptions.find(option => option.value === subtemaValue)
-    return SUBTEMAOPTION
+    const subtemaOption = subtemaOptions.find(option => option.value === subtemaValue)
+    return subtemaOption ?? null
   }, [subtemaOptions, subtemaValue])
+
+  /**
+   * Indica si el subtema actual requiere mostrar el campo adicional de grupos.
+   */
+  const shouldShowGrupos = React.useMemo(() => {
+    if (!selectedSubtema?.label) return false
+    const validacion = selectedSubtema.node.capasNietas?.some(grupo => Array.isArray(grupo.capasBisnietos) && grupo.capasBisnietos.length > 0) ?? false
+    return validacion
+  }, [selectedSubtema])
+
+  /**
+   * Opciones del campo Grupos derivadas del subtema seleccionado.
+   */
+  const grupoOptions = React.useMemo<Array<NodeOption<BufferGrupoNode>>>(() => {
+    if (!selectedSubtema?.node || !shouldShowGrupos) return []
+
+    const grupoNodes = selectedSubtema.node.capasNietas ?? []
+    const GRUPO = grupoNodes
+      .map((item, index) => ({
+        value: item.NOMBRETEMATICA,
+        label: item.NOMBRETEMATICA,
+        node: item
+      }))
+      .filter(option => Boolean(option.label))
+    return GRUPO
+  }, [selectedSubtema, shouldShowGrupos, subtemaValue])
+
+  /**
+   * Grupo seleccionado en el formulario cuando aplica Cuenca Río la Vieja.
+   */
+  const selectedGrupo = React.useMemo(() => {
+    if (grupoOptions.length === 0 || grupoValue==='') return null
+    const GRUPO = grupoOptions.find(option => option.value === grupoValue)?.node ?? null
+    return GRUPO
+  }, [grupoOptions, grupoValue])
 
   /**
    * Opciones del campo Capas derivadas del subtema seleccionado.
    */
   const capaOptions = React.useMemo<CapaOption[]>(() => {
-    if (!selectedSubtema) return []
-    const capaNodes: BufferCapaNode[] = selectedSubtema.node.capasNietas ?? []
+    if (!selectedSubtema || (shouldShowGrupos && !selectedGrupo)) return []
+    const capaNodes: BufferCapaNode[] = shouldShowGrupos
+      ? selectedGrupo?.capasBisnietos ?? []
+      : (selectedSubtema.node.capasNietas ?? [])
 
-    return capaNodes
+    const CAPAS = capaNodes
       .map((item, index) => {
         const layerUrl = buildLayerUrl(item)
         return {
@@ -275,8 +565,10 @@ const Widget = (props: AllWidgetProps<any>) => {
           layerUrl
         }
       })
-      .filter(option => Boolean(option.layerUrl))
-  }, [selectedSubtema, subtemaValue])
+      .filter(option => Boolean(option.layerUrl || option.node.capasBisnietos || option.node.capasNietas))
+
+    return CAPAS
+  }, [selectedSubtema, shouldShowGrupos, selectedGrupo, grupoValue, subtemaValue, subtemaOptions, selectedTema])
 
   /**
    * Opcion de capa seleccionada.
@@ -300,12 +592,13 @@ const Widget = (props: AllWidgetProps<any>) => {
       return
     }
 
+    // Envia mensaje al widget de tabla de contenido para solicitar datos de la TOC.
     getAppStore().dispatch(
         appActions.widgetStatePropChange(
             WIDGET_IDS.BUFFER, // ID del widget destino, debe ser un widget que esté abierto en el layout para recibir los datos
             'fromBuffer', // Nombre de la propiedad que se va a crear/actualizar en el estado del widget
             {
-                task: 'backToTemas',
+                task: 'TOC_DATA_REQUEST', // Identificador de la tarea o acción que se va a realizar, para que el widget destino sepa cómo manejar los datos
             }
         )
     )
@@ -338,13 +631,14 @@ const Widget = (props: AllWidgetProps<any>) => {
       activeLayerRef.current = null
     }
 
-    if (!selectedCapa?.layerUrl) return
-
+    const layerUrl = selectedCapa?.layerUrl/*  || selectedCapa?.node?.capasNietas[0]?.URL */
+    if (!layerUrl) return
+    // Crea un nuevo FeatureLayer para la capa seleccionada y lo agrega al mapa.
     try {
       const layer = new FeatureLayer({
         id: 'buffer-active-layer',
         title: `Capa activa: ${selectedCapa.label}`,
-        url: selectedCapa.layerUrl,
+        url: layerUrl,
         visible: true
       })
 
@@ -368,6 +662,7 @@ const Widget = (props: AllWidgetProps<any>) => {
   const onTemaChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     setTemaValue(event.target.value)
     setSubtemaValue('')
+    setGrupoValue('')
     setCapaValue('')
     setActionError('')
   }
@@ -377,6 +672,19 @@ const Widget = (props: AllWidgetProps<any>) => {
    */
   const onSubtemaChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     setSubtemaValue(event.target.value)
+    setGrupoValue('')
+    setCapaValue('')
+    setActionError('')
+  }
+
+  /**
+   * Almacena el grupo seleccionado y reinicia la capa para evitar inconsistencias.
+   *
+   * @param {React.ChangeEvent<HTMLSelectElement>} event Evento de cambio del select de grupos.
+   * @returns {void}
+   */
+  const onGrupoChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    setGrupoValue(event.target.value)
     setCapaValue('')
     setActionError('')
   }
@@ -401,9 +709,192 @@ const Widget = (props: AllWidgetProps<any>) => {
   /**
    * Limpia geometrias dibujadas y estado temporal de interaccion.
    */
-  const clearDrawings = React.useCallback(() => {
+  const clearDrawings = React.useCallback((): void => {
     lineStartPointRef.current = null
     graphicsLayerRef.current?.removeAll()
+    setResultRows([])
+    setResultFields([])
+    setResultMessage('')
+    lastSpatialRequestKeyRef.current = ''
+    limpiarYCerrarWidgetResultados(WIDGET_IDS.RESULT)
+  }, [])
+
+  /**
+   * Restaura el extent inicial del mapa cuando existe una referencia válida.
+   *
+   * @returns {Promise<void>}
+   */
+  const restoreInitialExtent = React.useCallback(async (): Promise<void> => {
+    const view = jimuMapView?.view
+    const initialExtent = initialExtentRef.current
+
+    if (!view || !initialExtent) return
+
+    try {
+      goToInitialExtent(jimuMapView, initialExtent)      
+    } catch (error: unknown) {
+      console.error('No fue posible restaurar el extent inicial de Buffer:', error)
+    }
+  }, [jimuMapView])
+
+  /**
+   * Limpia el estado espacial al cerrar el widget:
+   * 1. Elimina geometrías y buffer temporal.
+   * 2. Reinicia estados de interacción.
+   * 3. Remueve la capa activa temporal del mapa.
+   * 4. Restaura el extent inicial.
+   *
+   * @returns {void}
+   */
+  React.useEffect(() => {
+    if (props.state !== WidgetState.Closed) return
+
+    setDrawMode(null)
+    setIsProcessing(false)
+    setActionError('')
+    clearDrawings()
+
+    const view = jimuMapView?.view
+    if (view && activeLayerRef.current && view.map.findLayerById(activeLayerRef.current.id)) {
+      view.map.remove(activeLayerRef.current)
+    }
+    activeLayerRef.current = null
+
+    void restoreInitialExtent()
+  }, [props.state, jimuMapView, clearDrawings, restoreInitialExtent])
+
+  /**
+   * Normaliza y simplifica geometría para construcción de buffer estable.
+   *
+   * Flujo:
+   * 1. Normalización por meridiano central.
+   * 2. Simplificación cuando la entrada es polyline no simple.
+   *
+   * @param geometry Geometría capturada en el mapa.
+   * @returns Geometría preparada para GeometryService.buffer.
+   */
+  const prepareGeometryForBuffer = React.useCallback(async (geometry: __esri.GeometryUnion) => {
+    const normalizedList = await normalizeUtils.normalizeCentralMeridian([geometry]) as __esri.GeometryUnion[]
+    const normalizedGeometry = normalizedList?.[0] ?? geometry
+
+    if (normalizedGeometry.type !== 'polyline') {
+      return normalizedGeometry
+    }
+
+    const isSimpleLine = geometryEngine.isSimple(normalizedGeometry)
+    if (isSimpleLine) {
+      return normalizedGeometry
+    }
+
+    const simplifiedLine = geometryEngine.simplify(normalizedGeometry) as __esri.Polyline | null
+    return simplifiedLine ?? normalizedGeometry
+  }, [])
+
+  /**
+   * Construye un buffer geodésico usando GeometryService.buffer + BufferParameters.
+   *
+   * @param geometry Geometría de entrada normalizada/simplificada.
+   * @param distanceValue Distancia positiva del buffer.
+   * @param unitCode Unidad lineal ArcGIS.
+   * @param outSpatialReference Referencia espacial de salida.
+   * @returns Polígono de buffer o null si el servicio no retorna geometría.
+   */
+  const buildBufferGeometry = React.useCallback(async (
+    geometry: __esri.GeometryUnion,
+    distanceValue: number,
+    unitCode: BufferLinearUnit,
+    outSpatialReference: __esri.SpatialReference
+  ) => {
+    const service = geometryServiceRef.current ?? getOrCreateGeometryService()
+
+    const bufferParams = new BufferParameters({
+      geometries: [geometry],
+      distances: [distanceValue],
+      unit: unitCode,
+      geodesic: true,
+      unionResults: true,
+      bufferSpatialReference: geometry.spatialReference,
+      outSpatialReference
+    })
+
+    const bufferedGeometries = await service.buffer(bufferParams) as __esri.Geometry[]
+    return (bufferedGeometries?.[0] ?? null) as __esri.Polygon | null
+  }, [])
+
+  /**
+   * Dibuja geometrías intersectadas sobre la capa temporal del widget.
+   *
+   * @param features Features resultantes de intersección espacial.
+   */
+  const drawIntersectedGeometries = React.useCallback((features: __esri.Graphic[]) => {
+    const graphicsLayer = graphicsLayerRef.current
+    if (!graphicsLayer || features.length === 0) return
+
+    const intersectionGraphics = features
+      .filter(feature => Boolean(feature.geometry))
+      .map(feature => {
+        const geometry = feature.geometry as __esri.Geometry
+        const symbol: __esri.GraphicProperties['symbol'] = geometry.type === 'polygon'
+          ? {
+              type: 'simple-fill',
+              color: [0, 179, 136, 0.22],
+              outline: { type: 'simple-line', color: [0, 128, 96, 1], width: 1.5 }
+            }
+          : geometry.type === 'polyline'
+            ? {
+                type: 'simple-line',
+                color: [0, 128, 96, 1],
+                width: 2.5
+              }
+            : {
+                type: 'simple-marker',
+                color: [0, 128, 96, 1],
+                size: 7,
+                outline: { color: [255, 255, 255, 1], width: 1 }
+              }
+
+        return new Graphic({
+          geometry,
+          attributes: feature.attributes,
+          symbol
+        })
+      })
+
+    if (intersectionGraphics.length > 0) {
+      graphicsLayer.addMany(intersectionGraphics)
+    }
+  }, [])
+
+  /**
+   * Mapea features intersectados a estructura tipada para UI y widget-result.
+   *
+   * @param features Features retornados por query espacial.
+   * @returns Paquete normalizado de filas y campos.
+   */
+  const mapQueryResults = React.useCallback((features: __esri.Graphic[]) => {
+    const rows = features.map((feature, index) => ({
+      rowId: index + 1,
+      attributes: extractRelevantAttributes(feature.attributes as Record<string, unknown>),
+      geometry: feature.geometry?.toJSON?.() as __esri.GeometryProperties | undefined
+    }))
+
+    const fieldMap = new Map<string, BufferResultField>()
+    rows.forEach(row => {
+      Object.entries(row.attributes).forEach(([name, value]) => {
+        if (!fieldMap.has(name)) {
+          fieldMap.set(name, {
+            name,
+            alias: name,
+            type: inferFieldType(value)
+          })
+        }
+      })
+    })
+
+    return {
+      rows,
+      fields: Array.from(fieldMap.values())
+    }
   }, [])
 
   /**
@@ -411,55 +902,150 @@ const Widget = (props: AllWidgetProps<any>) => {
    *
    * @param geometry Geometria base (punto o linea) capturada sobre el mapa.
    */
-  const drawBuffer = React.useCallback((geometry: __esri.GeometryUnion) => {
+  const drawBuffer = React.useCallback(async (geometry: __esri.GeometryUnion) => {
     const view = jimuMapView?.view
     const graphicsLayer = graphicsLayerRef.current
+    const targetLayer = activeLayerRef.current
     const distanceValue = toPositiveDistance(distancia)
     const unitCode = UNIT_TO_ARCGIS[unidad] || 'meters'
 
-    if (!view || !graphicsLayer || distanceValue <= 0) return
+    if (!view || !graphicsLayer) return
+    if (!targetLayer) {
+      setActionError('Seleccione una capa objetivo antes de dibujar el buffer.')
+      return
+    }
 
-    const bufferGeometry = geometryEngine.buffer(geometry, distanceValue, unitCode) as __esri.Polygon | null
+    if (distanceValue <= 0) {
+      setActionError('Ingrese una distancia mayor a 0 para generar el buffer.')
+      return
+    }
 
-    if (!bufferGeometry) return
+    const requestKey = buildSpatialRequestKey(geometry, targetLayer.url ?? targetLayer.id, distanceValue, unitCode)
+    if (requestKey === lastSpatialRequestKeyRef.current) {
+      return
+    }
+    lastSpatialRequestKeyRef.current = requestKey
 
-    graphicsLayer.removeAll()
+    const executionId = ++executionIdRef.current
+    setIsProcessing(true)
+    setActionError('')
+    setResultMessage('Procesando buffer e intersección espacial...')
 
-    const sourceGraphic = new Graphic({
-      geometry,
-      symbol: geometry.type === 'point'
-        ? {
-            type: 'simple-marker',
-            color: [220, 40, 40, 1],
-            size: 9,
-            outline: { color: [255, 255, 255, 1], width: 1 }
-          }
-        : {
+    try {
+      const preparedGeometry = await prepareGeometryForBuffer(geometry)
+      const bufferGeometry = await buildBufferGeometry(preparedGeometry, distanceValue, unitCode, view.spatialReference)
+
+      if (!bufferGeometry) {
+        setResultMessage('No fue posible construir el buffer con el GeometryService.')
+        return
+      }
+
+      if (executionId !== executionIdRef.current) return
+
+      if (validaLoggerLocalStorage('logger')) {
+        console.log('Geometría base para buffer:', preparedGeometry)
+        console.log(`Buffer generado con distancia ${distanceValue} ${unitCode}:`, bufferGeometry)
+      }
+
+      graphicsLayer.removeAll()
+
+      const sourceGraphic = new Graphic({
+        geometry: preparedGeometry,
+        symbol: preparedGeometry.type === 'point'
+          ? {
+              type: 'simple-marker',
+              color: [220, 40, 40, 1],
+              size: 9,
+              outline: { color: [255, 255, 255, 1], width: 1 }
+            }
+          : {
+              type: 'simple-line',
+              color: [220, 40, 40, 1],
+              width: 2
+            }
+      })
+
+      const bufferGraphic = new Graphic({
+        geometry: bufferGeometry,
+        symbol: {
+          type: 'simple-fill',
+          color: [255, 128, 0, 0.25],
+          outline: {
             type: 'simple-line',
-            color: [220, 40, 40, 1],
+            color: [255, 128, 0, 1],
             width: 2
           }
-    })
-
-    const bufferGraphic = new Graphic({
-      geometry: bufferGeometry,
-      symbol: {
-        type: 'simple-fill',
-        color: [255, 128, 0, 0.25],
-        outline: {
-          type: 'simple-line',
-          color: [255, 128, 0, 1],
-          width: 2
         }
+      })
+
+      graphicsLayer.addMany([bufferGraphic, sourceGraphic])
+
+      const query = targetLayer.createQuery()
+      query.geometry = bufferGeometry
+      query.spatialRelationship = 'intersects'
+      query.returnGeometry = true
+      query.outFields = ['*']
+
+      const queryResult = await targetLayer.queryFeatures(query)
+      if (executionId !== executionIdRef.current) return
+
+      const intersectedFeatures = queryResult.features ?? []
+      drawIntersectedGeometries(intersectedFeatures)
+
+      const mappedResults = mapQueryResults(intersectedFeatures)
+      setResultRows(mappedResults.rows)
+      setResultFields(mappedResults.fields)
+
+      if (mappedResults.rows.length === 0) {
+        setResultMessage('No se encontraron entidades intersectadas por el buffer.')
+        limpiarYCerrarWidgetResultados(WIDGET_IDS.RESULT)
+      } else {
+        setResultMessage(`Se encontraron ${mappedResults.rows.length} entidades intersectadas.`)
+
+        const featuresForResultWidget = mappedResults.rows.map(row => ({
+          attributes: row.attributes,
+          geometry: row.geometry
+        }))
+
+        abrirTablaResultados(
+          false,
+          featuresForResultWidget,
+          mappedResults.fields,
+          props,
+          WIDGET_IDS.RESULT,
+          view.spatialReference,
+          `Intersección por buffer: ${selectedCapa?.label ?? 'Capa objetivo'}`,
+          {
+            showGraphic: false
+          }
+        )
       }
-    })
 
-    graphicsLayer.addMany([bufferGraphic, sourceGraphic])
-
-    if (bufferGeometry.extent) {
-      void view.goTo(bufferGeometry.extent.expand(1.2))
+      if (bufferGeometry.extent) {
+        await view.goTo(bufferGeometry.extent.expand(1.2))
+      }
+    } catch (error) {
+      console.error('Error en el flujo de buffer/intersección:', error)
+      setActionError('Ocurrió un error al generar el buffer o consultar intersecciones.')
+      setResultMessage('No fue posible completar el análisis espacial.')
+      setResultRows([])
+      setResultFields([])
+    } finally {
+      if (executionId === executionIdRef.current) {
+        setIsProcessing(false)
+      }
     }
-  }, [distancia, unidad, jimuMapView])
+  }, [
+    jimuMapView,
+    distancia,
+    unidad,
+    drawIntersectedGeometries,
+    mapQueryResults,
+    prepareGeometryForBuffer,
+    buildBufferGeometry,
+    props,
+    selectedCapa?.label
+  ])
 
   /**
    * Gestiona capturas de clic sobre el mapa segun el modo de dibujo activo.
@@ -472,7 +1058,7 @@ const Widget = (props: AllWidgetProps<any>) => {
 
     const handle = view.on('click', (event: { mapPoint: __esri.Point }) => {
       if (drawMode === 'point') {
-        drawBuffer(event.mapPoint)
+        void drawBuffer(event.mapPoint)
         return
       }
 
@@ -490,7 +1076,7 @@ const Widget = (props: AllWidgetProps<any>) => {
           spatialReference: lineStartPointRef.current.spatialReference
         })
 
-        drawBuffer(lineGeometry)
+        void drawBuffer(lineGeometry)
         lineStartPointRef.current = null
       }
     })
@@ -510,6 +1096,11 @@ const Widget = (props: AllWidgetProps<any>) => {
   const activeViewChangeHandler = (view: JimuMapView) => {
     if (!view) return
     setJimuMapView(view)
+    if (!initialExtentRef.current) {
+      initialExtentRef.current = view.view.extent?.clone() ?? null
+      // initialZoomRef.current = typeof view.view.zoom === 'number' ? view.view.zoom : null
+      // initialScaleRef.current = typeof view.view.scale === 'number' ? view.view.scale : null
+    }
   }
 
   return (
@@ -539,8 +1130,20 @@ const Widget = (props: AllWidgetProps<any>) => {
             ))}
           </Select>
 
+          {shouldShowGrupos && (
+            <>
+              <Label>Grupos:</Label>
+              <Select value={grupoValue} onChange={onGrupoChange}>
+                <Option value=''>Seleccione...</Option>
+                {grupoOptions.map(option => (
+                  <Option key={option.value} value={option.value}>{option.label}</Option>
+                ))}
+              </Select>
+            </>
+          )}
+
           <Label>Capas:</Label>
-          <Select value={capaValue} onChange={onCapaChange}>
+          <Select value={capaValue} onChange={onCapaChange} disabled={shouldShowGrupos && !grupoValue}>
             <Option value=''>Seleccione...</Option>
             {capaOptions.map(option => (
               <Option key={`${option.value}-${option.layerUrl}`} value={option.value}>{option.label}</Option>
@@ -570,6 +1173,10 @@ const Widget = (props: AllWidgetProps<any>) => {
 
           <SearchActionBar
             onSearch={() => {
+              if (!selectedCapa?.layerUrl) {
+                setActionError('Seleccione una capa para ejecutar la intersección espacial.')
+                return
+              }
               if (!drawMode) {
                 setActionError('Seleccione un modo de dibujo antes de activar.')
                 return
@@ -578,15 +1185,51 @@ const Widget = (props: AllWidgetProps<any>) => {
             }}
             onClear={() => {
               setDrawMode(null)
+              setIsProcessing(false)
               setActionError('')
               clearDrawings()
             }}
-            disableSearch={!drawMode}
+            disableSearch={!drawMode || !selectedCapa?.layerUrl || isProcessing}
             helpText='Seleccione modo de dibujo y haga clic en Buscar para habilitar la captura en el mapa.'
             error={actionError}
             searchLabel='Buscar'
             clearLabel='Limpiar'
           />
+
+          {isProcessing && (
+            <p className='buffer-widget__hint'>Procesando buffer e intersección espacial...</p>
+          )}
+
+          {!isProcessing && resultMessage && (
+            <p className='buffer-widget__hint'>{resultMessage}</p>
+          )}
+
+          {resultRows.length > 0 && resultFields.length > 0 && (
+            <div className='widget-result-table-container' style={{ marginTop: '10px', maxHeight: '220px', overflow: 'auto' }}>
+              <table className='table table-sm table-striped' style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr>
+                    {resultFields.map(field => (
+                      <th key={field.name} style={{ textAlign: 'left', borderBottom: '1px solid #d9d9d9', padding: '4px' }}>
+                        {field.alias}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {resultRows.map(row => (
+                    <tr key={row.rowId}>
+                      {resultFields.map(field => (
+                        <td key={`${row.rowId}-${field.name}`} style={{ borderBottom: '1px solid #efefef', padding: '4px' }}>
+                          {String(row.attributes[field.name] ?? '')}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
 
           {drawMode === 'line' && (
             <p className='buffer-widget__hint'>Para linea: haga clic en dos puntos del mapa.</p>
