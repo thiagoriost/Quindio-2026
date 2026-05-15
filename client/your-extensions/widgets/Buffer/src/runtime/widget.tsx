@@ -1,4 +1,4 @@
-import { appActions, getAppStore, type AllWidgetProps } from 'jimu-core'
+import { appActions, getAppStore, type AllWidgetProps, WidgetState } from 'jimu-core'
 import React from 'react'
 import { JimuMapViewComponent, type JimuMapView } from 'jimu-arcgis'
 import { Label, Option, Select, TextInput } from 'jimu-ui'
@@ -17,7 +17,7 @@ import { abrirTablaResultados, limpiarYCerrarWidgetResultados } from '../../../w
 
 // @ts-expect-error - No se encuentran tipos de la API de ArcGIS, se asume que están disponibles globalmente en runtime.
 import '../styles/styles.css'
-import { validaLoggerLocalStorage } from '../../../shared/utils/export.utils'
+import { goToInitialExtent, validaLoggerLocalStorage } from '../../../shared/utils/export.utils'
 import { WIDGET_IDS } from '../../../shared/constants/widget-ids'
 import { useSelector } from 'react-redux'
 
@@ -58,6 +58,8 @@ interface BufferCapaNode {
 
   capasBisnietos?: BufferCapaNode[]
 
+  capasNietas?: BufferCapaNode[]
+
 }
 
 /**
@@ -86,6 +88,8 @@ interface BufferSubtemaNode {
   TITULOCAPA?: string
   /** Capa hija asociada al subtema. */
   capasNietas?: BufferGrupoNode[]
+
+  IDTEMATICAPADRE?: number
 
 }
 
@@ -421,6 +425,12 @@ const Widget = (props: AllWidgetProps<any>) => {
   const executionIdRef = React.useRef(0)
   /** Firma de la última consulta espacial para evitar duplicados. */
   const lastSpatialRequestKeyRef = React.useRef('')
+  /** Extent inicial de la vista para restaurarlo al cerrar el widget. */
+  const initialExtentRef = React.useRef<__esri.Extent | null>(null)
+  // /** Zoom inicial del mapa para restablecer la vista al limpiar. */
+  // const initialZoomRef = React.useRef<number | null>(null)
+  // /** Escala inicial del mapa para restablecer la vista al limpiar. */
+  // const initialScaleRef = React.useRef<number | null>(null)
 
   /**
    * Registra la carga útil recibida desde tabla de contenido para depuración local.
@@ -438,6 +448,18 @@ const Widget = (props: AllWidgetProps<any>) => {
   React.useEffect(() => {
     geometryServiceRef.current = getOrCreateGeometryService()
   }, [])
+
+  /**
+   * Captura una única vez el extent inicial cuando la vista de mapa está disponible.
+   *
+   * @returns {void}
+   */
+  React.useEffect(() => {
+    const view = jimuMapView?.view
+    if (!view || initialExtentRef.current) return
+
+    initialExtentRef.current = view.extent?.clone() ?? null
+  }, [jimuMapView])
 
   /**
    * Temas disponibles en el formulario a partir de la carga útil del widget origen.
@@ -471,8 +493,9 @@ const Widget = (props: AllWidgetProps<any>) => {
     const subtemas = selectedTema?.capasHijas ?? []
     const SUBTEMA = subtemas
       .map((item, index) => ({
-        value: item.NOMBRETEMATICA,
-        label: item.NOMBRETEMATICA,
+        value: item.NOMBRETEMATICA === temaValue ? item.TITULOCAPA : item.NOMBRETEMATICA,
+        // label: (selectedTema.NOMBRETEMATICA === 'Educación'|| selectedTema.NOMBRETEMATICA === 'Gestión del riesgo') ? item.TITULOCAPA : item.NOMBRETEMATICA,
+        label: item.NOMBRETEMATICA === temaValue ? item.TITULOCAPA : item.NOMBRETEMATICA,
         node: item
       }))
       .filter(option => Boolean(option.label))
@@ -542,10 +565,10 @@ const Widget = (props: AllWidgetProps<any>) => {
           layerUrl
         }
       })
-      .filter(option => Boolean(option.layerUrl || option.node.capasBisnietos))
+      .filter(option => Boolean(option.layerUrl || option.node.capasBisnietos || option.node.capasNietas))
 
     return CAPAS
-  }, [selectedSubtema, shouldShowGrupos, selectedGrupo, grupoValue, subtemaValue])
+  }, [selectedSubtema, shouldShowGrupos, selectedGrupo, grupoValue, subtemaValue, subtemaOptions, selectedTema])
 
   /**
    * Opcion de capa seleccionada.
@@ -608,13 +631,14 @@ const Widget = (props: AllWidgetProps<any>) => {
       activeLayerRef.current = null
     }
 
-    if (!selectedCapa?.layerUrl) return
+    const layerUrl = selectedCapa?.layerUrl/*  || selectedCapa?.node?.capasNietas[0]?.URL */
+    if (!layerUrl) return
     // Crea un nuevo FeatureLayer para la capa seleccionada y lo agrega al mapa.
     try {
       const layer = new FeatureLayer({
         id: 'buffer-active-layer',
         title: `Capa activa: ${selectedCapa.label}`,
-        url: selectedCapa.layerUrl,
+        url: layerUrl,
         visible: true
       })
 
@@ -685,7 +709,7 @@ const Widget = (props: AllWidgetProps<any>) => {
   /**
    * Limpia geometrias dibujadas y estado temporal de interaccion.
    */
-  const clearDrawings = React.useCallback(() => {
+  const clearDrawings = React.useCallback((): void => {
     lineStartPointRef.current = null
     graphicsLayerRef.current?.removeAll()
     setResultRows([])
@@ -694,6 +718,50 @@ const Widget = (props: AllWidgetProps<any>) => {
     lastSpatialRequestKeyRef.current = ''
     limpiarYCerrarWidgetResultados(WIDGET_IDS.RESULT)
   }, [])
+
+  /**
+   * Restaura el extent inicial del mapa cuando existe una referencia válida.
+   *
+   * @returns {Promise<void>}
+   */
+  const restoreInitialExtent = React.useCallback(async (): Promise<void> => {
+    const view = jimuMapView?.view
+    const initialExtent = initialExtentRef.current
+
+    if (!view || !initialExtent) return
+
+    try {
+      goToInitialExtent(jimuMapView, initialExtent)      
+    } catch (error: unknown) {
+      console.error('No fue posible restaurar el extent inicial de Buffer:', error)
+    }
+  }, [jimuMapView])
+
+  /**
+   * Limpia el estado espacial al cerrar el widget:
+   * 1. Elimina geometrías y buffer temporal.
+   * 2. Reinicia estados de interacción.
+   * 3. Remueve la capa activa temporal del mapa.
+   * 4. Restaura el extent inicial.
+   *
+   * @returns {void}
+   */
+  React.useEffect(() => {
+    if (props.state !== WidgetState.Closed) return
+
+    setDrawMode(null)
+    setIsProcessing(false)
+    setActionError('')
+    clearDrawings()
+
+    const view = jimuMapView?.view
+    if (view && activeLayerRef.current && view.map.findLayerById(activeLayerRef.current.id)) {
+      view.map.remove(activeLayerRef.current)
+    }
+    activeLayerRef.current = null
+
+    void restoreInitialExtent()
+  }, [props.state, jimuMapView, clearDrawings, restoreInitialExtent])
 
   /**
    * Normaliza y simplifica geometría para construcción de buffer estable.
@@ -1028,6 +1096,11 @@ const Widget = (props: AllWidgetProps<any>) => {
   const activeViewChangeHandler = (view: JimuMapView) => {
     if (!view) return
     setJimuMapView(view)
+    if (!initialExtentRef.current) {
+      initialExtentRef.current = view.view.extent?.clone() ?? null
+      // initialZoomRef.current = typeof view.view.zoom === 'number' ? view.view.zoom : null
+      // initialScaleRef.current = typeof view.view.scale === 'number' ? view.view.scale : null
+    }
   }
 
   return (

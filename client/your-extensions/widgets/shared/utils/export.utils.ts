@@ -298,6 +298,7 @@ export const goToInitialExtent = (varJimuMapView: JimuMapView, initialExtent: an
   if (validaLoggerLocalStorage('logger')) console.log("Restaurando extensión inicial =>", initialExtent)
     if (!varJimuMapView || !initialExtent) return
 
+  setTimeout(() => {
     varJimuMapView.view.goTo({
       target: initialExtent
     }, {
@@ -311,6 +312,7 @@ export const goToInitialExtent = (varJimuMapView: JimuMapView, initialExtent: an
         varJimuMapView.view.scale = initialScale
       }
     })
+  }, 2000)
 
   }
 
@@ -721,7 +723,6 @@ export const removeDrawAndCenterFeatures = (
   graphicsLayer: GraphicsLayer | null | undefined,
   setGraphicsLayer?: (layer: GraphicsLayer | null) => void
 ): void => {
-  console.log(11111111111111)
   const view = jimuMapView?.view
   if (!view || !graphicsLayer) return
 
