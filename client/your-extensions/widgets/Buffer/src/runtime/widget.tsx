@@ -630,7 +630,36 @@ const Widget = (props: AllWidgetProps<any>) => {
   }, [jimuMapView])
 
   /**
-   * Agrega/remueve la capa seleccionada al mapa para gestion visual del usuario.
+   * Asegura que la capa de gráficos (buffer) siempre esté en la posición superior del mapa.
+   * 
+   * Esto garantiza que las geometrías de buffer y sus intersecciones se rendericen
+   * por encima de todas las demás capas del mapa.
+   * 
+   * @returns {void}
+   * @internal
+   */
+  const ensureGraphicsLayerOnTop = React.useCallback((): void => {
+    const view = jimuMapView?.view
+    const graphicsLayer = graphicsLayerRef.current
+
+    if (!view || !graphicsLayer) return
+
+    const isGraphicsLayerInMap = view.map.findLayerById(graphicsLayer.id) !== undefined
+
+    if (isGraphicsLayerInMap) {
+      // Reordena la capa de gráficos al final (índice más alto = más arriba en el renderizado)
+      const layersCount = view.map.layers.length
+      if (layersCount > 1) {
+        view.map.reorder(graphicsLayer, layersCount - 1)
+      }
+    }
+  }, [jimuMapView])
+
+  /**
+   * Agrega/remueve la capa seleccionada al mapa para gestión visual del usuario.
+   * 
+   * Después de agregar la capa de características (FeatureLayer), garantiza que
+   * la capa de gráficos permanezca en la parte superior para renderizado correcto.
    */
   React.useEffect(() => {
     const view = jimuMapView?.view
@@ -654,6 +683,13 @@ const Widget = (props: AllWidgetProps<any>) => {
 
       view.map.add(layer)
       activeLayerRef.current = layer
+
+      /**
+       * Después de agregar la capa de características, asegura que la capa
+       * de gráficos esté en la posición superior del mapa para que el buffer
+       * sea visible encima de la capa de características.
+       */
+      ensureGraphicsLayerOnTop()
     } catch (error) {
       console.error('No fue posible cargar la capa seleccionada en Buffer:', error)
     }
@@ -664,7 +700,7 @@ const Widget = (props: AllWidgetProps<any>) => {
       }
       activeLayerRef.current = null
     }
-  }, [jimuMapView, selectedCapa])
+  }, [jimuMapView, selectedCapa, ensureGraphicsLayerOnTop])
 
   /**
    * Reinicia los controles dependientes cuando cambia Tema.
@@ -914,11 +950,64 @@ const Widget = (props: AllWidgetProps<any>) => {
   }, [])
 
   /**
-   * Dibuja la geometria base y su buffer en el GraphicsLayer temporal.
-   *
-   * @param geometry Geometria base (punto o linea) capturada sobre el mapa.
+   * Construye y dibuja el graphic de la geometría fuente (punto o línea).
+   * 
+   * @param geometry Geometría normalizada y simplificada (punto o línea).
+   * @returns Graphic del símbolo de origen.
+   * @internal
    */
-  const drawBuffer = React.useCallback(async (geometry: __esri.GeometryUnion) => {
+  const createSourceGraphic = (geometry: __esri.GeometryUnion): Graphic => {
+    return new Graphic({
+      geometry,
+      symbol: geometry.type === 'point'
+        ? {
+            type: 'simple-marker' as const,
+            color: [220, 40, 40, 1] as [number, number, number, number],
+            size: 9,
+            outline: { color: [255, 255, 255, 1] as [number, number, number, number], width: 1 }
+          }
+        : {
+            type: 'simple-line' as const,
+            color: [220, 40, 40, 1] as [number, number, number, number],
+            width: 2
+          }
+    })
+  }
+
+  /**
+   * Construye el graphic del buffer con símbolo de relleno semitransparente.
+   * 
+   * @param geometry Polígono de buffer generado.
+   * @returns Graphic del buffer.
+   * @internal
+   */
+  const createBufferGraphic = (geometry: __esri.Polygon): Graphic => {
+    return new Graphic({
+      geometry,
+      symbol: {
+        type: 'simple-fill' as const,
+        color: [255, 128, 0, 0.25] as [number, number, number, number],
+        outline: {
+          type: 'simple-line' as const,
+          color: [255, 128, 0, 1] as [number, number, number, number],
+          width: 2
+        }
+      }
+    })
+  }
+
+  /**
+   * Dibuja la geometría base, sus intersecciones y el buffer en el GraphicsLayer temporal.
+   * 
+   * Orden de renderizado (z-order):
+   * 1. Geometría fuente (punto o línea)
+   * 2. Geometrías intersectadas desde la capa objetivo
+   * 3. Buffer de polígono (dibujado al final para aparecer encima de todo)
+   *
+   * @param geometry Geometría base (punto o línea) capturada sobre el mapa.
+   * @returns {Promise<void>}
+   */
+  const drawBuffer = React.useCallback(async (geometry: __esri.GeometryUnion): Promise<void> => {
     const view = jimuMapView?.view
     const graphicsLayer = graphicsLayerRef.current
     const targetLayer = activeLayerRef.current
@@ -963,39 +1052,14 @@ const Widget = (props: AllWidgetProps<any>) => {
         console.log(`Buffer generado con distancia ${distanceValue} ${unitCode}:`, bufferGeometry)
       }
 
+      // Limpia la capa de gráficos
       graphicsLayer.removeAll()
 
-      const sourceGraphic = new Graphic({
-        geometry: preparedGeometry,
-        symbol: preparedGeometry.type === 'point'
-          ? {
-              type: 'simple-marker',
-              color: [220, 40, 40, 1],
-              size: 9,
-              outline: { color: [255, 255, 255, 1], width: 1 }
-            }
-          : {
-              type: 'simple-line',
-              color: [220, 40, 40, 1],
-              width: 2
-            }
-      })
+      // Paso 1: Dibuja el símbolo de la geometría fuente (punto o línea)
+      const sourceGraphic = createSourceGraphic(preparedGeometry)
+      graphicsLayer.add(sourceGraphic)
 
-      const bufferGraphic = new Graphic({
-        geometry: bufferGeometry,
-        symbol: {
-          type: 'simple-fill',
-          color: [255, 128, 0, 0.25],
-          outline: {
-            type: 'simple-line',
-            color: [255, 128, 0, 1],
-            width: 2
-          }
-        }
-      })
-
-      graphicsLayer.addMany([bufferGraphic, sourceGraphic])
-
+      // Paso 2: Consulta y dibuja las geometrías intersectadas
       const query = targetLayer.createQuery()
       query.geometry = bufferGeometry
       query.spatialRelationship = 'intersects'
@@ -1007,6 +1071,16 @@ const Widget = (props: AllWidgetProps<any>) => {
 
       const intersectedFeatures = queryResult.features ?? []
       drawIntersectedGeometries(intersectedFeatures)
+
+      // Paso 3: Dibuja el buffer al final (aparece encima de todo)
+      const bufferGraphic = createBufferGraphic(bufferGeometry)
+      graphicsLayer.add(bufferGraphic)
+
+      /**
+       * Asegura que la capa de gráficos esté renderizada en la posición superior
+       * para que el buffer sea visible encima de todas las demás capas del mapa.
+       */
+      ensureGraphicsLayerOnTop()
 
       const mappedResults = mapQueryResults(intersectedFeatures)
       setResultRows(mappedResults.rows)
@@ -1059,6 +1133,7 @@ const Widget = (props: AllWidgetProps<any>) => {
     mapQueryResults,
     prepareGeometryForBuffer,
     buildBufferGeometry,
+    ensureGraphicsLayerOnTop,
     props,
     selectedCapa?.label
   ])
@@ -1243,7 +1318,7 @@ const Widget = (props: AllWidgetProps<any>) => {
             <p className='buffer-widget__hint'>{resultMessage}</p>
           )}
 
-          {resultRows.length > 0 && resultFields.length > 0 && (
+          {/* {resultRows.length > 0 && resultFields.length > 0 && (
             <div className='widget-result-table-container' style={{ marginTop: '10px', maxHeight: '220px', overflow: 'auto' }}>
               <table className='table table-sm table-striped' style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
@@ -1268,7 +1343,7 @@ const Widget = (props: AllWidgetProps<any>) => {
                 </tbody>
               </table>
             </div>
-          )}
+          )} */}
 
           {drawMode === 'line' && (
             <p className='buffer-widget__hint'>Para linea: haga clic en dos puntos del mapa.</p>
