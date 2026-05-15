@@ -64,6 +64,11 @@ export interface SearchActionBarProps {
    * @default ""
    */
   error?: string
+  /**
+   * Oculta el botón de búsqueda.
+   * @default false
+   */
+  hideSearch?: boolean
 }
 
 /**
@@ -110,7 +115,8 @@ export const SearchActionBar: React.FC<SearchActionBarProps> = ({
   searchLabel = 'Buscar',
   clearLabel = 'Limpiar',
   helpText = '',
-  error = ''
+  error = '',
+  hideSearch = false
 }) => {
 
   /**
@@ -155,14 +161,16 @@ export const SearchActionBar: React.FC<SearchActionBarProps> = ({
 	      >
 	        {clearLabel}
 	      </Button>
-
-	      <Button
-	        type="primary"
-	        onClick={handleSearch}
-	        disabled={disableSearch || loading}
-	      >
-	        {loading ? 'Buscando...' : searchLabel}
-	      </Button>
+        {
+          !hideSearch &&
+            <Button
+              type="primary"
+              onClick={handleSearch}
+              disabled={disableSearch || loading}
+            >
+              {loading ? 'Buscando...' : searchLabel}
+            </Button>
+        }
 
 	    </div>
       {disableSearch && (

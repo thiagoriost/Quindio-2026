@@ -1,7 +1,10 @@
 import { appActions, getAppStore, type AllWidgetProps, WidgetState } from 'jimu-core'
 import React from 'react'
 import { JimuMapViewComponent, type JimuMapView } from 'jimu-arcgis'
-import { Label, Option, Select, TextInput } from 'jimu-ui'
+import { Button, Label, Option, Select, TextInput } from 'jimu-ui'
+// import { SelectLineOutlined } from 'jimu-icons/outlined/gis/select-line'
+import { DataLineOutlined } from 'jimu-icons/outlined/gis/data-line'
+import { SelectPointOutlined } from 'jimu-icons/outlined/gis/select-point'
 import esriConfig from '@arcgis/core/config'
 import Graphic from '@arcgis/core/Graphic'
 import GraphicsLayer from '@arcgis/core/layers/GraphicsLayer'
@@ -372,7 +375,6 @@ const buildSpatialRequestKey = (
  */
 const Widget = (props: AllWidgetProps<any>) => {
 
-  if(validaLoggerLocalStorage('logger')) console.log('WidgetBuffer ID:', {id:props.id, props, TABLA_DE_CONTENIDO:WIDGET_IDS.TABLA_DE_CONTENIDO})
   const dataFromTablaDeContenido: TablaDeContenidoPayload | null = useSelector(
       (state: {
         widgetsState?: { [key: string]: {
@@ -427,10 +429,10 @@ const Widget = (props: AllWidgetProps<any>) => {
   const lastSpatialRequestKeyRef = React.useRef('')
   /** Extent inicial de la vista para restaurarlo al cerrar el widget. */
   const initialExtentRef = React.useRef<__esri.Extent | null>(null)
-  // /** Zoom inicial del mapa para restablecer la vista al limpiar. */
-  // const initialZoomRef = React.useRef<number | null>(null)
-  // /** Escala inicial del mapa para restablecer la vista al limpiar. */
-  // const initialScaleRef = React.useRef<number | null>(null)
+  /** Zoom inicial del mapa para restablecer la vista al limpiar. */
+  const initialZoomRef = React.useRef<number | null>(null)
+  /** Escala inicial del mapa para restablecer la vista al limpiar. */
+  const initialScaleRef = React.useRef<number | null>(null)
 
   /**
    * Registra la carga útil recibida desde tabla de contenido para depuración local.
@@ -447,6 +449,7 @@ const Widget = (props: AllWidgetProps<any>) => {
    */
   React.useEffect(() => {
     geometryServiceRef.current = getOrCreateGeometryService()
+    if(validaLoggerLocalStorage('logger')) console.log('WidgetBuffer ID:', {id:props.id, props, TABLA_DE_CONTENIDO:WIDGET_IDS.TABLA_DE_CONTENIDO})
   }, [])
 
   /**
@@ -482,6 +485,7 @@ const Widget = (props: AllWidgetProps<any>) => {
    */
   const selectedTema = React.useMemo(() => {
     const TEMAOPTION = temaOptions.find(option => option.value === temaValue)?.node
+    if(validaLoggerLocalStorage('logger')) console.log({temaValue, TEMAOPTION})
     return TEMAOPTION ?? null
   }, [temaOptions, temaValue])
 
@@ -499,6 +503,7 @@ const Widget = (props: AllWidgetProps<any>) => {
         node: item
       }))
       .filter(option => Boolean(option.label))
+    if(validaLoggerLocalStorage('logger')) console.log({selectedTema, subtemas, SUBTEMA})
     return SUBTEMA
   }, [selectedTema, temaValue])
 
@@ -508,6 +513,7 @@ const Widget = (props: AllWidgetProps<any>) => {
   const selectedSubtema = React.useMemo(() => {
     if (subtemaOptions.length === 0) return null
     const subtemaOption = subtemaOptions.find(option => option.value === subtemaValue)
+    if(validaLoggerLocalStorage('logger')) console.log({subtemaValue, subtemaOption})
     return subtemaOption ?? null
   }, [subtemaOptions, subtemaValue])
 
@@ -517,6 +523,7 @@ const Widget = (props: AllWidgetProps<any>) => {
   const shouldShowGrupos = React.useMemo(() => {
     if (!selectedSubtema?.label) return false
     const validacion = selectedSubtema.node.capasNietas?.some(grupo => Array.isArray(grupo.capasBisnietos) && grupo.capasBisnietos.length > 0) ?? false
+    if(validaLoggerLocalStorage('logger')) console.log({selectedSubtema: selectedSubtema.label, shouldShowGrupos: validacion})
     return validacion
   }, [selectedSubtema])
 
@@ -534,6 +541,7 @@ const Widget = (props: AllWidgetProps<any>) => {
         node: item
       }))
       .filter(option => Boolean(option.label))
+    if(validaLoggerLocalStorage('logger')) console.log({selectedSubtema: selectedSubtema.label, grupoNodes, GRUPO})
     return GRUPO
   }, [selectedSubtema, shouldShowGrupos, subtemaValue])
 
@@ -543,6 +551,7 @@ const Widget = (props: AllWidgetProps<any>) => {
   const selectedGrupo = React.useMemo(() => {
     if (grupoOptions.length === 0 || grupoValue==='') return null
     const GRUPO = grupoOptions.find(option => option.value === grupoValue)?.node ?? null
+    if(validaLoggerLocalStorage('logger')) console.log({grupoValue, selectedGrupo: GRUPO})
     return GRUPO
   }, [grupoOptions, grupoValue])
 
@@ -566,7 +575,7 @@ const Widget = (props: AllWidgetProps<any>) => {
         }
       })
       .filter(option => Boolean(option.layerUrl || option.node.capasBisnietos || option.node.capasNietas))
-
+    if(validaLoggerLocalStorage('logger')) console.log({selectedSubtema, shouldShowGrupos, selectedGrupo, capaNodes, CAPAS,grupoValue,subtemaValue,subtemaOptions,selectedTema})
     return CAPAS
   }, [selectedSubtema, shouldShowGrupos, selectedGrupo, grupoValue, subtemaValue, subtemaOptions, selectedTema])
 
@@ -576,6 +585,7 @@ const Widget = (props: AllWidgetProps<any>) => {
   const selectedCapa = React.useMemo(() => {
     if (capaOptions.length === 0) return null
     const CAPAOPTION = capaOptions.find(option => option.value === capaValue)
+    if(validaLoggerLocalStorage('logger')) console.log({capaValue, CAPAOPTION})
     return CAPAOPTION ?? null
   }, [capaValue, capaOptions])
 
@@ -620,7 +630,36 @@ const Widget = (props: AllWidgetProps<any>) => {
   }, [jimuMapView])
 
   /**
-   * Agrega/remueve la capa seleccionada al mapa para gestion visual del usuario.
+   * Asegura que la capa de gráficos (buffer) siempre esté en la posición superior del mapa.
+   * 
+   * Esto garantiza que las geometrías de buffer y sus intersecciones se rendericen
+   * por encima de todas las demás capas del mapa.
+   * 
+   * @returns {void}
+   * @internal
+   */
+  const ensureGraphicsLayerOnTop = React.useCallback((): void => {
+    const view = jimuMapView?.view
+    const graphicsLayer = graphicsLayerRef.current
+
+    if (!view || !graphicsLayer) return
+
+    const isGraphicsLayerInMap = view.map.findLayerById(graphicsLayer.id) !== undefined
+
+    if (isGraphicsLayerInMap) {
+      // Reordena la capa de gráficos al final (índice más alto = más arriba en el renderizado)
+      const layersCount = view.map.layers.length
+      if (layersCount > 1) {
+        view.map.reorder(graphicsLayer, layersCount - 1)
+      }
+    }
+  }, [jimuMapView])
+
+  /**
+   * Agrega/remueve la capa seleccionada al mapa para gestión visual del usuario.
+   * 
+   * Después de agregar la capa de características (FeatureLayer), garantiza que
+   * la capa de gráficos permanezca en la parte superior para renderizado correcto.
    */
   React.useEffect(() => {
     const view = jimuMapView?.view
@@ -644,6 +683,13 @@ const Widget = (props: AllWidgetProps<any>) => {
 
       view.map.add(layer)
       activeLayerRef.current = layer
+
+      /**
+       * Después de agregar la capa de características, asegura que la capa
+       * de gráficos esté en la posición superior del mapa para que el buffer
+       * sea visible encima de la capa de características.
+       */
+      ensureGraphicsLayerOnTop()
     } catch (error) {
       console.error('No fue posible cargar la capa seleccionada en Buffer:', error)
     }
@@ -654,7 +700,7 @@ const Widget = (props: AllWidgetProps<any>) => {
       }
       activeLayerRef.current = null
     }
-  }, [jimuMapView, selectedCapa])
+  }, [jimuMapView, selectedCapa, ensureGraphicsLayerOnTop])
 
   /**
    * Reinicia los controles dependientes cuando cambia Tema.
@@ -698,11 +744,10 @@ const Widget = (props: AllWidgetProps<any>) => {
   }
 
   /**
-   * Cambia el modo de dibujo seleccionado desde el formulario.
+   * Activa/desactiva el modo de dibujo seleccionado desde el formulario.
    */
-  const onDrawModeChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    const nextMode = event.target.value as 'point' | 'line' | ''
-    setDrawMode(nextMode || null)
+  const onDrawModeSelect = (nextMode: 'point' | 'line') => {
+    setDrawMode(currentMode => currentMode === nextMode ? null : nextMode)
     setActionError('')
   }
 
@@ -748,20 +793,27 @@ const Widget = (props: AllWidgetProps<any>) => {
    */
   React.useEffect(() => {
     if (props.state !== WidgetState.Closed) return
+    resetWidget()  
+  }, [props.state, jimuMapView, clearDrawings, restoreInitialExtent])
 
+  const resetWidget = () => {
     setDrawMode(null)
     setIsProcessing(false)
     setActionError('')
     clearDrawings()
+    setTemaValue('')
+    setSubtemaValue('')
+    setGrupoValue('')
+    setCapaValue('')
 
-    const view = jimuMapView?.view
+     const view = jimuMapView?.view
     if (view && activeLayerRef.current && view.map.findLayerById(activeLayerRef.current.id)) {
       view.map.remove(activeLayerRef.current)
     }
     activeLayerRef.current = null
 
-    void restoreInitialExtent()
-  }, [props.state, jimuMapView, clearDrawings, restoreInitialExtent])
+    void restoreInitialExtent()   
+  }
 
   /**
    * Normaliza y simplifica geometría para construcción de buffer estable.
@@ -898,11 +950,64 @@ const Widget = (props: AllWidgetProps<any>) => {
   }, [])
 
   /**
-   * Dibuja la geometria base y su buffer en el GraphicsLayer temporal.
-   *
-   * @param geometry Geometria base (punto o linea) capturada sobre el mapa.
+   * Construye y dibuja el graphic de la geometría fuente (punto o línea).
+   * 
+   * @param geometry Geometría normalizada y simplificada (punto o línea).
+   * @returns Graphic del símbolo de origen.
+   * @internal
    */
-  const drawBuffer = React.useCallback(async (geometry: __esri.GeometryUnion) => {
+  const createSourceGraphic = (geometry: __esri.GeometryUnion): Graphic => {
+    return new Graphic({
+      geometry,
+      symbol: geometry.type === 'point'
+        ? {
+            type: 'simple-marker' as const,
+            color: [220, 40, 40, 1] as [number, number, number, number],
+            size: 9,
+            outline: { color: [255, 255, 255, 1] as [number, number, number, number], width: 1 }
+          }
+        : {
+            type: 'simple-line' as const,
+            color: [220, 40, 40, 1] as [number, number, number, number],
+            width: 2
+          }
+    })
+  }
+
+  /**
+   * Construye el graphic del buffer con símbolo de relleno semitransparente.
+   * 
+   * @param geometry Polígono de buffer generado.
+   * @returns Graphic del buffer.
+   * @internal
+   */
+  const createBufferGraphic = (geometry: __esri.Polygon): Graphic => {
+    return new Graphic({
+      geometry,
+      symbol: {
+        type: 'simple-fill' as const,
+        color: [255, 128, 0, 0.25] as [number, number, number, number],
+        outline: {
+          type: 'simple-line' as const,
+          color: [255, 128, 0, 1] as [number, number, number, number],
+          width: 2
+        }
+      }
+    })
+  }
+
+  /**
+   * Dibuja la geometría base, sus intersecciones y el buffer en el GraphicsLayer temporal.
+   * 
+   * Orden de renderizado (z-order):
+   * 1. Geometría fuente (punto o línea)
+   * 2. Geometrías intersectadas desde la capa objetivo
+   * 3. Buffer de polígono (dibujado al final para aparecer encima de todo)
+   *
+   * @param geometry Geometría base (punto o línea) capturada sobre el mapa.
+   * @returns {Promise<void>}
+   */
+  const drawBuffer = React.useCallback(async (geometry: __esri.GeometryUnion): Promise<void> => {
     const view = jimuMapView?.view
     const graphicsLayer = graphicsLayerRef.current
     const targetLayer = activeLayerRef.current
@@ -947,39 +1052,14 @@ const Widget = (props: AllWidgetProps<any>) => {
         console.log(`Buffer generado con distancia ${distanceValue} ${unitCode}:`, bufferGeometry)
       }
 
+      // Limpia la capa de gráficos
       graphicsLayer.removeAll()
 
-      const sourceGraphic = new Graphic({
-        geometry: preparedGeometry,
-        symbol: preparedGeometry.type === 'point'
-          ? {
-              type: 'simple-marker',
-              color: [220, 40, 40, 1],
-              size: 9,
-              outline: { color: [255, 255, 255, 1], width: 1 }
-            }
-          : {
-              type: 'simple-line',
-              color: [220, 40, 40, 1],
-              width: 2
-            }
-      })
+      // Paso 1: Dibuja el símbolo de la geometría fuente (punto o línea)
+      const sourceGraphic = createSourceGraphic(preparedGeometry)
+      graphicsLayer.add(sourceGraphic)
 
-      const bufferGraphic = new Graphic({
-        geometry: bufferGeometry,
-        symbol: {
-          type: 'simple-fill',
-          color: [255, 128, 0, 0.25],
-          outline: {
-            type: 'simple-line',
-            color: [255, 128, 0, 1],
-            width: 2
-          }
-        }
-      })
-
-      graphicsLayer.addMany([bufferGraphic, sourceGraphic])
-
+      // Paso 2: Consulta y dibuja las geometrías intersectadas
       const query = targetLayer.createQuery()
       query.geometry = bufferGeometry
       query.spatialRelationship = 'intersects'
@@ -991,6 +1071,16 @@ const Widget = (props: AllWidgetProps<any>) => {
 
       const intersectedFeatures = queryResult.features ?? []
       drawIntersectedGeometries(intersectedFeatures)
+
+      // Paso 3: Dibuja el buffer al final (aparece encima de todo)
+      const bufferGraphic = createBufferGraphic(bufferGeometry)
+      graphicsLayer.add(bufferGraphic)
+
+      /**
+       * Asegura que la capa de gráficos esté renderizada en la posición superior
+       * para que el buffer sea visible encima de todas las demás capas del mapa.
+       */
+      ensureGraphicsLayerOnTop()
 
       const mappedResults = mapQueryResults(intersectedFeatures)
       setResultRows(mappedResults.rows)
@@ -1043,6 +1133,7 @@ const Widget = (props: AllWidgetProps<any>) => {
     mapQueryResults,
     prepareGeometryForBuffer,
     buildBufferGeometry,
+    ensureGraphicsLayerOnTop,
     props,
     selectedCapa?.label
   ])
@@ -1098,8 +1189,8 @@ const Widget = (props: AllWidgetProps<any>) => {
     setJimuMapView(view)
     if (!initialExtentRef.current) {
       initialExtentRef.current = view.view.extent?.clone() ?? null
-      // initialZoomRef.current = typeof view.view.zoom === 'number' ? view.view.zoom : null
-      // initialScaleRef.current = typeof view.view.scale === 'number' ? view.view.scale : null
+      initialZoomRef.current = typeof view.view.zoom === 'number' ? view.view.zoom : null
+      initialScaleRef.current = typeof view.view.scale === 'number' ? view.view.scale : null
     }
   }
 
@@ -1150,26 +1241,53 @@ const Widget = (props: AllWidgetProps<any>) => {
             ))}
           </Select>
 
-          <Label>Distancia:</Label>
-          <TextInput
-            type='text'
-            min='1'
-            value={distancia}
-            onChange={(event: React.ChangeEvent<HTMLInputElement>) => { setDistancia(event.target.value) }}
-          />
+          
+          {
+              capaValue!=="" && (
+                <>
+                  <Label>Distancia:</Label>
+                  <TextInput
+                    type='text'
+                    min='1'
+                    value={distancia}
+                    onChange={(event: React.ChangeEvent<HTMLInputElement>) => { setDistancia(event.target.value) }}
+                  />
 
-          <Label>Unidad:</Label>
-          <Select value={unidad} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => { setUnidad(event.target.value) }}>
-            <Option value='Metros'>Metros</Option>
-            <Option value='Kilometros'>Kilometros</Option>
-          </Select>
-
-          <Label>Modo de dibujo:</Label>
-          <Select value={drawMode ?? ''} onChange={onDrawModeChange}>
-            <Option value=''>Seleccione...</Option>
-            <Option value='point'>Punto</Option>
-            <Option value='line'>Linea</Option>
-          </Select>
+                  <Label>Unidad:</Label>
+                  <Select value={unidad} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => { setUnidad(event.target.value) }}>
+                    <Option value='Metros'>Metros</Option>
+                    <Option value='Kilometros'>Kilometros</Option>
+                  </Select>
+                  <Label>Modo de dibujo:</Label>
+                  <div
+                    role='group'
+                    aria-label='Modo de dibujo'
+                    style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}
+                  >
+                    <Button
+                      type={drawMode === 'point' ? 'primary' : 'default'}
+                      aria-pressed={drawMode === 'point'}
+                      title='Punto'
+                      onClick={() => { onDrawModeSelect('point') }}
+                      style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+                    >
+                      <SelectPointOutlined width={16} height={16} />
+                      <span>Punto</span>
+                    </Button>
+                    <Button
+                      type={drawMode === 'line' ? 'primary' : 'default'}
+                      aria-pressed={drawMode === 'line'}
+                      title='Linea'
+                      onClick={() => { onDrawModeSelect('line') }}
+                      style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+                    >
+                      <DataLineOutlined width={16} height={16} />
+                      <span>Linea</span>
+                    </Button>
+                  </div>
+                </>
+              )
+          }
 
           <SearchActionBar
             onSearch={() => {
@@ -1183,17 +1301,13 @@ const Widget = (props: AllWidgetProps<any>) => {
               }
               setActionError('')
             }}
-            onClear={() => {
-              setDrawMode(null)
-              setIsProcessing(false)
-              setActionError('')
-              clearDrawings()
-            }}
+            onClear={resetWidget}
             disableSearch={!drawMode || !selectedCapa?.layerUrl || isProcessing}
-            helpText='Seleccione modo de dibujo y haga clic en Buscar para habilitar la captura en el mapa.'
+            helpText='Seleccione un modo de dibujo para habilitar la captura en el mapa, y haga clic sobre el mapa en donde desea realizar el buffer.'
             error={actionError}
             searchLabel='Buscar'
             clearLabel='Limpiar'
+            hideSearch={true}
           />
 
           {isProcessing && (
@@ -1204,7 +1318,7 @@ const Widget = (props: AllWidgetProps<any>) => {
             <p className='buffer-widget__hint'>{resultMessage}</p>
           )}
 
-          {resultRows.length > 0 && resultFields.length > 0 && (
+          {/* {resultRows.length > 0 && resultFields.length > 0 && (
             <div className='widget-result-table-container' style={{ marginTop: '10px', maxHeight: '220px', overflow: 'auto' }}>
               <table className='table table-sm table-striped' style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
@@ -1229,7 +1343,7 @@ const Widget = (props: AllWidgetProps<any>) => {
                 </tbody>
               </table>
             </div>
-          )}
+          )} */}
 
           {drawMode === 'line' && (
             <p className='buffer-widget__hint'>Para linea: haga clic en dos puntos del mapa.</p>
