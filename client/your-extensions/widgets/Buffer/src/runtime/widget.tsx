@@ -1,7 +1,10 @@
 import { appActions, getAppStore, type AllWidgetProps, WidgetState } from 'jimu-core'
 import React from 'react'
 import { JimuMapViewComponent, type JimuMapView } from 'jimu-arcgis'
-import { Label, Option, Select, TextInput } from 'jimu-ui'
+import { Button, Label, Option, Select, TextInput } from 'jimu-ui'
+// import { SelectLineOutlined } from 'jimu-icons/outlined/gis/select-line'
+import { DataLineOutlined } from 'jimu-icons/outlined/gis/data-line'
+import { SelectPointOutlined } from 'jimu-icons/outlined/gis/select-point'
 import esriConfig from '@arcgis/core/config'
 import Graphic from '@arcgis/core/Graphic'
 import GraphicsLayer from '@arcgis/core/layers/GraphicsLayer'
@@ -372,7 +375,6 @@ const buildSpatialRequestKey = (
  */
 const Widget = (props: AllWidgetProps<any>) => {
 
-  if(validaLoggerLocalStorage('logger')) console.log('WidgetBuffer ID:', {id:props.id, props, TABLA_DE_CONTENIDO:WIDGET_IDS.TABLA_DE_CONTENIDO})
   const dataFromTablaDeContenido: TablaDeContenidoPayload | null = useSelector(
       (state: {
         widgetsState?: { [key: string]: {
@@ -427,10 +429,10 @@ const Widget = (props: AllWidgetProps<any>) => {
   const lastSpatialRequestKeyRef = React.useRef('')
   /** Extent inicial de la vista para restaurarlo al cerrar el widget. */
   const initialExtentRef = React.useRef<__esri.Extent | null>(null)
-  // /** Zoom inicial del mapa para restablecer la vista al limpiar. */
-  // const initialZoomRef = React.useRef<number | null>(null)
-  // /** Escala inicial del mapa para restablecer la vista al limpiar. */
-  // const initialScaleRef = React.useRef<number | null>(null)
+  /** Zoom inicial del mapa para restablecer la vista al limpiar. */
+  const initialZoomRef = React.useRef<number | null>(null)
+  /** Escala inicial del mapa para restablecer la vista al limpiar. */
+  const initialScaleRef = React.useRef<number | null>(null)
 
   /**
    * Registra la carga útil recibida desde tabla de contenido para depuración local.
@@ -447,6 +449,7 @@ const Widget = (props: AllWidgetProps<any>) => {
    */
   React.useEffect(() => {
     geometryServiceRef.current = getOrCreateGeometryService()
+    if(validaLoggerLocalStorage('logger')) console.log('WidgetBuffer ID:', {id:props.id, props, TABLA_DE_CONTENIDO:WIDGET_IDS.TABLA_DE_CONTENIDO})
   }, [])
 
   /**
@@ -482,6 +485,7 @@ const Widget = (props: AllWidgetProps<any>) => {
    */
   const selectedTema = React.useMemo(() => {
     const TEMAOPTION = temaOptions.find(option => option.value === temaValue)?.node
+    if(validaLoggerLocalStorage('logger')) console.log({temaValue, TEMAOPTION})
     return TEMAOPTION ?? null
   }, [temaOptions, temaValue])
 
@@ -499,6 +503,7 @@ const Widget = (props: AllWidgetProps<any>) => {
         node: item
       }))
       .filter(option => Boolean(option.label))
+    if(validaLoggerLocalStorage('logger')) console.log({selectedTema, subtemas, SUBTEMA})
     return SUBTEMA
   }, [selectedTema, temaValue])
 
@@ -508,6 +513,7 @@ const Widget = (props: AllWidgetProps<any>) => {
   const selectedSubtema = React.useMemo(() => {
     if (subtemaOptions.length === 0) return null
     const subtemaOption = subtemaOptions.find(option => option.value === subtemaValue)
+    if(validaLoggerLocalStorage('logger')) console.log({subtemaValue, subtemaOption})
     return subtemaOption ?? null
   }, [subtemaOptions, subtemaValue])
 
@@ -517,6 +523,7 @@ const Widget = (props: AllWidgetProps<any>) => {
   const shouldShowGrupos = React.useMemo(() => {
     if (!selectedSubtema?.label) return false
     const validacion = selectedSubtema.node.capasNietas?.some(grupo => Array.isArray(grupo.capasBisnietos) && grupo.capasBisnietos.length > 0) ?? false
+    if(validaLoggerLocalStorage('logger')) console.log({selectedSubtema: selectedSubtema.label, shouldShowGrupos: validacion})
     return validacion
   }, [selectedSubtema])
 
@@ -534,6 +541,7 @@ const Widget = (props: AllWidgetProps<any>) => {
         node: item
       }))
       .filter(option => Boolean(option.label))
+    if(validaLoggerLocalStorage('logger')) console.log({selectedSubtema: selectedSubtema.label, grupoNodes, GRUPO})
     return GRUPO
   }, [selectedSubtema, shouldShowGrupos, subtemaValue])
 
@@ -543,6 +551,7 @@ const Widget = (props: AllWidgetProps<any>) => {
   const selectedGrupo = React.useMemo(() => {
     if (grupoOptions.length === 0 || grupoValue==='') return null
     const GRUPO = grupoOptions.find(option => option.value === grupoValue)?.node ?? null
+    if(validaLoggerLocalStorage('logger')) console.log({grupoValue, selectedGrupo: GRUPO})
     return GRUPO
   }, [grupoOptions, grupoValue])
 
@@ -566,7 +575,7 @@ const Widget = (props: AllWidgetProps<any>) => {
         }
       })
       .filter(option => Boolean(option.layerUrl || option.node.capasBisnietos || option.node.capasNietas))
-
+    if(validaLoggerLocalStorage('logger')) console.log({selectedSubtema, shouldShowGrupos, selectedGrupo, capaNodes, CAPAS,grupoValue,subtemaValue,subtemaOptions,selectedTema})
     return CAPAS
   }, [selectedSubtema, shouldShowGrupos, selectedGrupo, grupoValue, subtemaValue, subtemaOptions, selectedTema])
 
@@ -576,6 +585,7 @@ const Widget = (props: AllWidgetProps<any>) => {
   const selectedCapa = React.useMemo(() => {
     if (capaOptions.length === 0) return null
     const CAPAOPTION = capaOptions.find(option => option.value === capaValue)
+    if(validaLoggerLocalStorage('logger')) console.log({capaValue, CAPAOPTION})
     return CAPAOPTION ?? null
   }, [capaValue, capaOptions])
 
@@ -698,11 +708,10 @@ const Widget = (props: AllWidgetProps<any>) => {
   }
 
   /**
-   * Cambia el modo de dibujo seleccionado desde el formulario.
+   * Activa/desactiva el modo de dibujo seleccionado desde el formulario.
    */
-  const onDrawModeChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    const nextMode = event.target.value as 'point' | 'line' | ''
-    setDrawMode(nextMode || null)
+  const onDrawModeSelect = (nextMode: 'point' | 'line') => {
+    setDrawMode(currentMode => currentMode === nextMode ? null : nextMode)
     setActionError('')
   }
 
@@ -748,20 +757,27 @@ const Widget = (props: AllWidgetProps<any>) => {
    */
   React.useEffect(() => {
     if (props.state !== WidgetState.Closed) return
+    resetWidget()  
+  }, [props.state, jimuMapView, clearDrawings, restoreInitialExtent])
 
+  const resetWidget = () => {
     setDrawMode(null)
     setIsProcessing(false)
     setActionError('')
     clearDrawings()
+    setTemaValue('')
+    setSubtemaValue('')
+    setGrupoValue('')
+    setCapaValue('')
 
-    const view = jimuMapView?.view
+     const view = jimuMapView?.view
     if (view && activeLayerRef.current && view.map.findLayerById(activeLayerRef.current.id)) {
       view.map.remove(activeLayerRef.current)
     }
     activeLayerRef.current = null
 
-    void restoreInitialExtent()
-  }, [props.state, jimuMapView, clearDrawings, restoreInitialExtent])
+    void restoreInitialExtent()   
+  }
 
   /**
    * Normaliza y simplifica geometría para construcción de buffer estable.
@@ -1098,8 +1114,8 @@ const Widget = (props: AllWidgetProps<any>) => {
     setJimuMapView(view)
     if (!initialExtentRef.current) {
       initialExtentRef.current = view.view.extent?.clone() ?? null
-      // initialZoomRef.current = typeof view.view.zoom === 'number' ? view.view.zoom : null
-      // initialScaleRef.current = typeof view.view.scale === 'number' ? view.view.scale : null
+      initialZoomRef.current = typeof view.view.zoom === 'number' ? view.view.zoom : null
+      initialScaleRef.current = typeof view.view.scale === 'number' ? view.view.scale : null
     }
   }
 
@@ -1150,26 +1166,53 @@ const Widget = (props: AllWidgetProps<any>) => {
             ))}
           </Select>
 
-          <Label>Distancia:</Label>
-          <TextInput
-            type='text'
-            min='1'
-            value={distancia}
-            onChange={(event: React.ChangeEvent<HTMLInputElement>) => { setDistancia(event.target.value) }}
-          />
+          
+          {
+              capaValue!=="" && (
+                <>
+                  <Label>Distancia:</Label>
+                  <TextInput
+                    type='text'
+                    min='1'
+                    value={distancia}
+                    onChange={(event: React.ChangeEvent<HTMLInputElement>) => { setDistancia(event.target.value) }}
+                  />
 
-          <Label>Unidad:</Label>
-          <Select value={unidad} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => { setUnidad(event.target.value) }}>
-            <Option value='Metros'>Metros</Option>
-            <Option value='Kilometros'>Kilometros</Option>
-          </Select>
-
-          <Label>Modo de dibujo:</Label>
-          <Select value={drawMode ?? ''} onChange={onDrawModeChange}>
-            <Option value=''>Seleccione...</Option>
-            <Option value='point'>Punto</Option>
-            <Option value='line'>Linea</Option>
-          </Select>
+                  <Label>Unidad:</Label>
+                  <Select value={unidad} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => { setUnidad(event.target.value) }}>
+                    <Option value='Metros'>Metros</Option>
+                    <Option value='Kilometros'>Kilometros</Option>
+                  </Select>
+                  <Label>Modo de dibujo:</Label>
+                  <div
+                    role='group'
+                    aria-label='Modo de dibujo'
+                    style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}
+                  >
+                    <Button
+                      type={drawMode === 'point' ? 'primary' : 'default'}
+                      aria-pressed={drawMode === 'point'}
+                      title='Punto'
+                      onClick={() => { onDrawModeSelect('point') }}
+                      style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+                    >
+                      <SelectPointOutlined width={16} height={16} />
+                      <span>Punto</span>
+                    </Button>
+                    <Button
+                      type={drawMode === 'line' ? 'primary' : 'default'}
+                      aria-pressed={drawMode === 'line'}
+                      title='Linea'
+                      onClick={() => { onDrawModeSelect('line') }}
+                      style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+                    >
+                      <DataLineOutlined width={16} height={16} />
+                      <span>Linea</span>
+                    </Button>
+                  </div>
+                </>
+              )
+          }
 
           <SearchActionBar
             onSearch={() => {
@@ -1183,17 +1226,13 @@ const Widget = (props: AllWidgetProps<any>) => {
               }
               setActionError('')
             }}
-            onClear={() => {
-              setDrawMode(null)
-              setIsProcessing(false)
-              setActionError('')
-              clearDrawings()
-            }}
+            onClear={resetWidget}
             disableSearch={!drawMode || !selectedCapa?.layerUrl || isProcessing}
-            helpText='Seleccione modo de dibujo y haga clic en Buscar para habilitar la captura en el mapa.'
+            helpText='Seleccione un modo de dibujo para habilitar la captura en el mapa, y haga clic sobre el mapa en donde desea realizar el buffer.'
             error={actionError}
             searchLabel='Buscar'
             clearLabel='Limpiar'
+            hideSearch={true}
           />
 
           {isProcessing && (
