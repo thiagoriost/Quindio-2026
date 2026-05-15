@@ -485,7 +485,7 @@ const Widget = (props: AllWidgetProps<any>) => {
    */
   const selectedTema = React.useMemo(() => {
     const TEMAOPTION = temaOptions.find(option => option.value === temaValue)?.node
-    if(validaLoggerLocalStorage('logger')) console.log({temaValue, TEMAOPTION})
+    if(validaLoggerLocalStorage('logger')) console.log({temaOptions, temaValue, TEMAOPTION})
     return TEMAOPTION ?? null
   }, [temaOptions, temaValue])
 
@@ -711,6 +711,9 @@ const Widget = (props: AllWidgetProps<any>) => {
     setGrupoValue('')
     setCapaValue('')
     setActionError('')
+    clearDrawings()
+    void restoreInitialExtent()
+
   }
 
   /**
