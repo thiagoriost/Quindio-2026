@@ -9,13 +9,18 @@ const urls = {
   // SERVICIO_EDUCACION              : "https://sigquindio.gov.co/arcgis/rest/services/QUINDIO_III/Educacion_T/MapServer",
   SERVICIO_EDUCACION              : "https://pruebassig.igac.gov.co/server/rest/services/SIG_QUINDIO/Eduacion/MapServer",
   SERVICIO_EDUCACION_ALFANUMERICO : "https://sigquindio.gov.co/arcgis/rest/services/QUINDIO_III/EducacionAlfanumerico/MapServer",
-  SERVICIO_SALUD                  : "https://sigquindio.gov.co/arcgis/rest/services/QUINDIO_III/Salud_T/MapServer",
+  SERVICIO_SALUD                  : "https://pruebassig.igac.gov.co/server/rest/services/SIG_QUINDIO/Salud/MapServer",
   SERVICIO_GENERAL_SALUD          : "https://sigquindio.gov.co/arcgis/rest/services/QUINDIO_III/Salud_T/MapServer",
-  SERVICIO_SALUD_ALFANUMERICO     : "https://sigquindio.gov.co/arcgis/rest/services/QUINDIO_III/SaludAlfanumerico/MapServer",
+  SERVICIO_SALUD_ALFANUMERICO     : "https://pruebassig.igac.gov.co/server/rest/services/SIG_QUINDIO/Salud_Alfanumerico/MapServer",
   SERVICIO_CULTURA_TURISMO        : "https://sigquindio.gov.co/arcgis/rest/services/QUINDIO_III/CulturaTurismo/MapServer",
   SERVICIO_CULTURA_TURISMO_ALFANUMERICO : "https://sigquindio.gov.co/arcgis/rest/services/QUINDIO_III/TurismoAlfanumerico/MapServer/0",
   SERVICIO_ORDENAMIENTO_TERRITORIAL : "https://sigquindio.gov.co/arcgis/rest/services/QUINDIO_III/OrdenamientoTerritorial_T/MapServer",
   SERVICIO_INDUSTRIA_COMERCIO     : "https://sigquindio.gov.co/arcgis/rest/services/QUINDIO_III/Industria_Y_Comercio/MapServer",
+
+  // URLs deprecadas, se mantienen para casos de emergencia
+  OLD_SERVICIO_SALUD              : "https://sigquindio.gov.co/arcgis/rest/services/QUINDIO_III/Salud_T/MapServer",
+  OLD_SERVICIO_SALUD_ALFANUMERICO : "https://sigquindio.gov.co/arcgis/rest/services/QUINDIO_III/SaludAlfanumerico/MapServer",
+
   //SERVICIO_RIESGO :> SERVICIO_RIESGO_CONSULTA en ambiente productivo
 
   // ** Falla y se desconoce su uso (Octubre2019)

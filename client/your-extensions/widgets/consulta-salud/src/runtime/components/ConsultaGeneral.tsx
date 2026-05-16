@@ -73,7 +73,7 @@ const ConsultaGeneral = forwardRef(({
         getFeatures: () => getFeatures(),
         limpiar: () => {
             setIdTipoEstablecimiento(tipoEstablecimientos[0]?.value || '')
-            setIdInstitucion(instituciones[0]?.value || '')
+            setIdInstitucion(instituciones[0]?.value || '') 
             setNombreInstitucion(instituciones[0]?.label || '')
             setIdMunicipio(municipios[0]?.value || '')
         }

@@ -15,6 +15,7 @@ const TEMATICA_SUICIDIO = '7'
 
 const ConsultaTematicas = forwardRef<ConsultaComponentHandle, any>(({
     loading,
+    setLoading,
     idMunicipio,
     setIdMunicipio,
     municipios,
@@ -59,8 +60,9 @@ const ConsultaTematicas = forwardRef<ConsultaComponentHandle, any>(({
 
     useImperativeHandle(ref, () => ({
         consultar: async () => {
-            setMessage(`consultar de consulta tematicas ${anio}`)
+            setLoading(true)
 
+            try {
             const layerId = tematica || TEMATICA_MORTALIDAD
             const whereParts: string[] = []
 
@@ -108,6 +110,9 @@ const ConsultaTematicas = forwardRef<ConsultaComponentHandle, any>(({
                         graphicType: 'bar',
                         selectedIndicador: 0
                     }
+            }
+            } finally {
+                setLoading(false)
             }
         },
         limpiar: () => {
