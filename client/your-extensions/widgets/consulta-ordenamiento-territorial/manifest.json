@@ -1,0 +1,17 @@
+{
+  "name": "consulta-ordenamiento-territorial",
+  "label": "Consulta ordenamiento territorial",
+  "type": "widget",
+  "version": "1.19.0",
+  "dependency": ["jimu-arcgis"],
+  "exbVersion": "1.19.0",
+  "author": "IGAC",
+  "description": "Consulta ordenamiento territorial.",
+  "copyright": "",
+  "license": "http://www.apache.org/licenses/LICENSE-2.0",
+  "properties": {},
+  "defaultSize": {
+    "width": 420,
+    "height": 300
+  }
+}

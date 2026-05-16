@@ -100,6 +100,8 @@ interface BufferSubtemaNode {
  * Nodo de tema del árbol de contenido.
  */
 interface BufferTemaNode {
+  /** Identificador de temática padre en la estructura origen. */
+  IDTEMATICAPADRE?: number | string
   /** Nombre del tema. */
   NOMBRETEMATICA?: string
   /** Nombre legible alterno. */
@@ -364,6 +366,20 @@ const buildSpatialRequestKey = (
 }
 
 /**
+ * Evalúa si un valor de IDTEMATICAPADRE representa el valor cero.
+ *
+ * Soporta fuentes donde el identificador llega como número o string.
+ *
+ * @param parentId Valor de IDTEMATICAPADRE recibido desde TOC.
+ * @returns true cuando el valor equivale a cero; en otro caso false.
+ */
+const isZeroParentId = (parentId: number | string | undefined): boolean => {
+  if (typeof parentId === 'number') return parentId === 0
+  if (typeof parentId === 'string') return parentId.trim() === '0'
+  return false
+}
+
+/**
  * Widget Buffer.
  *
  * Carga tematicas para poblar controles de Temas/Subtemas/Capas,
@@ -485,15 +501,56 @@ const Widget = (props: AllWidgetProps<any>) => {
    */
   const selectedTema = React.useMemo(() => {
     const TEMAOPTION = temaOptions.find(option => option.value === temaValue)?.node
-    if(validaLoggerLocalStorage('logger')) console.log({temaValue, TEMAOPTION})
+    if(validaLoggerLocalStorage('logger')) console.log({temaOptions, temaValue, TEMAOPTION})
     return TEMAOPTION ?? null
   }, [temaOptions, temaValue])
+
+  /**
+   * Determina si el tema seleccionado debe omitir el campo Subtemas.
+   *
+   * Regla:
+   * 1. selectedTema.IDTEMATICAPADRE === 0
+   * 2. Todos los elementos de selectedTema.capasHijas tienen IDTEMATICAPADRE === 0
+   *
+   * Cuando se cumple, el combo Capas se llena directamente desde
+   * selectedTema.capasHijas[n].capasNietas.
+   */
+  const shouldBypassSubtema = React.useMemo<boolean>(() => {
+    if (!selectedTema) return false
+
+    const temaHasZeroParent = isZeroParentId(selectedTema.IDTEMATICAPADRE)
+    if (!temaHasZeroParent) return false
+
+    const temaChildren = selectedTema.capasHijas ?? []
+    if (temaChildren.length === 0) return false
+
+    return temaChildren.every((child: BufferSubtemaNode) => isZeroParentId(child.IDTEMATICAPADRE))
+  }, [selectedTema])
+
+  /**
+   * Registra una traza breve cuando se activa el modo sin Subtemas.
+   *
+   * La salida se limita a modo debug (localStorage logger) para evitar
+   * ruido en entornos normales de uso.
+   *
+   * @returns {void}
+   */
+  React.useEffect((): void => {
+    if (!shouldBypassSubtema) return
+    if (!validaLoggerLocalStorage('logger')) return
+
+    const temaChildrenCount = selectedTema?.capasHijas?.length ?? 0
+    console.log('Buffer bypass mode activated (Subtemas hidden).', {
+      tema: selectedTema?.NOMBRETEMATICA ?? selectedTema?.TITULOCAPA ?? temaValue,
+      temaChildrenCount
+    })
+  }, [shouldBypassSubtema, selectedTema, temaValue])
 
   /**
    * Subtemas del tema seleccionado para poblar el control Subtemas.
    */
   const subtemaOptions = React.useMemo<Array<NodeOption<BufferSubtemaNode>>>(() => {
-    if (!selectedTema) return []
+    if (!selectedTema || shouldBypassSubtema) return []
     const subtemas = selectedTema?.capasHijas ?? []
     const SUBTEMA = subtemas
       .map((item, index) => ({
@@ -505,27 +562,29 @@ const Widget = (props: AllWidgetProps<any>) => {
       .filter(option => Boolean(option.label))
     if(validaLoggerLocalStorage('logger')) console.log({selectedTema, subtemas, SUBTEMA})
     return SUBTEMA
-  }, [selectedTema, temaValue])
+  }, [selectedTema, shouldBypassSubtema, temaValue])
 
   /**
    * Nodo de subtema seleccionado.
    */
   const selectedSubtema = React.useMemo(() => {
+    if (shouldBypassSubtema) return null
     if (subtemaOptions.length === 0) return null
     const subtemaOption = subtemaOptions.find(option => option.value === subtemaValue)
     if(validaLoggerLocalStorage('logger')) console.log({subtemaValue, subtemaOption})
     return subtemaOption ?? null
-  }, [subtemaOptions, subtemaValue])
+  }, [shouldBypassSubtema, subtemaOptions, subtemaValue])
 
   /**
    * Indica si el subtema actual requiere mostrar el campo adicional de grupos.
    */
   const shouldShowGrupos = React.useMemo(() => {
+    if (shouldBypassSubtema) return false
     if (!selectedSubtema?.label) return false
     const validacion = selectedSubtema.node.capasNietas?.some(grupo => Array.isArray(grupo.capasBisnietos) && grupo.capasBisnietos.length > 0) ?? false
     if(validaLoggerLocalStorage('logger')) console.log({selectedSubtema: selectedSubtema.label, shouldShowGrupos: validacion})
     return validacion
-  }, [selectedSubtema])
+  }, [shouldBypassSubtema, selectedSubtema])
 
   /**
    * Opciones del campo Grupos derivadas del subtema seleccionado.
@@ -556,13 +615,32 @@ const Widget = (props: AllWidgetProps<any>) => {
   }, [grupoOptions, grupoValue])
 
   /**
-   * Opciones del campo Capas derivadas del subtema seleccionado.
+   * Opciones del campo Capas derivadas del tema/subtema seleccionado.
+   *
+   * Flujos soportados:
+   * 1. Flujo estándar: usa selectedSubtema (y grupos cuando aplica).
+   * 2. Flujo directo sin Subtemas: usa selectedTema.capasHijas[n].capasNietas.
    */
   const capaOptions = React.useMemo<CapaOption[]>(() => {
-    if (!selectedSubtema || (shouldShowGrupos && !selectedGrupo)) return []
-    const capaNodes: BufferCapaNode[] = shouldShowGrupos
-      ? selectedGrupo?.capasBisnietos ?? []
-      : (selectedSubtema.node.capasNietas ?? [])
+    let capaNodes: BufferCapaNode[] = []
+
+    if (shouldBypassSubtema) {
+      const temaChildren = selectedTema?.capasHijas ?? []
+      const flattenedNodes = temaChildren.flatMap((subtema: BufferSubtemaNode) => subtema.capasNietas ?? [])
+      capaNodes = flattenedNodes as BufferCapaNode[]
+
+      if (validaLoggerLocalStorage('logger')) {
+        console.log('Buffer bypass derived Capas count from capasHijas[].capasNietas:', {
+          derivedCapasCount: capaNodes.length,
+          temaChildrenCount: temaChildren.length
+        })
+      }
+    } else {
+      if (!selectedSubtema || (shouldShowGrupos && !selectedGrupo)) return []
+      capaNodes = shouldShowGrupos
+        ? selectedGrupo?.capasBisnietos ?? []
+        : (selectedSubtema.node.capasNietas ?? []) as BufferCapaNode[]
+    }
 
     const CAPAS = capaNodes
       .map((item, index) => {
@@ -575,9 +653,9 @@ const Widget = (props: AllWidgetProps<any>) => {
         }
       })
       .filter(option => Boolean(option.layerUrl || option.node.capasBisnietos || option.node.capasNietas))
-    if(validaLoggerLocalStorage('logger')) console.log({selectedSubtema, shouldShowGrupos, selectedGrupo, capaNodes, CAPAS,grupoValue,subtemaValue,subtemaOptions,selectedTema})
+    if(validaLoggerLocalStorage('logger')) console.log({selectedSubtema, shouldShowGrupos, selectedGrupo, capaNodes, CAPAS,grupoValue,subtemaValue,subtemaOptions,selectedTema, shouldBypassSubtema})
     return CAPAS
-  }, [selectedSubtema, shouldShowGrupos, selectedGrupo, grupoValue, subtemaValue, subtemaOptions, selectedTema])
+  }, [selectedSubtema, shouldShowGrupos, selectedGrupo, grupoValue, subtemaValue, subtemaOptions, selectedTema, shouldBypassSubtema])
 
   /**
    * Opcion de capa seleccionada.
@@ -711,6 +789,9 @@ const Widget = (props: AllWidgetProps<any>) => {
     setGrupoValue('')
     setCapaValue('')
     setActionError('')
+    clearDrawings()
+    void restoreInitialExtent()
+
   }
 
   /**
@@ -1213,13 +1294,17 @@ const Widget = (props: AllWidgetProps<any>) => {
             ))}
           </Select>
 
-          <Label>Subtemas:</Label>
-          <Select value={subtemaValue} onChange={onSubtemaChange}>
-            <Option value=''>Seleccione...</Option>
-            {subtemaOptions.map(option => (
-              <Option key={option.value} value={option.value}>{option.label}</Option>
-            ))}
-          </Select>
+          {!shouldBypassSubtema && (
+            <>
+              <Label>Subtemas:</Label>
+              <Select value={subtemaValue} onChange={onSubtemaChange}>
+                <Option value=''>Seleccione...</Option>
+                {subtemaOptions.map(option => (
+                  <Option key={option.value} value={option.value}>{option.label}</Option>
+                ))}
+              </Select>
+            </>
+          )}
 
           {shouldShowGrupos && (
             <>

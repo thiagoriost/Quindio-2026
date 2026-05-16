@@ -305,8 +305,36 @@ export default function PanelInformativo({
     )
 }
 
+
 /**
  * Construye la lista de items de contacto para el panel informativo.
+ * @param params - Valores de contacto obtenidos del servicio.
+ * @returns Arreglo tipado de items con icono y texto.
+ */
+export function itemsContacto({
+    telefono,
+    direccion,
+    horario,
+    nit,
+    registroMercantil,
+    rnt,
+    ciiu
+}: InformacionContactoInput): IconoTextoItem[] {
+    return [
+        { iconoSrc: telefonoIcon, iconoAlt: 'Teléfono', texto: 'Teléfono', valor: telefono },
+        { iconoSrc: mapIcon, iconoAlt: 'Dirección', texto: 'Dirección', valor: direccion },
+        { iconoSrc: clockIcon, iconoAlt: 'Horario', texto: 'Horario', valor: horario },
+        { iconoSrc: nitIcon, iconoAlt: 'NIT', texto: 'NIT', valor: nit },
+        { iconoSrc: registroMercantilIcon, iconoAlt: 'Registro mercantil', texto: 'Registro mercantil', valor: registroMercantil },
+        { iconoSrc: rntIcon, iconoAlt: 'RNT', texto: 'RNT', valor: rnt },
+        { iconoSrc: ciiuIcon, iconoAlt: 'CIIU', texto: 'CIIU', valor: ciiu }
+    ]
+}
+
+
+/**
+ * Construye la lista de items de contacto para el panel informativo.
+ * @deprecated El servicio de datos cambió y ya no provee sitioweb ni email.
  * @param params - Valores de contacto obtenidos del servicio.
  * @returns Arreglo tipado de items con icono y texto.
  */

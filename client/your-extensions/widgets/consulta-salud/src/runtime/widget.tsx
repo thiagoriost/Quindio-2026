@@ -1,7 +1,6 @@
 /** @jsx jsx */
 import { React, jsx, AllWidgetProps } from 'jimu-core'
 import { JimuMapViewComponent, type JimuMapView } from 'jimu-arcgis'
-// @ts-ignore
 import '../styles/styles.scss'
 const { useEffect, useState, useRef } = React
 
@@ -34,7 +33,7 @@ import type {
 import { listaMunicipios } from './components/SelectMunicipio'
 import SelectDesdeArray from './components/SelectDesdeArray'
 import { ResultTable } from '../../../shared/components/ResultTable'
-import PanelInformativo, { itemsInformacionContacto } from '../../../shared/components/PanelInformativo/PanelInformativo'
+import PanelInformativo, { itemsContacto, itemsInformacionContacto } from '../../../shared/components/PanelInformativo/PanelInformativo'
 
 const arcgisService = new ArcgisService()
 const httpService = new HttpService();
@@ -126,8 +125,6 @@ const Widget = (props: AllWidgetProps<any>) => {
             setMostrarBusqueda(false);
             refDatos.current = {...result};
         } else {
-            setMessage( JSON.stringify(result) );
-
             abrirTablaResultados(
                 tipoConsulta === 'indicadores',
                 result.features,
@@ -135,7 +132,7 @@ const Widget = (props: AllWidgetProps<any>) => {
                 props,
                 widgetResultId,
                 result.spatialReference,
-                "tabla",
+                "Resultados - Consulta de salud",
                 result.withGraphic
             )
             
@@ -157,7 +154,7 @@ const Widget = (props: AllWidgetProps<any>) => {
     const capacidadesItems = Array.isArray(refDatos.current.cgCapacidades)
     ? refDatos.current.cgCapacidades.map((item) => ({
         label: item.attributes.TIPO_CAPACIDAD,
-        value: item.attributes.VALORCAPACIDAD
+        value: String(item.attributes.VALORCAPACIDAD ?? '')
         }))
     : [];
     
@@ -204,12 +201,10 @@ const Widget = (props: AllWidgetProps<any>) => {
                         /*
                         [ {iconoSrc: starIcon, iconoAlt:"Estrella", texto:"Item importante", valor:refs.general.current?.getFeatures()?.[0]?.attributes["HORARIOS"]}]    
                         */
-                        itemsInformacionContacto({
+                        itemsContacto({
                             horario: refs.general.current?.getFeatures()?.[0]?.attributes["HORARIOS"],
                             direccion: refs.general.current?.getFeatures()?.[0]?.attributes["DIRECCION"],
                             telefono: refs.general.current?.getFeatures()?.[0]?.attributes["TELEFONO"],
-                            sitioWeb: refs.general.current?.getFeatures()?.[0]?.attributes["SITIOWEB"],
-                            email: refs.general.current?.getFeatures()?.[0]?.attributes["EMAIL"]
                         })
                     }
                     chipsIconoTextoTitulo={"capacidades"}
@@ -254,6 +249,7 @@ function FormularioDeBusqueda({tiposConsulta, tipoConsulta, setTipoConsulta, ref
                 httpService={httpService}
                 ref={refs.indicadores}
                 loading={loading}
+                setLoading={setLoading}
                 execute={execute}
                 url={urls.SERVICIO_SALUD_ALFANUMERICO}
                 setMessage={setMessage} />
@@ -265,6 +261,7 @@ function FormularioDeBusqueda({tiposConsulta, tipoConsulta, setTipoConsulta, ref
                 httpService={httpService}
                 ref={refs.tematicas}
                 loading={loading}
+                setLoading={setLoading}
                 idMunicipio={idMunicipio}
                 setIdMunicipio={setIdMunicipio}
                 municipios={municipios}
